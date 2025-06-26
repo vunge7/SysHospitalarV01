@@ -1,9 +1,4 @@
-Claro! Vou te ajudar passo a passo a **enviar (fazer push) de ficheiros para um repositório no GitHub**. Antes, preciso saber:
 
-🔹 **Você já criou o repositório no GitHub?**
-🔹 **Você já tem o Git instalado na sua máquina?**
-
-Se sim, siga os passos abaixo:
 
 ---
 
