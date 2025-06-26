@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 
+//Esta tudo pronto para usarmos o GITHUB
+
 //teste
 //outra linha por actulização do repositório
 //Teste com o pessoal
