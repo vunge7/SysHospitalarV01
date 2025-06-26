@@ -1,0 +1,51 @@
+.armazem-container {
+  padding: 24px;
+  background: #f0f2f5;
+  min-height: 100vh;
+}
+
+.page-title {
+  margin-bottom: 16px;
+}
+
+.search-input {
+  max-width: 300px;
+}
+
+.custom-table {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.custom-modal .ant-modal-content {
+  border-radius: 8px;
+}
+
+.add-button {
+  border-radius: 4px;
+}
+
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #e6f7ff;
+}
+
+@media (max-width: 768px) {
+  .armazem-controls {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .search-input {
+    max-width: 100%;
+  }
+}
+.armazem-container {
+  padding: 24px;
+  background: #f0f2f5;
+  min-height: 100vh;
+}

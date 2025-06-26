@@ -1,0 +1,14 @@
+.container-gasto {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.container-gasto-item {
+    margin-bottom: 10px;
+}
+.container-gasto-item:nth-child(1) {
+    width: 30%;
+    height: auto;
+    margin-right: 10px;
+}

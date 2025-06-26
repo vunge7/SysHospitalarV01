@@ -1,0 +1,70 @@
+.patient-form {
+    max-width: 800px;
+    margin: auto;
+    padding: 10px;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+h2,
+h3 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 3px;
+}
+
+.search-group {
+    display: flex;
+    flex-direction: row;
+}
+.search-group .item {
+    margin-right: 2px;
+}
+
+label {
+    margin-bottom: 5px;
+    font-size: small;
+    font-weight: bold;
+}
+
+input {
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+}
+
+.error {
+    color: red;
+    font-size: 0.85em;
+    margin-top: 4px;
+}
+
+.buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+button {
+    padding: 10px 15px;
+    background-color: #0066ff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button[type='reset'] {
+    background-color: #888;
+}
+
+button:hover {
+    opacity: 0.9;
+}
