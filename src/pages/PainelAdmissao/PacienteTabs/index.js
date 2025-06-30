@@ -6,6 +6,8 @@ import {
     estadoCivilFONTE,
 } from '../../../components/util/utilitarios';
 
+
+
 const PacienteTabs = (props) => {
     const [activeTab, setActiveTab] = useState('endereco');
     const tabsRef = useRef({});
@@ -230,7 +232,7 @@ const PacienteTabs = (props) => {
                         </div>
                     </div>
                 );
-            case 'seguradora':
+            case 'convenio':
                 return <div className="tab-content"></div>;
             case 'empresa':
                 return <div className="tab-content"></div>;
@@ -262,10 +264,10 @@ const PacienteTabs = (props) => {
                         🎂 Nascimento
                     </div>
                     <div
-                        className={`tab ${activeTab === 'seguradora' ? 'active' : ''}`}
+                        className={`tab ${activeTab === 'convenio' ? 'active' : ''}`}
                         onClick={() => setActiveTab('seguradora')}
                     >
-                        🛡️ Seguradora
+                        🛡️ Convénio
                     </div>
 
                     <div

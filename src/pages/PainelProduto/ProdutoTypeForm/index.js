@@ -1,241 +1,203 @@
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import Modal from 'react-modal';
+import { Modal, Form, Input, Button, Table, Spin, Space } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import './style.css';
-import { api } from "../../../service/api";
+import { api } from '../../../service/api';
 
 // Definindo o esquema de validação com Zod
 const schema = z.object({
-    designacaoTipoProduto: z.string().min(2, { message: 'O tipo do produto deve ter pelo menos 2 caracteres.' }).max(60, { message: 'Seleciona um tipo valido.' }),
+  designacaoTipoProduto: z.string().min(2, { message: 'O tipo do produto deve ter pelo menos 2 caracteres.' }).max(60, { message: 'Selecione um tipo válido.' }),
 });
 
 function ProdutoTypeForm({ buscarTiposProduto }) {
-    const { register, handleSubmit, formState: { errors }, setValue, getValues } = useForm({
-        resolver: zodResolver(schema),
-    });
-    const [props, setProps] = useState(false)
-    var erros = [];
-    const [errosNoFront, setErrosNoFront] = useState([]);
-    const [modalIsOpenAddType, setModalIsOpenAddType] = useState(false);
-    const [carregar, setCarregar] = useState(false);
-    const currentProducts = {};
-    const [produto, setProduto] = useState([]);
-    const [modalIsOpen, setModalIsOpen] = useState(false);
-    const [modalIsOpenRemove, setModalIsOpenRemove] = useState(false);
-    const [apiError, setApiError] = useState(null);
-    const [statusSendEdit, setStatusSendEdit] = useState(false);
-    const [id, setId] = useState(null);
-    const [btnEnviar, setBtnEnviar] = useState("Adicionar");
-    const [produtoRemover, setProdutoRemover] = useState(null);
+  const { control, handleSubmit, formState: { errors }, setValue, getValues } = useForm({
+    resolver: zodResolver(schema),
+  });
+  const [errosNoFront, setErrosNoFront] = useState([]);
+  const [modalIsOpenAddType, setModalIsOpenAddType] = useState(false);
+  const [carregar, setCarregar] = useState(false);
+  const [produto, setProduto] = useState([]);
+  const [statusSendEdit, setStatusSendEdit] = useState(false);
+  const [id, setId] = useState(null);
+  const [btnEnviar, setBtnEnviar] = useState('Adicionar');
+  const [produtoRemover, setProdutoRemover] = useState(null);
+  const [modalIsOpenRemove, setModalIsOpenRemove] = useState(false);
 
-
-    const onAddNewType = async (data) => {
-        var v = getValues("designacaoTipoProduto")
-        const dataToSubmit = { ...{}, designacaoTipoProduto: v, id: id };
-        // Se necessário, adicione campos extras
-        console.log("Dados a serem enviados para o backend:", dataToSubmit);  // Verifique os dados enviados
-
-        if (statusSendEdit == true) {
-            //EDITAR
-            const response = await api.put('producttype/edit', dataToSubmit)
-                .then((result) => {
-                    setValue("designacaoTipoProduto", "")
-                    alert("Tipo do Produto Eeditado com Sucesso")
-                    console.log("tipo produto Editado com sucesso")
-                    for (let i = 0; i < erros.length; i++) {
-                        erros.pop()
-                    }
-
-                    setErrosNoFront(erros)
-                    buscarTiposProduto()
-                    buscarTiposProdutos()
-                }).catch((error) => {
-                    console.log("Erro ao Editar o tipo produto")
-                    erros.push("Erro ao Editar o tipo produto")
-                    setErrosNoFront(erros)
-                })
-            //ADICIONAR
-        } else {
-            const dataSubmit = { ...{}, designacaoTipoProduto: v };
-            const response = await api.post('producttype/add', dataSubmit)
-                .then((result) => {
-                    setValue("designacaoTipoProduto", "")
-                    alert("Tipo do Produto Salvo com Sucesso")
-                    console.log("tipo produto salvo com sucesso")
-                    for (let i = 0; i < erros.length; i++) {
-                        erros.pop()
-                    }
-                    setErrosNoFront(erros)
-                    buscarTiposProduto()
-                    buscarTiposProdutos()
-                }).catch((error) => {
-                    console.log("Erro ao salvar o tipo produto")
-                    erros.push("Erro ao salvar o tipo produto")
-                    setErrosNoFront(erros)
-                })
-        }
-
+  const onAddNewType = async (data) => {
+    setCarregar(true);
+    const dataToSubmit = { designacaoTipoProduto: data.designacaoTipoProduto, id };
+    console.log('Dados a serem enviados para o backend:', dataToSubmit);
+    try {
+      if (statusSendEdit) {
+        await api.put('producttype/edit', dataToSubmit);
+        Modal.success({ content: 'Tipo do Produto Editado com Sucesso' });
+      } else {
+        await api.post('producttype/add', { designacaoTipoProduto: data.designacaoTipoProduto });
+        Modal.success({ content: 'Tipo do Produto Salvo com Sucesso' });
+      }
+      setValue('designacaoTipoProduto', '');
+      buscarTiposProduto();
+      buscarTiposProdutos();
+      setModalIsOpenAddType(false);
+      setErrosNoFront([]);
+    } catch (error) {
+      console.error('Erro ao salvar/editar tipo:', error);
+      setErrosNoFront(prev => [...prev, 'Erro ao salvar/editar tipo']);
+    } finally {
+      setCarregar(false);
     }
+  };
 
-    const OpenType = () => {
-        setModalIsOpenAddType(true)
-        buscarTiposProdutos();
+  const OpenType = () => {
+    setModalIsOpenAddType(true);
+    buscarTiposProdutos();
+  };
+
+  const closeType = () => {
+    setModalIsOpenAddType(false);
+    setStatusSendEdit(false);
+    setBtnEnviar('Adicionar');
+    setValue('designacaoTipoProduto', '');
+  };
+
+  const buscarTiposProdutos = async () => {
+    setCarregar(true);
+    try {
+      const result = await api.get('producttype/all');
+      setProduto(result.data);
+    } catch (error) {
+      console.error('Erro ao buscar tipos:', error);
+      setErrosNoFront(prev => [...prev, 'Erro ao buscar tipos']);
+    } finally {
+      setCarregar(false);
     }
+  };
 
-    const closeType = () => {
-        setModalIsOpenAddType(false);
-        setStatusSendEdit(false);
-        setModalIsOpenRemove(false);
-        setBtnEnviar("Adicionar");
-        setValue("designacaoTipoProduto", "");
+  const onEditar = (prod) => {
+    setStatusSendEdit(true);
+    setBtnEnviar('Editar Tipo');
+    setId(prod.id);
+    setValue('designacaoTipoProduto', prod.designacaoTipoProduto);
+    setModalIsOpenAddType(true);
+    setErrosNoFront([]);
+  };
+
+  const onRemover = (data) => {
+    setProdutoRemover(data);
+    setModalIsOpenRemove(true);
+  };
+
+  const onConfirmar = async () => {
+    setCarregar(true);
+    try {
+      await api.delete(`producttype/${produtoRemover.id}`);
+      console.log('Tipo removido com sucesso:', produtoRemover.id);
+      buscarTiposProdutos();
+      setModalIsOpenRemove(false);
+      setStatusSendEdit(false);
+      Modal.success({ content: 'Tipo Removido com Sucesso' });
+    } catch (error) {
+      console.error('Erro ao remover tipo:', error);
+      setErrosNoFront(prev => [...prev, 'Erro ao remover tipo']);
+      Modal.error({ content: 'ERRO ao Deletar Tipo!' });
+    } finally {
+      setCarregar(false);
     }
+  };
 
-    const buscarTiposProdutos = async () => {
-        setCarregar(true);
-        try {
-            const result = await api.get('producttype/all'); // Chamada para a rota 'produto/all'
-            setProduto(result.data); // Armazena os produtos recebidos da API
-            currentProducts = result.data;
-        } catch (error) {
-            console.log('Erro ao efetuar a chamada da API', error);
-        } finally {
-            setCarregar(false);
-        }
-    };
+  const onCancelar = () => {
+    setModalIsOpenRemove(false);
+  };
 
-    const onRemover = async (data) => {
-        setProdutoRemover(data);
-        setModalIsOpenRemove(true);
-
-    };
-
-    const onEditar = (prod) => {
-        setStatusSendEdit(true)
-        setBtnEnviar("Editar Produto")
-        setId(prod.id);
-        setValue("designacaoTipoProduto", prod.designacaoTipoProduto)
-        setModalIsOpen(true);
-        for (let i = 0; i < erros.length; i++) {
-            erros.pop();
-        }
-        setErrosNoFront(erros)
-        buscarTiposProdutos()
-    };
-
-    const onConfirmar = async () => {
-        const response = await api.delete('producttype/' + produtoRemover.id)
-            .then((result) => {
-                console.log('O produto removido com sucesso!...', produtoRemover.id);
-                buscarTiposProdutos();
-                setStatusSendEdit(false)
-                setModalIsOpenRemove(false);
-
-            }).catch((error) => {
-                console.log("Erro ao remover o produto ")
-                erros.push("Erro ao remover o produto")
-                alert("ERRO ao Deletar Produto!")
-
-            })
+  const anularEnter = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
     }
+  };
 
-    function onCancelar() {
-        setModalIsOpenRemove(false);
-    }
+  useEffect(() => {
+    buscarTiposProdutos();
+  }, []);
 
-    const closeModalRemove = () => {
-        setModalIsOpenRemove(false)
-    };
+  const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id' },
+    { title: 'Designação do Produto', dataIndex: 'designacaoTipoProduto', key: 'designacaoTipoProduto' },
+    {
+      title: 'Alterações',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button icon={<EditOutlined />} onClick={() => onEditar(record)}>Editar</Button>
+          <Button icon={<DeleteOutlined />} onClick={() => onRemover(record)}>Remover</Button>
+        </Space>
+      ),
+    },
+  ];
 
-    const anularEnter = (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();  // Anula a ação padrão
-          console.log('Enter foi pressionado, mas o comportamento foi anulado.');
-        }
-      };
-
-    useEffect(() => {
-        buscarTiposProdutos(); // Busca os tipos de produtos
-    }, []);
-    return (
-        <div>
-            <button type="button" className="add-button" onClick={OpenType}>+</button>
-            {/*MODAL DE ADICIONAR NOVO TIPO DO PRODUTO*/}
-            <Modal
-                isOpen={modalIsOpenAddType}
-                onRequestClose={closeType}
-                className="modal-add-type-content"
-                overlayClassName="modal-add-type-overlay"
+  return (
+    <div>
+      <Button type="primary" shape="circle" className='btnAddType'  icon={<PlusOutlined />} onClick={OpenType} />
+      <Modal
+        title="Novo Tipo de Produto"
+        open={modalIsOpenAddType}
+        onCancel={closeType}
+        footer={null}
+      >
+        <Spin spinning={carregar}>
+          <Form onFinish={handleSubmit(onAddNewType)} layout="vertical">
+            {errosNoFront.length > 0 && (
+              <ul id="errosNoFront">
+                {errosNoFront.map((e, i) => <li key={i} className="error-message">{e}</li>)}
+              </ul>
+            )}
+            <Form.Item
+              className="input-group"
+              label="Designação do Tipo de Produto"
+              validateStatus={errors.designacaoTipoProduto ? 'error' : ''}
             >
-                <form onSubmit={handleSubmit(onAddNewType)}>
-                    <h4><label label htmlFor="addProductType">Novo Tipo do Produto</label><br /></h4>
-                    <div id='modal-type'>
-                        {errosNoFront.map((e) => (
-                            <li className='erros'>{e}</li>
-                        ))}
-                        <input type='text' placeholder='Aa...'
-                            {...register('designacaoTipoProduto')}
-                          onKeyDown={anularEnter}
-                            className={errors.designacaoTipoProduto ? 'input-error' : ''}
-
-                        />
-                        {errors.designacaoTipoProduto && <span className="error-message">{errors.designacaoTipoProduto.message}</span>}
-                        <br />
-                        <button type='button' onClick={onAddNewType}>{btnEnviar}</button>
-                    </div>
-
-                    <Modal
-                        isOpen={modalIsOpenRemove}
-                        onRequestClose={closeModalRemove}
-                        className="modal-remove-content"
-                        overlayClassName="modal-remove-overlay"
-                    > <h4>Deseja Remover Este Tipo de Produto?</h4>
-                        <div id='remove-close-modal'>
-
-                            <button onClick={onConfirmar}>Confirmar</button>
-                            <button onClick={onCancelar}>Cancelar</button>
-                        </div>
-
-                    </Modal>
-
-                    <div>
-
-                        <table border="1">
-                            <caption>Tipos de Produtos</caption>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>designação do Produto</th>
-                                    <th>Alterações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {produto.length > 0 ? (
-                                    produto.map((produto, index) => (
-                                        <tr key={index}>
-                                            <td>{produto.id}</td>
-                                            <td>{produto.designacaoTipoProduto}</td>
-
-                                            <td>
-                                                <button onClick={() => onEditar(produto)} type='button'>Editar</button>
-                                                <button onClick={() => onRemover(produto)} type='button'>Remover</button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="7">Nenhum tipo de produto encontrado</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-
-
-                    </div>
-                </form>
-
-            </Modal>
-        </div>
-    );
+              <Controller
+                name="designacaoTipoProduto"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    className={errors.designacaoTipoProduto ? 'input-error' : ''}
+                    placeholder="Aa..."
+                    onKeyDown={anularEnter}
+                  />
+                )}
+              />
+              {errors.designacaoTipoProduto && <span className="error-message">{errors.designacaoTipoProduto.message}</span>}
+            </Form.Item>
+            <Form.Item className="form-actions">
+              <Button className="submit-button" type="primary" htmlType="submit" loading={carregar}>
+                {btnEnviar}
+              </Button>
+            </Form.Item>
+          </Form>
+          <Table
+            className="my-custom-table"
+            columns={columns}
+            dataSource={produto}
+            rowKey="id"
+            locale={{ emptyText: 'Nenhum tipo de produto encontrado' }}
+          />
+          <Modal
+            title="Deseja Remover Este Tipo de Produto?"
+            open={modalIsOpenRemove}
+            onOk={onConfirmar}
+            onCancel={onCancelar}
+            okText="Confirmar"
+            cancelText="Cancelar"
+            confirmLoading={carregar}
+          />
+        </Spin>
+      </Modal>
+    </div>
+  );
 }
 
 export default ProdutoTypeForm;

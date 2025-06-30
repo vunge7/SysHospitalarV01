@@ -1,233 +1,203 @@
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import Modal from 'react-modal';
+import { Modal, Form, Input, Button, Table, Spin, Space } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import './style.css';
-import { api } from "../../../service/api";
+import { api } from '../../../service/api';
 
 // Definindo o esquema de validação com Zod
 const schema = z.object({
-    designacaoProduto: z.string().min(2, { message: 'O tipo do produto deve ter pelo menos 2 caracteres.' }).max(60, { message: 'Seleciona um tipo valido.' }),
+  designacaoProduto: z.string().min(2, { message: 'O grupo do produto deve ter pelo menos 2 caracteres.' }).max(60, { message: 'Selecione um grupo válido.' }),
 });
 
 function ProdutoGroupForm({ buscarProdutosGrupos }) {
-    const { register, handleSubmit, formState: { errors }, setValue, getValues } = useForm({
-        resolver: zodResolver(schema),
-    });
-    const [props, setProps] = useState(false)
-    var erros = [];
-    const [errosNoFront, setErrosNoFront] = useState([]);
-    const [modalIsOpenAddGroup, setModalIsOpenAddGroup] = useState(false);
-    const [carregar, setCarregar] = useState(false);
-    const currentProducts = {};
-    const [produto, setProduto] = useState([]);
-    const [statusSendEdit, setStatusSendEdit] = useState(false);
-    const [id, setId] = useState(null);
-    const [btnEnviar, setBtnEnviar] = useState("Adicionar");
-    const [produtoRemover, setProdutoRemover] = useState(null);
-    const [modalIsOpenRemove, setModalIsOpenRemove] = useState(false);
+  const { control, handleSubmit, formState: { errors }, setValue, getValues } = useForm({
+    resolver: zodResolver(schema),
+  });
+  const [errosNoFront, setErrosNoFront] = useState([]);
+  const [modalIsOpenAddGroup, setModalIsOpenAddGroup] = useState(false);
+  const [carregar, setCarregar] = useState(false);
+  const [produto, setProduto] = useState([]);
+  const [statusSendEdit, setStatusSendEdit] = useState(false);
+  const [id, setId] = useState(null);
+  const [btnEnviar, setBtnEnviar] = useState('Adicionar');
+  const [produtoRemover, setProdutoRemover] = useState(null);
+  const [modalIsOpenRemove, setModalIsOpenRemove] = useState(false);
 
-    const onAddNewGroup = async (data) => {
-        let v = getValues("designacaoProduto")
-        const dataToSubmit = { ...{}, designacaoProduto: v, id: id };
-        // Se necessário, adicione campos extras
-        console.log("Dados a serem enviados para o backend:", dataToSubmit);  // Verifique os dados enviados
-
-        if (statusSendEdit == true) {
-            const response = await api.put('productgroup/edit', dataToSubmit)
-                .then((result) => {
-                    setValue("designacaoProduto", "")
-                    alert("Grupo do Produto Editado com Sucesso")
-                    console.log("grupo produto Editado com sucesso")
-                    for (let i = 0; i < erros.length; i++) {
-                        erros.pop()
-                    }
-                    setErrosNoFront(erros)
-                    buscarProdutosGrupos();
-                    buscarProdutosGrupo();
-                }).catch((error) => {
-                    console.log("Erro ao Editar o grupo do produto")
-                    erros.push("Erro ao Editar o grupo do produto")
-                    setErrosNoFront(erros)
-                })
-        } else {
-            const dataSubmit = { ...{}, designacaoProduto: v };
-            const response = await api.post('productgroup/add', dataSubmit)
-                .then((result) => {
-                    setValue("designacaoProduto", "")
-                    alert("Grupo do Produto Salvo com Sucesso")
-                    console.log("grupo produto salvo com sucesso")
-                    for (let i = 0; i < erros.length; i++) {
-                        erros.pop()
-                    }
-                    setErrosNoFront(erros)
-                    buscarProdutosGrupos();
-                    buscarProdutosGrupo();
-                }).catch((error) => {
-                    console.log("Erro ao salvar o grupo do produto")
-                    erros.push("Erro ao salvar o grupo do produto")
-                    setErrosNoFront(erros)
-                })
-        }
-
+  const onAddNewGroup = async (data) => {
+    setCarregar(true);
+    const dataToSubmit = { designacaoProduto: data.designacaoProduto, id };
+    console.log('Dados a serem enviados para o backend:', dataToSubmit);
+    try {
+      if (statusSendEdit) {
+        await api.put('productgroup/edit', dataToSubmit);
+        Modal.success({ content: 'Grupo do Produto Editado com Sucesso' });
+      } else {
+        await api.post('productgroup/add', { designacaoProduto: data.designacaoProduto });
+        Modal.success({ content: 'Grupo do Produto Salvo com Sucesso' });
+      }
+      setValue('designacaoProduto', '');
+      buscarProdutosGrupos();
+      buscarProdutosGrupo();
+      setModalIsOpenAddGroup(false);
+      setErrosNoFront([]);
+    } catch (error) {
+      console.error('Erro ao salvar/editar grupo:', error);
+      setErrosNoFront(prev => [...prev, 'Erro ao salvar/editar grupo']);
+    } finally {
+      setCarregar(false);
     }
+  };
 
-    const OpenGroup = () => {
-        setModalIsOpenAddGroup(true)
-        buscarProdutosGrupo()
+  const OpenGroup = () => {
+    setModalIsOpenAddGroup(true);
+    buscarProdutosGrupo();
+  };
+
+  const closeGroup = () => {
+    setModalIsOpenAddGroup(false);
+    setStatusSendEdit(false);
+    setBtnEnviar('Adicionar');
+    setValue('designacaoProduto', '');
+  };
+
+  const buscarProdutosGrupo = async () => {
+    setCarregar(true);
+    try {
+      const result = await api.get('productgroup/all');
+      setProduto(result.data);
+    } catch (error) {
+      console.error('Erro ao buscar grupos:', error);
+      setErrosNoFront(prev => [...prev, 'Erro ao buscar grupos']);
+    } finally {
+      setCarregar(false);
     }
+  };
 
-    const closeGroup = () => {
-        setModalIsOpenAddGroup(false)
-        setStatusSendEdit(false)
-        setBtnEnviar("Adicionar")
-        setValue("designacaoProduto", "")
+  const onEditar = (prod) => {
+    setStatusSendEdit(true);
+    setBtnEnviar('Editar Grupo');
+    setId(prod.id);
+    setValue('designacaoProduto', prod.designacaoProduto);
+    setModalIsOpenAddGroup(true);
+    setErrosNoFront([]);
+  };
+
+  const onRemover = (data) => {
+    setProdutoRemover(data);
+    setModalIsOpenRemove(true);
+  };
+
+  const onConfirmar = async () => {
+    setCarregar(true);
+    try {
+      await api.delete(`productgroup/${produtoRemover.id}`);
+      console.log('Grupo removido com sucesso:', produtoRemover.id);
+      buscarProdutosGrupo();
+      setModalIsOpenRemove(false);
+      setStatusSendEdit(false);
+      Modal.success({ content: 'Grupo Removido com Sucesso' });
+    } catch (error) {
+      console.error('Erro ao remover grupo:', error);
+      setErrosNoFront(prev => [...prev, 'Erro ao remover grupo']);
+      Modal.error({ content: 'ERRO ao Deletar Grupo!' });
+    } finally {
+      setCarregar(false);
     }
+  };
 
-    const buscarProdutosGrupo = async () => {
-        setCarregar(true);
-        try {
-            const result = await api.get('productgroup/all'); // Chamada para a rota 'produto/all'
-            setProduto(result.data); // Armazena os produtos recebidos da API
-            currentProducts = result.data;
-        } catch (error) {
-            console.log('Erro ao efetuar a chamada da API', error);
-        } finally {
-            setCarregar(false);
-        }
-    };
+  const onCancelar = () => {
+    setModalIsOpenRemove(false);
+  };
 
-    const onEditar = (prod) => {
-        setStatusSendEdit(true)
-        setBtnEnviar("Editar Grupo")
-        setId(prod.id);
-        setValue("designacaoProduto", prod.designacaoProduto)
-        for (let i = 0; i < erros.length; i++) {
-            erros.pop();
-        }
-        setErrosNoFront(erros)
-        buscarProdutosGrupo();
+  const anularEnter = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
     }
+  };
 
-    const onRemover = (data) => {
-        setProdutoRemover(data);
-        setModalIsOpenRemove(true);
-    }
+  useEffect(() => {
+    buscarProdutosGrupo();
+  }, []);
 
-    const onConfirmar = async () => {
-        const response = await api.delete('productgroup/' + produtoRemover.id)
-            .then((result) => {
-                console.log('O produto removido com sucesso!...', produtoRemover.id);
-                buscarProdutosGrupo();
-                setStatusSendEdit(false)
-                setModalIsOpenRemove(false);
+  const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id' },
+    { title: 'Designação do Produto', dataIndex: 'designacaoProduto', key: 'designacaoProduto' },
+    {
+      title: 'Alterações',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button icon={<EditOutlined />} onClick={() => onEditar(record)}>Editar</Button>
+          <Button icon={<DeleteOutlined />} onClick={() => onRemover(record)}>Remover</Button>
+        </Space>
+      ),
+    },
+  ];
 
-            }).catch((error) => {
-                console.log("Erro ao remover o grupo")
-                erros.push("Erro ao remover o grupo")
-                alert("ERRO ao Deletar Grupo!")
-
-            })
-    }
-
-    function onCancelar() {
-        setModalIsOpenRemove(false);
-    }
-
-    const anularEnter = (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();  // Anula a ação padrão
-            console.log('Enter foi pressionado, mas o comportamento foi anulado.');
-        }
-    };
-
-    const closeModalRemove = () => {
-        setStatusSendEdit(false)
-        setModalIsOpenRemove(false)
-    };
-
-    useEffect(() => {
-        buscarProdutosGrupo(); // Busca os tipos de produtos
-    }, []);
-    return (
-        <div>
-            <button type="button" className="add-button" onClick={OpenGroup}>+</button>
-            {/*MODAL DE ADICIONAR NOVO GRUPO DO PRODUTO*/}
-            <Modal
-                isOpen={modalIsOpenAddGroup}
-                onRequestClose={closeGroup}
-                className="modal-add-group-content"
-                overlayClassName="modal-add-group-overlay"
+  return (
+    <div>
+      <Button type="primary" className='btnAddGroup' shape="circle" icon={<PlusOutlined />} onClick={OpenGroup} />
+      <Modal
+        title="Novo Grupo de Produto"
+        open={modalIsOpenAddGroup}
+        onCancel={closeGroup}
+        footer={null}
+      >
+        <Spin spinning={carregar}>
+          <Form onFinish={handleSubmit(onAddNewGroup)} layout="vertical">
+            {errosNoFront.length > 0 && (
+              <ul id="errosNoFront">
+                {errosNoFront.map((e, i) => <li key={i} className="error-message">{e}</li>)}
+              </ul>
+            )}
+            <Form.Item
+              className="input-group"
+              label="Designação do Grupo de Produto"
+              validateStatus={errors.designacaoProduto ? 'error' : ''}
             >
-                <form onSubmit={handleSubmit(onAddNewGroup)}>
-                    <h4><label label htmlFor="addProductGroup">Novo Grupo do Produto</label><br /></h4>
-                    <div id='modal-group'>
-                        {errosNoFront.map((e) => (
-                            <li className='erros'>{e}</li>
-                        ))}
-                        <input type='text' placeholder='Aa...'
-                            {...register('designacaoProduto')}
-                            onKeyDown={anularEnter}
-                            className={errors.designacaoProduto ? 'input-error' : ''}
-
-                        />
-                        {errors.designacaoProduto && <span className="error-message">{errors.designacaoProduto.message}</span>}
-                        <br />
-                        <button type='button' onClick={onAddNewGroup}>{btnEnviar}</button>
-                    </div>
-
-                    <Modal
-                        isOpen={modalIsOpenRemove}
-                        onRequestClose={closeModalRemove}
-                        className="modal-remove-content"
-                        overlayClassName="modal-remove-overlay"
-                    > <h4>Deseja Remover Este Grupo do Produto?</h4>
-                        <div id='remove-close-modal'>
-
-                            <button onClick={onConfirmar}>Confirmar</button>
-                            <button onClick={onCancelar}>Cancelar</button>
-                        </div>
-
-                    </Modal>
-
-                    <div>
-
-                        <table border="1" id='tabela'>
-                            <caption>Grupos do Produtos</caption>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>designação do Produto</th>
-                                    <th>Alterações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {produto.length > 0 ? (
-                                    produto.map((produto, index) => (
-                                        <tr key={index}>
-                                            <td>{produto.id}</td>
-                                            <td>{produto.designacaoProduto}</td>
-
-                                            <td>
-                                                <button type='button' onClick={() => onEditar(produto)}>Editar</button>
-                                                <button type='button' onClick={() => onRemover(produto)}>Remover</button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="7">Nenhum Grupo de produto encontrado</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-
-
-                    </div>
-                </form>
-
-            </Modal>
-        </div>
-    );
+              <Controller
+                name="designacaoProduto"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    className={errors.designacaoProduto ? 'input-error' : ''}
+                    placeholder="Aa..."
+                    onKeyDown={anularEnter}
+                  />
+                )}
+              />
+              {errors.designacaoProduto && <span className="error-message">{errors.designacaoProduto.message}</span>}
+            </Form.Item>
+            <Form.Item className="form-actions">
+              <Button className="submit-button" type="primary" htmlType="submit" loading={carregar}>
+                {btnEnviar}
+              </Button>
+            </Form.Item>
+          </Form>
+          <Table
+            className="my-custom-table"
+            columns={columns}
+            dataSource={produto}
+            rowKey="id"
+            locale={{ emptyText: 'Nenhum grupo de produto encontrado' }}
+          />
+          <Modal
+            title="Deseja Remover Este Grupo de Produto?"
+            open={modalIsOpenRemove}
+            onOk={onConfirmar}
+            onCancel={onCancelar}
+            okText="Confirmar"
+            cancelText="Cancelar"
+            confirmLoading={carregar}
+          />
+        </Spin>
+      </Modal>
+    </div>
+  );
 }
 
 export default ProdutoGroupForm;

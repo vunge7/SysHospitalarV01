@@ -9,6 +9,7 @@
   background-color: #f4f4f4;
   padding: 20px;
   transition: width 0.3s ease;
+  margin-top: 70px;
 }
 
 .sidebar-menu .ant-menu-item {
@@ -29,6 +30,7 @@
 .main-content {
   flex: 1;
   padding: 20px;
+  margin: auto;
   overflow-y: auto;
 }
 

@@ -14,7 +14,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: #0056b3;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -30,7 +30,11 @@
     flex-direction: column;
     box-sizing: border-box;
   }
-
+  .btnAddGroup{
+    position: absolute;
+    right: 0px;
+    top: 0px;
+  }
   .modal-add-group-content{
     background: white;
     padding: 20px;
@@ -43,7 +47,7 @@
     box-sizing: border-box;
   }
   #modal-group button{
-    background-color: green;
+    background-color: #0056b3;
     color: white;
     padding: 10px 20px;
     font-size: 16px;

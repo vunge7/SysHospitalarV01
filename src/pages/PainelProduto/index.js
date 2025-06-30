@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
-//import GraficoProduto from "./GraficoProduto";
 import NovoProduto from './NovoProduto';
 import ListarProduto from './ListarProduto';
 import Cabecario from '../../components/Cabecario';
@@ -17,6 +16,7 @@ import {
     UnorderedListOutlined,
     UserOutlined,
     PoweroffOutlined,
+    BookOutlined,
 } from '@ant-design/icons';
 
 function PainelProduto() {
@@ -34,7 +34,7 @@ function PainelProduto() {
             },
             {
                 key: 'novo-produto',
-                icon: <UserAddOutlined />,
+                icon: <BookOutlined />,
                 label: 'Novo Produto',
             },
             {

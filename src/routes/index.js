@@ -4,6 +4,7 @@ import PainelAdmissao from '../pages/PainelAdmissao';
 import PainelEnfermeiro from '../pages/PainelEnfermeiro';
 import PainelMedico from '../pages/PainelMedico';
 import PainelAgendamento from '../pages/PainelAgendamento';
+import Agenda from '../components/Agenda'
 import Triagem from '../components/Enfermeiro/Triagem';
 import Consulta from '../components/Medico/Consulta';
 import Private from '../contexts/Private';
@@ -11,7 +12,7 @@ import Dashboard from '../components/Dashboard';
 import DashboardMedico from '../components/Medico/DashboardMedico';
 import TriagemManchester from '../components/TriagemManchester';
 import TextToSpeech from '../components/TextToSpeech';
-import Test from '../components/Test';
+
 import PainelPrincipal from '../components/PainelPrincipal';
 import PainelFacturacao from '../pages/PainelFacturacao';
 import Facturacao from '../components/Facturacao';
@@ -29,7 +30,7 @@ function RoutesApp() {
             <Route path="/" element={<Login />} />
             <Route path="/tts" element={<TextToSpeech />} />
             <Route path="/tm" element={<TriagemManchester />} />
-            <Route path="/teste" element={<Test />} />
+
             <Route path="/admissao/home" element={<PainelAdmissao />} />
 
             <Route
@@ -127,7 +128,7 @@ function RoutesApp() {
                 path="/agenda"
                 element={
                     <Private>
-                        <PainelAgenda />
+                        <Agenda />
                     </Private>
                 }
             />

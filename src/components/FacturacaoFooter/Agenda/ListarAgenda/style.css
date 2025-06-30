@@ -1,0 +1,142 @@
+.listar-agenda-container {
+  padding: 40px;
+  background-color: #f5f9ff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h2 {
+  font-size: 1.8rem;
+  color: #2d3748;
+  margin-bottom: 24px;
+}
+
+.filtros-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filter-container {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.agenda-table {
+  width: 100%;
+  max-width: 1200px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.agenda-table .ant-table-thead > tr > th {
+  background: linear-gradient(145deg, #f9fafc, #ffffff);
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.agenda-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.date-time-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-time-container .ant-select {
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.date-time-container .ant-select:hover {
+  box-shadow: 0 0 8px rgba(24, 144, 255, 0.3);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.custom-message .ant-message-notice {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  animation: slideInRight 0.5s ease-in-out;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100vw);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.spinner {
+  margin-top: 40px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .listar-agenda-container {
+    padding: 16px;
+  }
+
+  .agenda-table {
+    width: 100%;
+  }
+
+  .filtros-status {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .filter-container {
+    justify-content: center;
+  }
+
+  .date-time-container .ant-select {
+    width: 80px !important;
+  }
+
+  .custom-message .ant-message-notice {
+    max-width: 90vw;
+    right: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .listar-agenda-container {
+    padding: 12px;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  .date-time-container .ant-select {
+    width: 70px !important;
+    font-size: 12px;
+  }
+
+  .action-buttons .ant-btn {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+}

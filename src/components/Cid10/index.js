@@ -13,9 +13,9 @@ const renderItem = (title, description) => ({
     ),
 });
 
-const Test = () => {
+const Cid10 = (props) => {
     const [options, setOptions] = useState([]);
-    const [data, setData] = useState([]);
+   // const [data, setData] = useState([]);
     const [dataSource, setDataSource] = useState([]); // Novo estado para os dados do Excel
 
     useEffect(() => {
@@ -41,32 +41,33 @@ const Test = () => {
         }
         const filtered = dataSource
             .filter((item) =>
-                item.title.toLowerCase().includes(value.toLowerCase())
+                item.title.toLowerCase().includes(value.toLowerCase()) ||
+                item.description.toLowerCase().includes(value.toLowerCase())
             )
             .map((item) => renderItem(item.title, item.description));
         setOptions(filtered);
     };
 
     const handleSelect = (value) => {
-        if (data.some((item) => item.title === value)) {
+        if (props.data.some((item) => item.title === value)) {
             return;
         }
         const descriptionFiltered = dataSource.filter(
             (item) => item.title === value
         )[0]?.description;
 
-        let dataTemp = data;
+        let dataTemp = props.data;
         dataTemp.push({
             title: value,
             description: descriptionFiltered,
         });
 
-        setData([...dataTemp]);
+        props.setData([...dataTemp]);
     };
 
     const handleRemove = (index) => {
-        const newData = data.filter((_, i) => i !== index);
-        setData(newData);
+        const newData = props.data.filter((_, i) => i !== index);
+        props.setData(newData);
     };
 
     return (
@@ -85,7 +86,7 @@ const Test = () => {
 
             <List
                 itemLayout="horizontal"
-                dataSource={data}
+                dataSource={props.data}
                 style={{ width: '50%', marginTop: '20px', marginLeft: '20px' }}
                 locale={{ emptyText: 'Não existe ainda doença adicionada' }}
                 renderItem={(item, index) => (
@@ -116,4 +117,4 @@ const Test = () => {
     );
 };
 
-export default Test;
+export default Cid10;

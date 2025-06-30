@@ -6,6 +6,7 @@ import Receituario from '../Receituario';
 import Procedimento from '../../Procedimento';
 import ExameRequisitado from '../../ExameRequisitado';
 import { formatDate } from 'date-fns';
+import Cid10 from '../../Cid10';
 
 import { ConfigProvider } from 'antd';
 import ptBR from 'antd/lib/locale/pt_BR';
@@ -32,6 +33,7 @@ const { TextArea } = Input;
 function Consulta() {
     const [id, setId] = useState(0);
     const [data, setData] = useState([]);
+    const [dataCID, setDataCID] = useState([]);
     const [nomePaciente, setNomePaciente] = useState('');
     const [exameFisico, setExameFisico] = useState('');
     const [motivoConsulta, setMotivoConsulta] = useState('');
@@ -70,6 +72,10 @@ function Consulta() {
         diagnosticoInicial,
         diagnosticoFinal,
     ]);
+
+    useEffect(()=>{
+       console.log('Data CID', dataCID);
+    }, [dataCID])
 
     const _showModal = async (id, nome) => {
         setNomePaciente(nome);
@@ -311,11 +317,7 @@ function Consulta() {
             children: (
                 <>
                     <Form.Item name="diagnosticoInicial">
-                        <TextArea
-                            id="diagnosticoInicial"
-                            rows={10}
-                            placeholder="Insira o diagnóstico inicial"
-                        />
+                        <Cid10   data={dataCID} setData={setDataCID} />
                     </Form.Item>
                 </>
             ),
@@ -429,19 +431,13 @@ function Consulta() {
             <Flex gap="small" vertical style={{ width: 600 }}>
                 <List
                     header={<div>Lista de paciente por consultar</div>}
-                    footer={<div>x</div>}
                     itemLayout="horizontal"
                     dataSource={data}
                     renderItem={(item, index) => (
                         <List.Item>
                             <List.Item.Meta
-                                avatar={
-                                    <Avatar
-                                        src={`https://api.dicebear.com/7.x/miniavs/svg?seed=${index}`}
-                                    />
-                                }
                                 title={item.inscricaoId + ' - ' + item.nome}
-                                description="Dados da Última Consulta"
+                                description=""
                             />
                             <Flex horizontal="true">
                                 <Button
@@ -474,11 +470,12 @@ function Consulta() {
                             </Flex>
                         </List.Item>
                     )}
+                    footer={<div></div>}
                 ></List>
             </Flex>
 
             <Modal
-                title={'Consulta do doente: ' + nomePaciente.toUpperCase()}
+                title={'Consulta do paciente: ' + nomePaciente.toUpperCase()}
                 open={isModalConsulta}
                 onCancel={handleCancel}
                 width={80 + '%'}
