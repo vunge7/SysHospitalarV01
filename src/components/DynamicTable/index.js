@@ -1,147 +1,114 @@
+import { PropaneSharp } from '@mui/icons-material';
 import React, { useState } from 'react';
-import { Table, Input, Button, Pagination, Space, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import 'antd/dist/reset.css';
 
 const DynamicTable = (props) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 5;
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const productsPerPage = 5; // Número de produtos por página
 
-  const showActions = props.showActions ?? true;
+    // Filtro de pesquisa
+    const filteredData = props.data.filter((row) =>
+        Object.values(row).some(
+            (value) =>
+                typeof value === 'string' &&
+                value.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    );
 
-  if (!props.data || props.data.length === 0) {
-    return <p>Nenhum dado disponível.</p>;
-  }
+    // Função de Paginação
+    const indexOfLastProduct = currentPage * productsPerPage;
+    const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+    const currentData = filteredData.slice(
+        indexOfFirstProduct,
+        indexOfLastProduct
+    );
 
-  const columns = Object.keys(props.data[0] || {})
-    .filter((key) => key !== 'isFuncionarioAtivo')
-    .map((col) => ({
-      title: (
-        <Tooltip title={props.headers?.[col] || col}>
-          <span>{props.headers?.[col] || col}</span>
-        </Tooltip>
-      ),
-      dataIndex: col,
-      key: col,
-      render: (value) => {
-        if (col === 'imagem') {
-          console.log('Imagem value:', value); // Depuração
-          if (value && value !== 'Sem Imagem') {
-            return (
-              <img
-                src={value}
-                alt="Produto"
-                style={{ maxWidth: '50px', maxHeight: '50px', borderRadius: '4px', objectFit: 'cover' }}
-                loading="lazy"
-                onError={(e) => {
-                  console.error('Erro ao carregar imagem:', value);
-                  e.target.src = '/placeholder.jpg'; // Fallback
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    if (!props.data || props.data.length === 0) {
+        return <p>Nenhum dado disponível.</p>;
+    }
+
+    // Obtendo os nomes das colunas a partir da primeira linha de dados
+    const columns = Object.keys(props.data[0]);
+
+    return (
+        <div>
+            <input
+                type="text"
+                placeholder="Pesquisar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+                style={{
+                    width: '100%',
                 }}
-              />
-            );
-          }
-          return <span>Sem Imagem</span>;
-        }
-        return (
-          <Tooltip title={typeof value === 'object' ? JSON.stringify(value) : value}>
-            <span>{typeof value === 'object' ? JSON.stringify(value) : value}</span>
-          </Tooltip>
-        );
-      },
-      ellipsis: col !== 'imagem',
-    }));
+            />
 
-  if (showActions) {
-    columns.push({
-      title: 'Ações',
-      key: 'actions',
-      render: (_, row) => (
-        <Space wrap>
-          {props.customActions ? (
-            props.customActions(row)
-          ) : (
-            <>
-              <Button
-                type="primary"
-                icon={<EditOutlined />}
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  props.onEdit?.(row);
-                }}
-              >
-                Editar
-              </Button>
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  props.onDelete?.(row);
-                }}
-              >
-                Excluir
-              </Button>
-            </>
-          )}
-        </Space>
-      ),
-    });
-  }
+            <table className={props.className}>
+                <thead>
+                    <tr>
+                        {columns.map((col) => (
+                            <th key={col}>{col}</th>
+                        ))}
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {currentData.map((row, index) => (
+                        <tr key={index}>
+                            {columns.map((col) => (
+                                <td key={col}>
+                                    {typeof row[col] === 'object'
+                                        ? JSON.stringify(row[col])
+                                        : row[col]}
+                                </td>
+                            ))}
 
-  const filteredData = props.data.filter((row) =>
-    columns.some(
-      (col) =>
-        row[col.dataIndex] &&
-        typeof row[col.dataIndex] === 'string' &&
-        row[col.dataIndex].toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+                            {props.isCrud ? (
+                                <td>
+                                    <button onClick={() => props.onEdit(row)}>
+                                        Editar
+                                    </button>
+                                    <button onClick={() => props.onDelete(row)}>
+                                        Excluir
+                                    </button>
+                                </td>
+                            ) : (
+                                <td>
+                                    <button onClick={() => props.onAdd(row)}>
+                                        Adicionar
+                                    </button>
+                                </td>
+                            )}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
 
-  const indexOfLastProduct = currentPage * productsPerPage;
-  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-  const currentData = filteredData.slice(indexOfFirstProduct, indexOfLastProduct);
-
-  return (
-    <div style={{ padding: '16px' }}>
-      <Input
-        placeholder="Pesquisar..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        style={{
-          marginBottom: '16px',
-          width: '100%',
-          maxWidth: 300,
-        }}
-        allowClear
-      />
-      <Table
-        columns={columns}
-        dataSource={currentData}
-        rowKey="id"
-        pagination={false}
-        onRow={(row) => ({
-          onClick: () => props.onRowClick?.(row),
-          style: { cursor: 'pointer' },
-        })}
-        className={props.className}
-      />
-      <Pagination
-        current={currentPage}
-        pageSize={productsPerPage}
-        total={filteredData.length}
-        onChange={(page) => setCurrentPage(page)}
-        style={{
-          marginTop: 16,
-          textAlign: 'right',
-        }}
-        showSizeChanger={false}
-        responsive
-      />
-    </div>
-  );
+            {/* Paginação */}
+            <div className="pagination">
+                {Array.from(
+                    {
+                        length: Math.ceil(
+                            filteredData.length / productsPerPage
+                        ),
+                    },
+                    (_, index) => (
+                        <button
+                            key={index + 1}
+                            onClick={() => paginate(index + 1)}
+                            className={
+                                currentPage === index + 1 ? 'active' : ''
+                            }
+                        >
+                            {index + 1}
+                        </button>
+                    )
+                )}
+            </div>
+        </div>
+    );
 };
 
 export default DynamicTable;

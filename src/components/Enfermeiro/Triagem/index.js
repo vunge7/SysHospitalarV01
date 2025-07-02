@@ -9,12 +9,10 @@ import {
     Button,
     Modal,
     Card,
-    Form,
     Slider,
     Row,
     Col,
     InputNumber,
-    Divider,
     Radio,
     Space,
 } from 'antd';
