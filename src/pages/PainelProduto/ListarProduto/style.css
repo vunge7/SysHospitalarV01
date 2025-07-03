@@ -1,0 +1,431 @@
+/* Container principal */
+.produto-form-container {
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+  margin: 16px auto;
+  max-width: 1200px;
+}
+
+/* Estilo para o formulário */
+.produto-form {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+/* Estilo para linhas de campos (grid para alinhamento) */
+.form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.form-row .form-item {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Estilo para modais */
+.produto-form-modal .ant-modal-content {
+  border-radius: 8px;
+  padding: 0;
+  background: #ffffff;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.produto-form-modal .ant-modal-header {
+  border-radius: 8px 8px 0 0;
+  padding: 10px 16px;
+  background: #2f54eb;
+  color: #ffffff;
+  border-bottom: none;
+}
+
+.produto-form-modal .ant-modal-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.produto-form-modal .ant-modal-body {
+  padding: 12px;
+}
+
+.produto-form-modal .ant-modal-footer {
+  padding: 8px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #f7fafc;
+  border-radius: 0 0 8px 8px;
+  text-align: right;
+}
+
+/* Estilo para alerta de erro */
+.form-error-alert {
+  border-radius: 6px;
+  background: #fff1f0;
+  border: 1px solid #ffa39e;
+  padding: 4px 8px;
+  font-size: 10px;
+  margin-bottom: 6px;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+.form-error-alert .error-message {
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Estilo para inputs e selects */
+.produto-form .ant-form-item {
+  margin-bottom: 6px;
+}
+
+.produto-form .ant-form-item-label > label {
+  font-weight: 700;
+  font-size: 12px;
+  color: #1a202c;
+  margin-bottom: 3px;
+}
+
+.produto-form .form-input,
+.produto-form .form-select .ant-select-selector {
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 6px;
+  height: 32px;
+  border: 1px solid #d9e2ec;
+  background: #f9fafb;
+  transition: all 0.2s ease;
+}
+
+.produto-form .form-input:hover,
+.produto-form .form-select .ant-select-selector:hover {
+  border-color: #2f54eb;
+  box-shadow: 0 0 0 2px rgba(47, 84, 235, 0.1);
+}
+
+.produto-form .form-input:focus,
+.produto-form .form-select .ant-select-selector:focus {
+  border-color: #2f54eb;
+  box-shadow: 0 0 0 2px rgba(47, 84, 235, 0.2);
+  outline: none;
+  transform: scale(1.01);
+}
+
+.produto-form .ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  padding: 6px;
+  height: 32px;
+}
+
+.produto-form .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-placeholder {
+  color: #a0aec0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Estilo para erro */
+.produto-form .ant-form-item-explain-error {
+  color: #e53e3e;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* Estilo para botões do formulário */
+.form-button {
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  height: 30px;
+  transition: all 0.2s ease;
+  margin-left: 6px;
+}
+
+.form-button-primary {
+  background: #2f54eb;
+  border-color: #2f54eb;
+  color: #ffffff;
+}
+
+.form-button-primary:hover {
+  background: #597ef7;
+  border-color: #597ef7;
+  transform: translateY(-1px);
+}
+
+.form-button:not(.form-button-primary) {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+  color: #2d3748;
+}
+
+.form-button:not(.form-button-primary):hover {
+  background: #e2e8f0;
+  border-color: #2f54eb;
+  color: #2f54eb;
+  transform: translateY(-1px);
+}
+
+.form-button-danger {
+  background: #e53e3e;
+  border-color: #e53e3e;
+  color: #ffffff;
+}
+
+.form-button-danger:hover {
+  background: #f56565;
+  border-color: #f56565;
+  transform: translateY(-1px);
+}
+
+/* Estilo para tabela */
+.my-custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.my-custom-table thead {
+  background: #edf2f7;
+}
+
+.my-custom-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 12px;
+}
+
+.my-custom-table tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+  transition: background 0.2s ease;
+}
+
+.my-custom-table tbody tr:hover {
+  background: #f7fafc;
+}
+
+.my-custom-table td {
+  padding: 10px;
+  font-size: 12px;
+  color: #4a5568;
+}
+
+/* Estilo para tabela interna do UnidadeMedidaForm */
+.form-table {
+  margin-top: 6px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.form-table .ant-table-thead > tr > th {
+  background: #edf2f7;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 11px;
+  padding: 6px;
+}
+
+.form-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px;
+  font-size: 11px;
+}
+
+/* Botões de ação */
+.action-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.action-buttons .form-button {
+  padding: 3px 6px;
+  height: 26px;
+}
+
+/* Estilo para notificações */
+.ant-notification-notice {
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+}
+
+.ant-notification-notice-message {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.ant-notification-notice-success {
+  border-left: 4px solid #38a169;
+}
+
+.ant-notification-notice-error {
+  border-left: 4px solid #e53e3e;
+}
+
+/* Estilo para botão de adicionar medida */
+.btnAddMedida {
+  margin-left: 6px;
+}
+
+/* Estilo para detalhes da linha selecionada */
+.selected-row-details {
+  margin-top: 12px;
+  padding: 10px;
+  background: #f7fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.selected-row-details h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 6px;
+}
+
+.selected-row-details p {
+  font-size: 12px;
+  color: #4a5568;
+  margin: 2px 0;
+}
+
+/* Estilo para pesquisa e paginação do DynamicTable */
+.ant-input {
+  border-radius: 6px;
+  border: 1px solid #d9e2ec;
+  padding: 5px;
+}
+
+.ant-pagination {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ant-pagination-item,
+.ant-pagination-prev,
+.ant-pagination-next {
+  border-radius: 6px;
+}
+
+.ant-pagination-item-active {
+  background: #2f54eb;
+  border-color: #2f54eb;
+}
+
+.ant-pagination-item-active a {
+  color: #ffffff;
+}
+
+/* Animação de entrada */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsividade */
+@media screen and (max-width: 768px) {
+  .produto-form-container {
+    margin: 10px;
+    padding: 16px;
+  }
+
+  .produto-form {
+    padding: 10px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-row .form-item {
+    min-width: 100%;
+  }
+
+  .produto-form .form-input,
+  .produto-form .form-select .ant-select-selector {
+    font-size: 12px;
+    padding: 5px;
+    height: 30px;
+  }
+
+  .my-custom-table th,
+  .my-custom-table td {
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .action-buttons .form-button {
+    padding: 2px 5px;
+    height: 24px;
+  }
+
+  .form-button {
+    padding: 4px 10px;
+    font-size: 11px;
+    height: 28px;
+    margin-left: 4px;
+  }
+
+  .produto-form-modal .ant-modal {
+    width: 90% !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .produto-form-container {
+    margin: 8px;
+    padding: 12px;
+  }
+
+  .produto-form {
+    padding: 8px;
+  }
+
+  .produto-form .form-input,
+  .produto-form .form-select .ant-select-selector {
+    font-size: 11px;
+    padding: 4px;
+    height: 28px;
+  }
+
+  .my-custom-table th,
+  .my-custom-table td {
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  .action-buttons .form-button {
+    padding: 2px 4px;
+    height: 22px;
+    font-size: 10px;
+  }
+
+  .form-button {
+    padding: 3px 8px;
+    font-size: 10px;
+    height: 26px;
+    margin-left: 3px;
+  }
+
+  .produto-form-modal .ant-modal {
+    width: 95% !important;
+  }
+}

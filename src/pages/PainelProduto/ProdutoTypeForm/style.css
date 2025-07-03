@@ -1,0 +1,61 @@
+/* Estilo de erro */
+.input-error {
+    border-color: red;
+  }
+/*ESTILO DO BOTÃO DE ADICIONAR TIPO E GRUPO*/
+.modal-add-type-overlay{
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+  .modal-remove-overlay{
+    z-index: 3000;
+  }
+  #modal-type{
+    display: flex;
+    align-items: center;
+    text-align: center;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  
+  .modal-add-type-content{
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  #modal-type button{
+    background-color: #0056b3;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .btnAddType{
+    position: absolute;
+    right: 0px;
+    top: 0px;
+  }
+  #modal-type input{
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }

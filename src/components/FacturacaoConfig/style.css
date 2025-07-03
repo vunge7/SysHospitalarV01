@@ -1,0 +1,17 @@
+.container-facturacao-config {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.item {
+    flex: 1 1 calc(25% - 10px); /* Cada item ocupa 25% menos o gap */
+}
+
+@media (max-width: 768px) {
+    .container-facturacao-config {
+        flex-direction: column;
+        height: auto;
+    }
+}

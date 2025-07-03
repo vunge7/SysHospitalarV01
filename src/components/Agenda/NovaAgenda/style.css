@@ -1,0 +1,136 @@
+.nova-agenda-container {
+  padding: 40px;
+  background-color: #f5f9ff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.add-btn {
+  font-size: 1.1rem;
+  padding: 10px 24px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+}
+
+.agenda-modal .ant-modal-body {
+  padding: 24px;
+  background: linear-gradient(145deg, #ffffff, #f9fafc);
+  border-radius: 8px;
+}
+
+.agenda-form {
+  width: 100%;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.date-time-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+}
+
+.date-time-container .ant-select {
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.date-time-container .ant-select:hover {
+  box-shadow: 0 0 8px rgba(24, 144, 255, 0.3);
+}
+
+.ant-form-item-label > label {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.ant-form-item {
+  flex: 1;
+  min-width: 200px;
+}
+
+.custom-message .ant-message-notice {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  animation: slideInRight 0.5s ease-in-out;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100vw);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .nova-agenda-container {
+    padding: 16px;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .date-time-container {
+    gap: 8px;
+  }
+
+  .ant-form-item {
+    min-width: 100%;
+  }
+
+  .add-btn {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .agenda-modal {
+    width: 90vw !important;
+  }
+
+  .custom-message .ant-message-notice {
+    max-width: 90vw;
+    right: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nova-agenda-container {
+    padding: 12px;
+  }
+
+  .date-time-container .ant-select {
+    width: 80px !important;
+    font-size: 12px;
+  }
+
+  .ant-form-item-label > label {
+    font-size: 14px;
+  }
+}

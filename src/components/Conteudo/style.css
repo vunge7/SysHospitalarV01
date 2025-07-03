@@ -1,0 +1,21 @@
+.content {
+    background-color: #ffffff;
+    padding: 20px;
+    display: flex; /* Using Flexbox */
+    flex-direction: row;
+    gap: 10px;
+}
+
+.content .item {
+    padding: 5;
+}
+
+.content ::nth-child(1) {
+    width: 30%;
+    max-width: 200px;
+}
+
+.content ::nth-child(2) {
+    width: 70%;
+    background-color: aqua;
+}

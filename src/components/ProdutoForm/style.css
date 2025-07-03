@@ -1,0 +1,511 @@
+/* Container do formulário de produto */
+.produto-form-container {
+  width: 100%;
+  /* Define um limite máximo para a largura do formulário */
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.produto-form {
+  display: flex;
+  flex-direction:column;
+}
+
+.input-group {
+  margin-bottom: 0px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0px;
+  font-weight: bold;
+}
+
+.input-group input,
+.input-group select {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* Ajuste para o select (campo de seleção) */
+.input-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url(C:\projetos\front-end\react\assets\image\ProdutoForm\seta-para-baixo.png);
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+}
+
+/* Estilo de erro */
+.input-error {
+  border-color: red;
+}
+
+.error-message {
+  color: red;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.form-actions {
+  text-align: center;
+}
+
+.submit-button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.submit-button:hover {
+  background-color: #45a049;
+}
+
+input[type="checkbox"] {
+  visibility: hidden;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow: auto;
+}
+/*ESTILO DO BOTÃO DE ADICIONAR TIPO E GRUPO*/
+.modal-add-type-overlay, .modal-add-group-overlay{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  overflow: auto;
+  box-sizing: border-box;
+}
+#modal-type, #modal-group{
+  display: flex;
+  align-items: center;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.modal-add-type-content, .modal-add-group-content{
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+#modal-type button, #modal-group button{
+  background-color: green;
+  color: white;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 5px;
+  display: flex;
+  align-items: center;
+  margin-left: 27px;
+}
+#modal-type, #modal-group input{
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+/*=_==_=_=__=_=_==__==_=_=__==__==__==_=__==_=_=__=_==__==_=_=__=*/
+
+h4 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.modal-remove-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow: auto;
+}
+.modal-remove-content {
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 100%;
+  height: 100px;
+  max-width: 300px;
+  
+  /*position: relative;*/
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+#remove-close-modal{
+  display: flex;
+  align-items: center;
+  text-align: center;
+
+  
+}
+#remove-close-modal button{
+  background-color: gray;
+  color: white;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 5px;
+  display: flex;
+  align-items: center;
+  margin-left: 27px;
+}
+/* Modal Content (Caixa de conteúdo do modal) */
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Botão de Fechar */
+#close-button {
+  position: relative;
+  top: 10px;
+  float: right;
+  background: red;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Botão de Abrir/Fechar */
+.toggle-button {
+  padding: 10px 20px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.toggle-button:hover {
+  background-color: #0056b3;
+}
+
+/* Estilos para os botões de Ação (Adicionar, Editar, Remover) */
+.action-buttons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.add-button{
+  padding: 6px 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  width: auto;
+}
+.remo-button {
+  padding: 6px 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  width: auto;
+}
+
+.add-button {
+  background-color: #4CAF50; /* Cor verde para Adicionar */
+  color: white;
+}
+
+.add-button:hover {
+  background-color: #45a049;
+}
+
+.remo-button {
+  background-color: gray; /* Cor verde para Adicionar */
+  color: white;
+}
+
+.remo-button:hover {
+  background-color: rgb(190, 171, 171);
+}
+
+
+.edit-button {
+  background-color: #FFB300; /* Cor amarela para Editar */
+  color: white;
+}
+
+.edit-button:hover {
+  background-color: #FFA000;
+}
+
+.remove-button {
+  background-color: #D32F2F; /* Cor vermelha para Remover */
+  color: white;
+}
+
+.remove-button:hover {
+  background-color: #C2185B;
+}
+
+#errosNoFront{
+  color: red;
+  text-align: center;
+  list-style: none;
+}
+
+#productType, #productGrou{
+  width: 80%;
+}
+#productGroup{
+  width: 80%;
+}
+.add_type_or_group{
+  position: relative;
+  float: right;
+  margin-top: 2.5px;
+}
+/*
+/* RESPONSIVIDADE */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.select-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+select {
+  width: 70%;
+  padding: 5px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+button.remo-button {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  background-color: #f8f8f8;
+  cursor: pointer;
+}
+
+.error-message {
+  color: red;
+  font-size: 12px;
+  margin-top: 5px;
+}
+/* Estilo geral da tabela */
+.my-custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-family: Arial, sans-serif;
+}
+
+/* Cabeçalho da tabela */
+.my-custom-table thead {
+  background-color: #333;
+  color: #fff;
+}
+
+.my-custom-table th {
+  padding: 10px;
+  text-align: left;
+  font-size: 14px;
+}
+
+/* Linhas da tabela */
+.my-custom-table tbody tr {
+  border-bottom: 1px solid #ddd;
+}
+
+.my-custom-table td {
+  padding: 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+/* Hover nas linhas */
+.my-custom-table tbody tr:hover {
+  background-color: #f2f2f2;
+}
+
+/* Botões de ação */
+.my-custom-table button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.my-custom-table button:hover {
+  background-color: #45a049;
+}
+
+.my-custom-table button.delete {
+  background-color: #f44336;
+}
+
+.my-custom-table button.delete:hover {
+  background-color: #e53935;
+}
+
+/* Para telas menores que 768px (como tablets e celulares em modo retrato) */
+@media screen and (max-width: 768px) {
+  .produto-form-container {
+    padding: 15px;
+  }
+
+  .produto-form {
+    padding: 0 10px;
+  }
+
+  .input-group label {
+    font-size: 5px;
+  }
+
+  .input-group input,
+  .input-group select {
+    font-size: 10px;
+    padding: 8px;
+  }
+
+  .submit-button {
+    padding: 10px 15px;
+    font-size: 14px; 
+  }
+
+  .modal-content {
+    width: 90%;
+    max-width: 90%;
+  }
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.select-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+select {
+  width: 70%;
+  padding: 5px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+button.remo-button {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  background-color: #f8f8f8;
+  cursor: pointer;
+}
+
+.error-message {
+  color: red;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+
+@media screen and (max-width: 480px) {
+  .produto-form-container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .produto-form {
+    padding: 0 5px;
+  }
+
+  .input-group input,
+  .input-group select {
+    padding: 6px;
+  }
+
+  .submit-button {
+    font-size: 12px;
+  }
+}
