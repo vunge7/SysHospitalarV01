@@ -1,0 +1,31 @@
+.monitoramento-container {
+  padding: 20px;
+}
+
+.page-title {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.table-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.custom-table {
+  background: #fff;
+  border-radius: 8px;
+}
+
+.custom-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: bold;
+}
+
+.custom-table .ant-table-tbody > tr:hover > td {
+  background: #f5f5f5;
+}

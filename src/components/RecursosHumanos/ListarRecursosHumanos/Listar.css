@@ -1,0 +1,289 @@
+/* Estilização geral do container principal */
+.list-container {
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Estilização do título */
+.list-container h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: #1f1f1f;
+}
+
+/* Container de filtros */
+.filter-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.filter-input-container {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-input {
+  width: 100%;
+}
+
+.filter-select {
+  width: 200px;
+}
+
+/* Estilização das sugestões do filtro de busca */
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0 0;
+}
+
+.suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.suggestions li:hover {
+  background-color: #f5f5f5;
+}
+
+/* Estilização da tabela principal */
+.combined-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+}
+
+.combined-table th,
+.combined-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.combined-table th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.combined-table tr:hover {
+  background: #f5f5f5;
+}
+
+/* Estilização da tabela de detalhes */
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.details-table th,
+.details-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.details-table th {
+  background: #fafafa;
+}
+
+/* Estilização dos botões de ação */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.details-btn {
+  background-color: #52c41a !important; /* Verde para Detalhes */
+  border-color: #52c41a !important;
+  color: #fff !important;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.details-btn:hover {
+  background-color: #73d13d !important;
+  border-color: #73d13d !important;
+}
+
+.edit-btn {
+  background-color: #1890ff !important; /* Azul para Editar */
+  border-color: #1890ff !important;
+  color: #fff !important;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.edit-btn:hover {
+  background-color: #40a9ff !important;
+  border-color: #40a9ff !important;
+}
+
+.delete-btn {
+  background-color: #ff4d4f !important; /* Vermelho para Excluir */
+  border-color: #ff4d4f !important;
+  color: #fff !important;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.delete-btn:hover {
+  background-color: #ff7875 !important;
+  border-color: #ff7875 !important;
+}
+
+/* Estilização dos modais */
+.ant-modal {
+  width: 1200px !important; /* Largura maior para os modais */
+  top: 30px !important; /* Centraliza verticalmente com margem menor do topo */
+}
+
+.ant-modal-content {
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.ant-modal-body {
+  max-height: calc(100vh - 150px); /* Ajusta altura para caber na tela */
+  overflow-y: auto; /* Adiciona rolagem vertical quando necessário */
+  padding: 0;
+}
+
+.pessoa-selecionada-container,
+.funcionario-form {
+  padding: 16px;
+}
+
+.pessoa-selecionada-container h3,
+.funcionario-form h3 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #1f1f1f;
+}
+
+/* Estilização do formulário dentro do modal */
+.ant-form-vertical .ant-form-item {
+  margin-bottom: 12px; /* Menor margem para compactar */
+}
+
+.ant-form-vertical .ant-form-item-label > label {
+  font-weight: 500;
+  color: #1f1f1f;
+  font-size: 14px;
+}
+
+/* Ajuste para colunas de formulário */
+.ant-row {
+  margin-left: -8px !important;
+  margin-right: -8px !important;
+}
+
+.ant-col {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* Estilização do AutoComplete */
+.ant-select-auto-complete .ant-select-selector {
+  border-radius: 4px;
+}
+
+/* Estilização da tabela de subsídios no modal */
+.ant-table {
+  margin-top: 12px;
+}
+
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+/* Estilização do botão de submit nos modais */
+.ant-btn-primary {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.ant-btn-primary:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+/* Estilização do botão de cancelar */
+.ant-btn-default {
+  border-color: #d9d9d9;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.ant-btn-default:hover {
+  background-color: #f5f5f5;
+  border-color: #bfbfbf;
+}
+
+/* Estilização do Spin (loading) */
+.ant-spin {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100px;
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+  .ant-modal {
+    width: 90% !important;
+    max-width: 900px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .ant-modal {
+    width: 95% !important;
+    max-width: 600px !important;
+  }
+
+  .filter-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  /* Ajusta para 2 colunas em telas menores */
+  .ant-col-8 {
+    width: 50% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ant-col-8 {
+    width: 100% !important;
+  }
+}
