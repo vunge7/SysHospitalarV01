@@ -1,0 +1,67 @@
+
+
+---
+
+### ✅ PASSO A PASSO PARA ENVIAR FICHEIROS PARA O GITHUB
+
+#### 1. **Abra o terminal ou prompt de comando**
+
+Navegue até o diretório do seu projeto:
+
+```bash
+cd /caminho/do/seu/projeto
+```
+
+#### 2. **Inicialize o repositório Git (se ainda não tiver feito isso)**
+
+```bash
+git init
+```
+
+#### 3. **Adicione os arquivos ao controle do Git**
+
+```bash
+git add .
+```
+
+#### 4. **Faça o commit das mudanças**
+
+```bash
+git commit -m "Primeiro commit"
+```
+
+#### 5. **Adicione o link do repositório remoto do GitHub**
+
+```bash
+git remote add origin https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git
+```
+
+(Substitua com seu link real do GitHub)
+
+#### 6. **Envie os arquivos para o GitHub (push)**
+
+```bash
+git push -u origin master
+```
+
+⚠️ Se o Git mostrar erro com `master`, use `main`:
+
+```bash
+git push -u origin main
+```
+
+---
+
+### 💡 Dica: Se estiver usando autenticação com token pessoal (em vez de senha)
+
+Você deve gerar um **token de acesso pessoal** no GitHub e usá-lo quando o terminal pedir a senha.
+
+---
+
+Se quiser, posso fazer um exemplo com o nome real do seu repositório.
+É só me dizer:
+
+* O **link do repositório GitHub**
+* O **caminho da pasta** com os ficheiros (ou só o nome, se já estiver na pasta)
+
+Quer que eu continue com base em um repositório real seu?

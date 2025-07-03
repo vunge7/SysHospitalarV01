@@ -1,0 +1,75 @@
+/* Estilo de erro */
+.input-error {
+    border-color: red;
+  }
+
+  .erros{
+    color: red;
+    list-style: none;
+  }
+/*ESTILO DO BOTÃO DE ADICIONAR TIPO E GRUPO*/
+.modal-add-group-overlay{
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #0056b3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+#modal-group{
+    display: flex;
+    align-items: center;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  .btnAddGroup{
+    position: absolute;
+    right: 0px;
+    top: 0px;
+  }
+  .modal-add-group-content{
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+  }
+  #modal-group button{
+    background-color: #0056b3;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 5px;
+    display: flex;
+    align-items: center;
+    margin-left: 27px;
+  }
+#modal-group input{
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  #tabela{
+    overflow-y: auto;
+    box-sizing: border-box;
+    width: 100%;
+    height: 50px;
+  }

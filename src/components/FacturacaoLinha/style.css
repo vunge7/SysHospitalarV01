@@ -1,0 +1,28 @@
+.container-facturacao-linha {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    margin-bottom: 10px;
+    background-color: var(--linha-factura-color);
+    margin-top: 5px;
+    box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+    border-radius: 5px;
+}
+
+.item {
+    margin-bottom: 5px;
+    width: 100%;
+    padding: 0px 10px 0px 10px;
+}
+
+.item:nth-child(2) {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+@media (max-width: 768px) {
+    .item:nth-child(2) {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,119 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  .painelprincipal {
+    line-height: 1.6;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    padding: 0;
+    color: #333;
+  }
+  
+  /* Container Principal */
+  .containerpainel {
+    display: flex;  
+    flex-direction: row; /*Importante*/
+    padding: 40px 30px;
+    gap: 20px;
+  }
+  
+  /*Background dos paineis */
+  .panel {
+    background-color: #dce8f0;
+    color: rgba(3, 117, 140, 0.536);
+    /*padding: 25px;*/
+    border-radius: 15px; 
+  }
+  
+  .panel h2 {
+    text-align: center;
+    background-color: rgba(62, 188, 230, 0.604);
+    font-size: 18px;
+    text-align: center;
+    max-width: 160%;
+    padding: 5px 0;
+   /*  padding: 10px 0 10px 20px;*/
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    font-weight: 300;
+    
+    color:#fff;
+    /*margin-bottom: 20px;*/
+  }
+  
+  /* Grid dos Blocos */
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 20px;
+    gap: 10px; /*definição do espaçamento entre os blocks*/
+    justify-content: space-between;
+  }
+  
+  /*Blocos no Painel */
+  .block {
+    flex: 1 1 calc(25% - 10px); /* 4 blocos por linha */
+    max-width: calc(25% - 10px); 
+    background-color: rgba(255, 255, 255, 0.671); /**/
+    color: rgb(56, 181, 206);    /* Cor das informações nos blocos*/
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column; /**/
+    align-items:center;
+    justify-content: center;
+  
+    padding: 15px;
+    transition: transform 0.3s, box-shadow 0.5s;
+  }
+  
+  .block i {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  
+  .block p {
+    font-size: 12px;
+    text-align: center;
+    font-weight: 400;
+  }
+  
+  .block:hover {
+    transform: scale(1.08);
+    box-shadow: 0 2px 15px #67cae688;
+    cursor: pointer;
+  }
+  
+  /* Responsividade -----------------------*/
+
+  /*Dispositivos medios: 481px - 768px */
+  @media (max-width: 990px) {
+  
+  .containerpainel{
+    flex-direction: column;
+  }
+  }
+  
+  /*Dispositivos Pequenos*/
+  @media(max-width: 512px){
+
+    .grid{
+      flex-direction: column;
+      align-items: center; /* Alinhamento Orizontal*/
+    }
+    .block{
+      display: flex;
+      flex-direction: column;
+      min-width: 90%; /*Importante para largura dos blocos neste tamanho*/
+    }
+
+  }
+
+
+ 
+
+  

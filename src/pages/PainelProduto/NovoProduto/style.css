@@ -1,0 +1,392 @@
+/* Container principal */
+.product-container {
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  margin: 8px auto;
+  max-width: 1200px;
+}
+
+/* Estilo para o formulário */
+.product-form {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+/* Estilo para linhas de campos */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.form-row .form-item {
+  min-width: 0;
+}
+
+/* Estilo para modais */
+.product-form-modal .ant-modal {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  width: 900px !important; /* Aumentado para acomodar mais campos horizontalmente */
+  height: 100vh;
+  max-height: 100vh;
+  padding: 0;
+}
+
+.product-form-modal .ant-modal-content {
+  border-radius: 4px;
+  padding: 0;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-form-modal .ant-modal-header {
+  border-radius: 4px 4px 0 0;
+  padding: 10px 16px;
+  background: #2f54eb;
+  color: #ffffff;
+  border-bottom: none;
+}
+
+.product-form-modal .ant-modal-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.product-form-modal .ant-modal-body {
+  padding: 10px;
+  flex: 1;
+  overflow: hidden; /* Remove qualquer rolagem */
+  display: flex;
+  flex-direction: column;
+}
+
+.product-form-modal .ant-modal-footer {
+  padding: 8px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #f7fafc;
+  border-radius: 0 0 4px 4px;
+  text-align: right;
+}
+
+/* Estilo para alerta de erro */
+.form-error-alert {
+  border-radius: 4px;
+  background: #fff1f0;
+  border: 1px solid #ffa39e;
+  padding: 8px;
+  font-size: 12px;
+  margin-bottom: 10px;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.form-error-alert .error-message {
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Estilo para itens do formulário */
+.product-form .ant-form-item {
+  margin-bottom: 8px;
+}
+
+.product-form .ant-form-item-label > label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a202c;
+}
+
+/* Estilo para inputs e selects (mantendo tamanhos padrão do Ant Design) */
+.product-form .form-input,
+.product-form .form-select .ant-select-selector {
+  border-radius: 4px;
+  font-size: 14px;
+  padding: 6px 11px;
+  height: 32px;
+  border: 1px solid #d9e2ec;
+  background: #f9fafb;
+}
+
+.product-form .form-input:hover,
+.product-form .form-select .ant-select-selector:hover {
+  border-color: #2f54eb;
+}
+
+.product-form .form-input:focus,
+.product-form .form-select .ant-select-selector:focus {
+  border-color: #2f54eb;
+  box-shadow: 0 0 0 2px rgba(47, 84, 235, 0.2);
+  outline: none;
+}
+
+.product-form .ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  height: 32px;
+}
+
+.product-form .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-placeholder {
+  color: #a0aec0;
+  font-size: 14px;
+  line-height: 32px;
+}
+
+.product-form .ant-form-item-explain-error {
+  color: #e53e3e;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Estilo para botões do formulário */
+.form-button {
+  border-radius: 4px;
+  padding: 6px 15px;
+  font-size: 14px;
+  font-weight: 500;
+  height: 32px;
+  margin-left: 8px;
+}
+
+.form-button-primary {
+  background: #2f54eb;
+  border-color: #2f54eb;
+  color: #ffffff;
+}
+
+.form-button-primary:hover {
+  background: #597ef7;
+  border-color: #597ef7;
+}
+
+.form-button:not(.form-button-primary) {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+  color: #2d3748;
+}
+
+.form-button:not(.form-button-primary):hover {
+  background: #e2e8f0;
+  border-color: #2f54eb;
+  color: #2f54eb;
+}
+
+.form-button-danger {
+  background: #e53e3e;
+  border-color: #e53e3e;
+  color: #ffffff;
+}
+
+.form-button-danger:hover {
+  background: #f56565;
+  border-color: #f56565;
+}
+
+/* Estilo para imagem de pré-visualização */
+.imagem-preview {
+  max-width: 200px;
+  max-height: 100px;
+  margin-top: 8px;
+  border-radius: 4px;
+}
+
+/* Estilo para tabela */
+.my-custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #ffffff;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.my-custom-table thead {
+  background: #edf2f7;
+}
+
+.my-custom-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.my-custom-table tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.my-custom-table tbody tr:hover {
+  background: #f7fafc;
+}
+
+.my-custom-table td {
+  padding: 10px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+/* Tabela interna do UnidadeMedidaForm */
+.form-table {
+  margin-top: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.form-table .ant-table-thead > tr > th {
+  background: #edf2f7;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.form-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px;
+  font-size: 12px;
+}
+
+/* Botões de ação */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons .form-button {
+  padding: 4px 10px;
+  height: 28px;
+}
+
+/* Estilo para notificações */
+.ant-notification-notice {
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+}
+
+.ant-notification-notice-message {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.ant-notification-notice-success {
+  border-left: 4px solid #38a169;
+}
+
+.ant-notification-notice-error {
+  border-left: 4px solid #e53e3e;
+}
+
+/* Botão de adicionar medida */
+.btnAddMedida {
+  margin-left: 8px;
+}
+
+/* Detalhes da linha selecionada */
+.selected-row-details {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f7fafc;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.selected-row-details h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+.selected-row-details p {
+  font-size: 12px;
+  color: #4a5568;
+  margin: 4px 0;
+}
+
+/* Input de pesquisa */
+.ant-input {
+  border-radius: 4px;
+  border: 1px solid #d9e2ec;
+  padding: 6px 11px;
+}
+
+/* Paginação */
+.ant-pagination {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ant-pagination-item,
+.ant-pagination-prev,
+.ant-pagination-next {
+  border-radius: 4px;
+}
+
+.ant-pagination-item-active {
+  background: #2f54eb;
+  border-color: #2f54eb;
+}
+
+.ant-pagination-item-active a {
+  color: #ffffff;
+}
+
+/* Animação de entrada */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsividade */
+@media screen and (max-width: 768px) {
+  .product-container {
+    margin: 10px;
+    padding: 16px;
+  }
+
+  .product-form {
+    padding: 10px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .product-form-modal .ant-modal {
+    width: 90% !important;
+    transform: none;
+    left: 0;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .product-container {
+    margin: 8px;
+    padding: 12px;
+  }
+
+  .product-form {
+    padding: 8px;
+  }
+
+  .product-form-modal .ant-modal {
+    width: 95% !important;
+  }
+}

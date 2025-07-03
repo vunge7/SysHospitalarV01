@@ -1,0 +1,252 @@
+.consulta-grafico-container {
+  padding: 20px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.consulta-grafico-title {
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.consulta-grafico-loading,
+.consulta-grafico-no-data {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 16px;
+}
+
+.consulta-grafico-chart {
+  position: relative;
+  min-height: 300px;
+  width: 100%;
+}
+
+.consulta-grafico-details {
+  margin-top: 20px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.consulta-grafico-details-title {
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.consulta-grafico-filtros {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.consulta-grafico-filtros label {
+  margin-right: 15px;
+  font-size: 16px;
+}
+
+.consulta-grafico-filtros select {
+  margin-left: 5px;
+  padding: 5px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-width: 150px;
+  width: 100%; /* Garante que o select se ajuste ao container */
+  box-sizing: border-box;
+}
+
+.consulta-grafico-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 16px;
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.consulta-grafico-table th,
+.consulta-grafico-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.consulta-grafico-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.consulta-grafico-table td {
+  background-color: #fff;
+  white-space: normal; /* Permite quebra de texto */
+}
+
+/* Media Queries para Responsividade */
+@media (max-width: 768px) {
+  .consulta-grafico-container {
+    padding: 15px;
+  }
+
+  .consulta-grafico-title {
+    font-size: 20px;
+  }
+
+  .consulta-grafico-details-title {
+    font-size: 18px;
+  }
+
+  .consulta-grafico-filtros {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .consulta-grafico-filtros label {
+    margin-right: 0;
+    font-size: 14px;
+  }
+
+  .consulta-grafico-filtros select {
+    margin-left: 0;
+    padding: 6px;
+    font-size: 14px;
+  }
+
+  .consulta-grafico-table {
+    font-size: 14px;
+    display: block;
+    overflow-x: auto;
+  }
+
+  .consulta-grafico-table th,
+  .consulta-grafico-table td {
+    padding: 6px;
+    min-width: 100px;
+  }
+
+  .consulta-grafico-chart {
+    min-height: 250px;
+  }
+
+  .consulta-grafico-loading,
+  .consulta-grafico-no-data {
+    font-size: 14px;
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .consulta-grafico-container {
+    padding: 10px;
+  }
+
+  .consulta-grafico-title {
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+
+  .consulta-grafico-details-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .consulta-grafico-filtros {
+    gap: 5px;
+  }
+
+  .consulta-grafico-filtros label {
+    font-size: 12px;
+  }
+
+  .consulta-grafico-filtros select {
+    font-size: 12px;
+    padding: 5px;
+  }
+
+  .consulta-grafico-table {
+    font-size: 12px;
+    display: block;
+  }
+
+  .consulta-grafico-table thead {
+    display: none; /* Esconde o cabeçalho em telas pequenas */
+  }
+
+  .consulta-grafico-table tr {
+    display: block;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    padding: 5px;
+    background-color: #fff;
+  }
+
+  .consulta-grafico-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #eee;
+  }
+
+  .consulta-grafico-table td:last-child {
+    border-bottom: none;
+  }
+
+  .consulta-grafico-table td:before {
+    content: attr(data-label);
+    font-weight: bold;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 10px;
+    color: #333;
+  }
+
+  .consulta-grafico-chart {
+    min-height: 200px;
+  }
+
+  .consulta-grafico-loading,
+  .consulta-grafico-no-data {
+    font-size: 12px;
+    padding: 10px;
+  }
+}
+
+/* Ajuste adicional para telas muito pequenas (opcional) */
+@media (max-width: 360px) {
+  .consulta-grafico-title {
+    font-size: 16px;
+  }
+
+  .consulta-grafico-details-title {
+    font-size: 14px;
+  }
+
+  .consulta-grafico-filtros label {
+    font-size: 11px;
+  }
+
+  .consulta-grafico-filtros select {
+    font-size: 11px;
+    padding: 4px;
+  }
+
+  .consulta-grafico-table {
+    font-size: 11px;
+  }
+
+  .consulta-grafico-table td {
+    padding: 4px;
+  }
+
+  .consulta-grafico-chart {
+    min-height: 180px;
+  }
+}

@@ -1,0 +1,13 @@
+.container {
+    background-color: aqua;
+    border-radius: 10px;
+    width: 150px;
+    height: 150px;
+    margin-left: 5px;
+    display: flex;
+    flex-direction: column;
+}
+
+.container span {
+    background-color: rgb(3, 55, 120, 0.8);
+}

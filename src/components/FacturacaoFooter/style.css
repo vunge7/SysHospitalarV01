@@ -1,0 +1,15 @@
+.container-facutacao-footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.container-facutacao-footer-item {
+    width: 50%;
+}
+
+@media (max-width: 768px) {
+    .container-facutacao-footer {
+        flex-direction: column;
+    }
+}
