@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './style.css';
 import PacienteTabs from '../PacienteTabs';
 import { api } from '../../../service/api';
@@ -36,6 +36,60 @@ const PacienteForm = () => {
     const [photoPreview, setPhotoPreview] = useState(null);
     const [errors, setErrors] = useState({});
     const [paciente, setPaciente] = useState({});
+
+    useEffect(() => {
+        const fetchLastQr = async () => {
+            try {
+                const response = await api.get('api/qr-data');
+                if (response.data) {
+                    let id = response.data.id;
+
+                    await api
+                        .get('paciente/' + id)
+                        .then((r) => {
+                            toast.dismiss();
+
+                            setPaciente(r.data);
+                            setForm((prevForm) => ({
+                                ...prevForm,
+                                nome: r.data.nome,
+                                nif: r.data.nif,
+                                apelido: r.data.apelido,
+                                paisEndereco: r.data.paisEndereco,
+                                provinciaEndereco: r.data.provinciaEndereco,
+                                municipioEndereco: r.data.municipioEndereco,
+                                endereco: r.data.endereco,
+                                profissao: r.data.profissao,
+                                habilitacao: r.data.habilitacao,
+                                estadoCivil: r.data.estadoCivil,
+                                paisNascimento: r.data.paisNascimento,
+                                provinciaNascimento: r.data.provinciaNascimento,
+                                municipioNascimento: r.data.municipioNascimento,
+                                dataNascimento: r.data.dataNascimento,
+                                localNascimento: r.data.localNascimento,
+                                nacionalidade: r.data.nacionalidade,
+                                genero: r.data.genero,
+                                raca: r.data.raca,
+                                pai: r.data.pai,
+                                mae: r.data.mae,
+                            }));
+                        })
+                        .catch(() => {
+                            limparFormulario();
+                            toast.info('Não existe paciente com este ID', {
+                                autoClose: 2000,
+                            });
+                        });
+                }
+            } catch (error) {
+                console.log(`Erro ao buscar dados do QR Code: ${error}`);
+                // Se não houver dado, apenas ignora
+            }
+        };
+        fetchLastQr();
+        const interval = setInterval(fetchLastQr, 2000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
