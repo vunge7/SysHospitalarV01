@@ -1,12 +1,13 @@
-import React, { useState, useContext, useEffect, useMemo } from 'react';
+import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { Table, Input, Button, Modal, Form, Select, Popconfirm, Space, DatePicker, InputNumber, Tag, Tabs, message, Alert, Spin, Typography, Switch } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ClearOutlined, SaveOutlined, CloseOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ClearOutlined, SaveOutlined, CloseOutlined, SearchOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import 'moment-timezone';
 import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
 import './Farmacia.css';
 import '../Monitoramento/Monitoramento.css';
+import { debounce } from 'lodash';
 
 const { Option } = Select;
 const { TabPane } = Tabs;
@@ -22,6 +23,7 @@ const Farmacia = () => {
     fornecedores,
     linhasLotes,
     operacoesList,
+    productTypes,
     setFornecedores,
     setLotes,
     setLinhasLotes,
@@ -42,24 +44,51 @@ const Farmacia = () => {
   const [editFornecedorId, setEditFornecedorId] = useState(null);
   const [editLinhasLotesId, setEditLinhasLotesId] = useState(null);
   const [editOperacaoId, setEditOperacaoId] = useState(null);
+  const [editItemId, setEditItemId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filteredLotes, setFilteredLotes] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState(null);
-  const [dateRange, setDateRange] = useState([null, null]);
+  const [filteredFornecedores, setFilteredFornecedores] = useState([]);
+  const [loteSearch, setLoteSearch] = useState('');
+  const [loteStatus, setLoteStatus] = useState(null);
+  const [loteDateRange, setLoteDateRange] = useState([null, null]);
+  const [fornecedorSearch, setFornecedorSearch] = useState('');
+  const [fornecedorEstado, setFornecedorEstado] = useState(null);
 
-  // Debug context data
+  // Log para depuração
+  useEffect(() => {
+    console.log('Produtos no Farmacia.js:', produtos);
+    console.log('ProductTypes no Farmacia.js:', productTypes);
+    console.log('Mapeamento de produtos:', 
+      produtos.map(p => ({
+        id: p.id,
+        productType: p.productType || 'N/A',
+        productGroupId: p.productGroupId || 'N/A',
+        productTypeMatch: productTypes.find(pt => pt.designacaoTipoProduto === p.productType)?.designacaoTipoProduto || 'Sem Correspondência'
+      }))
+    );
+    const produto23 = produtos.find(p => p.id === 23);
+    if (produto23) {
+      console.log('Produto ID 23:', produto23);
+      if (!produto23.productType) {
+        message.warning('Produto ID 23 não possui productType definido.');
+      }
+    }
+  }, [produtos, productTypes]);
+
+  // Debug de dados do contexto
   useEffect(() => {
     console.log('Context Data - Produtos:', produtos);
     console.log('Context Data - Lotes:', lotes);
     console.log('Context Data - Armazens:', armazens);
     console.log('Context Data - LinhasLotes:', linhasLotes);
+    console.log('Context Data - ProductTypes:', productTypes);
     if (!produtos.length || !lotes.length || !armazens.length) {
       message.warning('Dados incompletos (produtos, lotes ou armazéns). Verifique a conexão com o backend.');
     }
-  }, [produtos, lotes, armazens, linhasLotes]);
+  }, [produtos, lotes, armazens, linhasLotes, productTypes]);
 
+  // Limites de expiração para monitoramento
   const expirationThresholds = [
     { label: '1 Ano', days: 365 },
     { label: '9 Meses', days: 270 },
@@ -72,10 +101,7 @@ const Farmacia = () => {
     { label: '5 Dias', days: 5 },
   ];
 
-  useEffect(() => {
-    setFilteredLotes(lotes);
-  }, [lotes]);
-
+  // Lotes próximos do vencimento
   const expiringLotes = useMemo(() => {
     const now = moment().tz('Africa/Luanda').startOf('day');
     return lotes
@@ -90,32 +116,265 @@ const Farmacia = () => {
       .filter((lote) => lote.diasRestantes >= 0 && lote.threshold);
   }, [lotes]);
 
+  // Filtros para Lotes com debounce
+  const debouncedSetLoteSearch = useCallback(
+    debounce((value) => setLoteSearch(value), 300),
+    []
+  );
+
   useEffect(() => {
     let filtered = lotes;
-    if (searchTerm) {
+    if (loteSearch) {
       filtered = filtered.filter(
         (lote) =>
-          lote.designacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (produtos.find((p) => p.id === lote.produtoId)?.designacaoProduto || '').toLowerCase().includes(searchTerm.toLowerCase())
+          lote.designacao?.toLowerCase().includes(loteSearch.toLowerCase()) ||
+          (produtos.find((p) => p.id === lote.produtoId)?.productType || '')?.toLowerCase().includes(loteSearch.toLowerCase())
       );
     }
-    if (statusFilter !== null) {
-      filtered = filtered.filter((lote) => lote.status === (statusFilter === 'ativo'));
+    if (loteStatus !== null) {
+      filtered = filtered.filter((lote) => lote.status === (loteStatus === 'ativo'));
     }
-    if (dateRange[0] && dateRange[1]) {
+    if (loteDateRange[0] && loteDateRange[1]) {
       filtered = filtered.filter((lote) => {
         const vencimento = moment(lote.dataVencimento).tz('Africa/Luanda');
-        return vencimento.isBetween(dateRange[0], dateRange[1], 'day', '[]');
+        return vencimento.isBetween(loteDateRange[0], loteDateRange[1], 'day', '[]');
       });
     }
     setFilteredLotes(filtered);
-  }, [lotes, produtos, searchTerm, statusFilter, dateRange]);
+  }, [lotes, produtos, loteSearch, loteStatus, loteDateRange]);
 
-  const clearFilters = () => {
-    setSearchTerm('');
-    setStatusFilter(null);
-    setDateRange([null, null]);
+  // Filtros para Fornecedores com debounce
+  const debouncedSetFornecedorSearch = useCallback(
+    debounce((value) => setFornecedorSearch(value), 300),
+    []
+  );
+
+  useEffect(() => {
+    let filtered = fornecedores;
+    if (fornecedorSearch) {
+      filtered = filtered.filter((fornecedor) =>
+        fornecedor.nome?.toLowerCase().includes(fornecedorSearch.toLowerCase())
+      );
+    }
+    if (fornecedorEstado !== null) {
+      filtered = filtered.filter((fornecedor) => fornecedor.estadoFornecedor === fornecedorEstado);
+    }
+    setFilteredFornecedores(filtered);
+  }, [fornecedores, fornecedorSearch, fornecedorEstado]);
+
+  const clearLoteFilters = () => {
+    setLoteSearch('');
+    setLoteStatus(null);
+    setLoteDateRange([null, null]);
     setFilteredLotes(lotes);
+  };
+
+  const clearFornecedorFilters = () => {
+    setFornecedorSearch('');
+    setFornecedorEstado(null);
+    setFilteredFornecedores(fornecedores);
+  };
+
+  // Funções para a aba Entradas e Saídas
+  const handleAddItem = async () => {
+    try {
+      const values = await form.validateFields(['loteId', 'produtoId', 'quantidade']);
+      const lote = lotes.find((l) => l.id === values.loteId);
+      const produto = produtos.find((p) => p.id === values.produtoId);
+      
+      console.log('Produto selecionado (handleAddItem):', produto);
+      console.log('Lote selecionado (handleAddItem):', lote);
+      
+      if (!lote) {
+        message.error(`Lote inválido: ID ${values.loteId}`);
+        return;
+      }
+      if (!produto) {
+        message.error(`Produto não encontrado: ID ${values.produtoId}`);
+        return;
+      }
+      if (!produto.productType) {
+        message.error(`Produto ID ${values.produtoId} não possui tipo de produto definido.`);
+        return;
+      }
+      if (!values.quantidade || values.quantidade <= 0) {
+        message.error('Quantidade deve ser maior que zero');
+        return;
+      }
+      const tipoOperacao = form.getFieldValue('tipoOperacao');
+      if (tipoOperacao === 'SAIDA' || tipoOperacao === 'TRANSFERENCIA') {
+        const existingLinha = linhasLotes.find(
+          (linha) => linha.lotes_id === values.loteId && linha.produto_id === produto.id
+        );
+        const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
+        if (qtdAnterior < values.quantidade) {
+          message.error(`Quantidade insuficiente no lote ${lote.designacao} para o tipo de produto ${produto.productType}`);
+          return;
+        }
+      }
+      const newItem = {
+        id: editItemId || Date.now(),
+        produtoId: produto.id,
+        designacaoTipoProduto: produto.productType || 'Sem Tipo',
+        quantidade: values.quantidade,
+        loteId: values.loteId,
+        loteDesignacao: lote.designacao,
+      };
+      setTempItens((prev) =>
+        editItemId
+          ? prev.map((item) => (item.id === editItemId ? newItem : item))
+          : [...prev, newItem]
+      );
+      form.resetFields(['produtoId', 'quantidade', 'loteId']);
+      setEditItemId(null);
+      message.success(editItemId ? 'Item atualizado na lista temporária' : 'Item adicionado à lista temporária');
+    } catch (error) {
+      console.error('Erro ao adicionar item:', error);
+      message.error('Preencha os campos de lote, tipo de produto e quantidade');
+    }
+  };
+
+  const handleEditItem = (record) => {
+    form.setFieldsValue({
+      loteId: record.loteId,
+      produtoId: record.produtoId,
+      quantidade: record.quantidade,
+    });
+    setEditItemId(record.id);
+  };
+
+  const handleSaveOperacao = async () => {
+    if (tempItens.length === 0) {
+      message.error('Adicione pelo menos um item à operação');
+      return;
+    }
+    try {
+      const values = await form.validateFields(['tipoOperacao', 'armazemId', 'descricao']);
+      const armazem = armazens.find((a) => a.id === values.armazemId);
+      if (!armazem) {
+        message.error(`Armazém inválido: ID ${values.armazemId}`);
+        return;
+      }
+      if (values.tipoOperacao === 'TRANSFERENCIA' && !values.armazemDestinoId) {
+        message.error('Armazém de destino é obrigatório para TRANSFERENCIA');
+        return;
+      }
+      const armazemDestino = values.tipoOperacao === 'TRANSFERENCIA' ? armazens.find((a) => a.id === values.armazemDestinoId) : null;
+      if (values.tipoOperacao === 'TRANSFERENCIA' && !armazemDestino) {
+        message.error(`Armazém de destino inválido: ID ${values.armazemDestinoId}`);
+        return;
+      }
+      setLoading(true);
+      const operacaoDTO = {
+        id: editOperacaoId || null,
+        dataOperacao: moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm:ss'),
+        tipoOperacao: values.tipoOperacao,
+        usuarioId: 1,
+        armazemId: values.armazemId,
+        descricao: values.descricao || `Operação ${values.tipoOperacao}`,
+        linhas: tempItens.map((item) => {
+          const produto = produtos.find((p) => p.id === item.produtoId);
+          const lote = lotes.find((l) => l.id === item.loteId);
+          const existingLinha = linhasLotes.find(
+            (linha) => linha.lotes_id === item.loteId && linha.produto_id === produto.id
+          );
+          const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
+          let qtdActual = qtdAnterior;
+          const qtdOperacao = Number(item.quantidade);
+
+          if (values.tipoOperacao === 'ENTRADA') {
+            qtdActual = qtdAnterior + qtdOperacao;
+          } else if (values.tipoOperacao === 'SAIDA' || values.tipoOperacao === 'TRANSFERENCIA') {
+            if (qtdAnterior < qtdOperacao) {
+              throw new Error(`Quantidade insuficiente para o tipo de produto ${produto.productType || 'Sem Tipo'} no lote ${lote.designacao}`);
+            }
+            qtdActual = qtdAnterior - qtdOperacao;
+          } else if (values.tipoOperacao === 'ANULACAO') {
+            qtdActual = qtdAnterior;
+          }
+
+          return {
+            id: item.id || null,
+            armazemIdOrigem: values.armazemId,
+            loteIdOrigem: item.loteId,
+            produtoId: produto.id,
+            qtdAnterior: qtdAnterior.toString(),
+            qtdOperacao: qtdOperacao.toString(),
+            qtdActual: qtdActual.toString(),
+            armazemIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? values.armazemDestinoId : null,
+            loteIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? item.loteId : null,
+            operacaoStockId: null,
+          };
+        }),
+      };
+      const endpoint = editOperacaoId ? `/operacao-stock/edit-with-linhas/${editOperacaoId}` : '/operacao-stock/add-with-linhas';
+      const method = editOperacaoId ? api.put : api.post;
+      await method(endpoint, operacaoDTO);
+      message.success('Operação salva com sucesso');
+      const [linhasLotesRes, operacoesRes] = await Promise.all([
+        api.get('/linhaslotes/all'),
+        api.get('/operacao-stock/all'),
+      ]);
+      setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
+      setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
+      setTempItens([]);
+      setEditOperacaoId(null);
+      setEditItemId(null);
+      form.resetFields();
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message || 'Erro ao salvar operação';
+      console.error('Erro ao salvar operação:', errorMsg);
+      message.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditOperacao = async (record) => {
+    try {
+      const linhasRes = await api.get(`/linha-operacao-stock/lotes/${record.lotes[0]?.id}`);
+      const tempItensData = (Array.isArray(linhasRes.data) ? linhasRes.data : []).map((linha) => {
+        const produto = produtos.find((p) => p.id === linha.produtoId);
+        const lote = lotes.find((l) => l.id === linha.loteIdOrigem);
+        return {
+          id: linha.id || Date.now() + Math.random(),
+          produtoId: linha.produtoId,
+          designacaoTipoProduto: produto?.productType || 'Sem Tipo',
+          quantidade: Number(linha.qtdOperacao),
+          loteId: linha.loteIdOrigem,
+          loteDesignacao: lote?.designacao || 'Desconhecido',
+        };
+      });
+      setTempItens(tempItensData);
+      setEditOperacaoId(record.id);
+      form.setFieldsValue({
+        tipoOperacao: record.tipoOperacao,
+        armazemId: record.armazemId,
+        armazemDestinoId: record.linhas[0]?.armazemIdDestino || null,
+        descricao: record.descricao,
+      });
+      message.info('Operação carregada para edição');
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || `Erro ao carregar operação: ${error.message}`;
+      console.error('Erro ao carregar operação:', errorMsg);
+      message.error(errorMsg);
+    }
+  };
+
+  const handleDeleteOperacao = async (id) => {
+    setLoading(true);
+    try {
+      await api.delete(`/operacao-stock/${id}`);
+      message.success('Operação excluída com sucesso');
+      const operacoesRes = await api.get('/operacao-stock/all');
+      setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || `Erro ao excluir operação: ${error.message}`;
+      console.error('Erro ao excluir operação:', errorMsg);
+      message.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddFornecedor = async (values) => {
@@ -173,7 +432,7 @@ const Farmacia = () => {
     try {
       const loteDTO = {
         id: editLoteId || null,
-        usuarioId: 1, // Hardcoded as requested; ensure user ID 1 exists in the database
+        usuarioId: 1,
         designacao: values.designacao,
         dataCriacao: values.dataCriacao ? values.dataCriacao.toISOString() : moment().tz('Africa/Luanda').toISOString(),
         dataVencimento: values.dataVencimento ? values.dataVencimento.toISOString() : null,
@@ -220,16 +479,13 @@ const Farmacia = () => {
   const handleAddLinhasLotes = async (values) => {
     setLoading(true);
     try {
-      console.log('Form values (LinhasLotes):', values);
       const productGroup = produtos.find((p) => p.id === values.produtoId);
+      const lote = lotes.find((l) => l.id === values.lotes_id);
       if (!productGroup) {
-        console.error('Produto não encontrado. ID:', values.produtoId);
         message.error(`Produto inválido: ID ${values.produtoId}`);
         return;
       }
-      const lote = lotes.find((l) => l.id === values.lotes_id);
       if (!lote) {
-        console.error('Lote não encontrado. ID:', values.lotes_id);
         message.error(`Lote inválido: ID ${values.lotes_id}`);
         return;
       }
@@ -239,7 +495,6 @@ const Farmacia = () => {
         produto_id: productGroup.id,
         quantidade: values.quantidade.toString(),
       };
-      console.log('Enviando LinhasLotesDTO:', linhasLotesDTO);
       if (editLinhasLotesId) {
         await api.put(`/linhaslotes/edit/${editLinhasLotesId}`, linhasLotesDTO);
         message.success('Linha de lote atualizada com sucesso');
@@ -277,352 +532,59 @@ const Farmacia = () => {
     }
   };
 
-  const handleSaveOperacao = async () => {
-    // WARNING: Suppressing backend errors as requested. This may cause data inconsistencies
-    // if the backend fails to save the operation (e.g., 500 error). Ensure backend issues
-    // are resolved to avoid discrepancies between frontend and backend state.
-    try {
-      const values = await form.validateFields();
-      console.log('Form values (Operacao):', values);
-      if (tempItens.length === 0) {
-        message.error('Adicione pelo menos um item à operação');
-        return;
-      }
-
-      // Validate prerequisites
-      if (!produtos.length || !lotes.length || !armazens.length) {
-        message.error('Dados de produtos, lotes ou armazéns não carregados. Verifique a conexão com o backend.');
-        return;
-      }
-
-      // Validate armazemId
-      const armazem = armazens.find((a) => a.id === values.armazemId);
-      if (!armazem) {
-        message.error(`Armazém inválido: ID ${values.armazemId} não encontrado`);
-        return;
-      }
-
-      // Validate armazemDestinoId for TRANSFERENCIA
-      if (values.tipoOperacao === 'TRANSFERENCIA') {
-        if (!values.armazemDestinoId) {
-          message.error('Armazém de destino é obrigatório para TRANSFERENCIA');
-          return;
-        }
-        const armazemDestino = armazens.find((a) => a.id === values.armazemDestinoId);
-        if (!armazemDestino) {
-          message.error(`Armazém de destino inválido: ID ${values.armazemDestinoId} não encontrado`);
-          return;
-        }
-      }
-
-      // Validate each item in tempItens
-      for (const itemGroup of tempItens) {
-        for (const item of itemGroup.items) {
-          const productGroup = produtos.find((p) => p.id === item.produtoId);
-          const lote = lotes.find((l) => l.id === item.loteId);
-          if (!productGroup) {
-            message.error(`Produto inválido: ID ${item.produtoId} não encontrado`);
-            return;
-          }
-          if (!lote) {
-            message.error(`Lote inválido: ID ${item.loteId} não encontrado`);
-            return;
-          }
-          if (!item.quantidade || item.quantidade <= 0) {
-            message.error(`Quantidade inválida para o produto ${productGroup.designacaoProduto}: ${item.quantidade}`);
-            return;
-          }
-        }
-      }
-
-      setLoading(true);
-
-      const operacaoDTO = {
-        id: editOperacaoId || null,
-        dataOperacao: moment().tz('Africa/Luanda').toISOString(),
-        tipoOperacao: values.tipoOperacao,
-        usuarioId: 1, // Hardcoded as requested; ensure user ID 1 exists in the database
-        armazemId: values.armazemId,
-        descricao: values.descricao || 'Operação registrada',
-        linhas: tempItens.flatMap((itemGroup) =>
-          itemGroup.items.map((item) => {
-            const productGroup = produtos.find((p) => p.id === item.produtoId);
-            const lote = lotes.find((l) => l.id === item.loteId);
-
-            const existingLinha = linhasLotes.find(
-              (linha) => linha.lotes_id === item.loteId && linha.produto_id === productGroup.id
-            );
-            const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
-            let qtdActual = qtdAnterior;
-            const qtdOperacao = Number(item.quantidade);
-
-            if (values.tipoOperacao === 'ENTRADA') {
-              qtdActual = qtdAnterior + qtdOperacao;
-            } else if (values.tipoOperacao === 'SAIDA' || values.tipoOperacao === 'TRANSFERENCIA') {
-              if (qtdAnterior < qtdOperacao) {
-                throw new Error(`Quantidade insuficiente para o produto ${productGroup.designacaoProduto} no lote ${item.loteId}`);
-              }
-              qtdActual = qtdAnterior - qtdOperacao;
-            } else if (values.tipoOperacao === 'ANULACAO') {
-              qtdActual = qtdAnterior;
-            }
-
-            return {
-              id: item.id || null,
-              armazemIdOrigem: values.armazemId,
-              loteIdOrigem: item.loteId,
-              produtoId: productGroup.id,
-              qtdAnterior: qtdAnterior.toString(),
-              qtdOperacao: qtdOperacao.toString(),
-              qtdActual: qtdActual.toString(),
-              armazemIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? values.armazemDestinoId : null,
-              loteIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? item.loteId : null,
-              operacaoStockId: null,
-            };
-          })
-        ),
-      };
-
-      console.log('Enviando OperacaoStockDTO:', JSON.stringify(operacaoDTO, null, 2));
-
-      try {
-        const endpoint = editOperacaoId ? `/operacao-stock/edit-with-linhas/${editOperacaoId}` : '/operacao-stock/add-with-linhas';
-        const method = editOperacaoId ? api.put : api.post;
-        const response = await method(endpoint, operacaoDTO);
-        console.log('Resposta do backend:', response.data);
-      } catch (error) {
-        // Log error for debugging but do not show to user
-        console.error('Erro na requisição:', {
-          status: error.response?.status,
-          message: error.response?.data?.message || error.response?.data?.error || error.response?.data?.details || error.message,
-          responseData: error.response?.data,
-          headers: error.response?.headers,
-        });
-      }
-      try {
-        const [linhasLotesRes, operacoesRes] = await Promise.all([
-          api.get('/linhaslotes/all'),
-          api.get('/operacao-stock/all'),
-        ]);
-        setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
-        setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
-      } catch (refreshError) {
-        console.error('Erro ao atualizar dados após operação:', refreshError.message);
-      }
-
-      setTempItens([]);
-      setEditOperacaoId(null);
-      form.resetFields();
-    } catch (error) {
-      // Exit early if form validation fails (e.g., empty form)
-      if (!error.errorFields) {
-        // Handle non-validation errors (e.g., quantity issues)
-        if (error.message && (error.message.includes('Quantidade insuficiente') || error.message.includes('inválido'))) {
-          console.error('Erro de validação:', error.message);
-          message.error(error.message);
-        } else {
-          console.error('Erro ao salvar operação:', error.message || error);
-          // Still show success and update state for non-validation errors
-          message.success('Operação concluída com sucesso');
-          try {
-            const [linhasLotesRes, operacoesRes] = await Promise.all([
-              api.get('/linhaslotes/all'),
-              api.get('/operacao-stock/all'),
-            ]);
-            setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
-            setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
-          } catch (refreshError) {
-            console.error('Erro ao atualizar dados após operação:', refreshError.message);
-          }
-          setTempItens([]);
-          setEditOperacaoId(null);
-          form.resetFields();
-        }
-      }
-      // If errorFields exist (form validation failed, e.g., empty form), do nothing
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditOperacao = async (record) => {
-    try {
-      const linhasRes = await api.get(`/linha-operacao-stock/lotes/${record.lotes[0]?.id}`);
-      const tempItensData = (Array.isArray(linhasRes.data) ? linhasRes.data : []).map((linha) => ({
-        loteId: linha.loteIdOrigem,
-        loteDesignacao: lotes.find((l) => l.id === linha.loteIdOrigem)?.designacao || 'Desconhecido',
-        items: [{
-          id: linha.id,
-          produtoId: linha.produtoId,
-          designacaoProduto: produtos.find((p) => p.id === linha.produtoId)?.designacaoProduto || 'Desconhecido',
-          quantidade: linha.qtdOperacao,
-          loteId: linha.loteIdOrigem,
-          qtdAnterior: linha.qtdAnterior,
-          qtdActual: linha.qtdActual,
-        }],
-      }));
-      setTempItens(tempItensData);
-      setEditOperacaoId(record.id);
-      form.setFieldsValue({
-        tipoOperacao: record.tipoOperacao,
-        armazemId: record.armazemId,
-        armazemDestinoId: record.linhas[0]?.armazemIdDestino || null,
-        descricao: record.descricao,
-      });
-      message.info('Operação carregada para edição');
-    } catch (error) {
-      const errorMsg = error.response?.data?.error || error.response?.data?.message || `Erro ao carregar operação: ${error.message}`;
-      console.error('Erro ao carregar operação:', errorMsg);
-      message.error(errorMsg);
-    }
-  };
-
-  const handleDeleteOperacao = async (id) => {
-    setLoading(true);
-    try {
-      await api.delete(`/operacao-stock/${id}`);
-      message.success('Operação excluída com sucesso');
-      const operacoesRes = await api.get('/operacao-stock/all');
-      setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || `Erro ao excluir operação: ${error.message}`;
-      console.error('Erro ao excluir operação:', errorMsg);
-      message.error(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddItem = async () => {
-    try {
-      const values = await form.validateFields(['loteId', 'produtoId', 'quantidade']);
-      console.log('Form values (AddItem):', values);
-      const lote = lotes.find((l) => l.id === values.loteId);
-      const productGroup = produtos.find((p) => p.id === values.produtoId);
-      if (!lote) {
-        console.error('Lote não encontrado. ID:', values.loteId);
-        message.error(`Lote inválido: ID ${values.loteId} não encontrado`);
-        return;
-      }
-      if (!productGroup) {
-        console.error('Produto não encontrado. ID:', values.produtoId);
-        message.error(`Produto inválido: ID ${values.produtoId} não encontrado`);
-        return;
-      }
-      if (!values.quantidade || values.quantidade <= 0) {
-        message.error('Quantidade deve ser maior que zero');
-        return;
-      }
-      const newItem = {
-        id: Date.now(),
-        produtoId: productGroup.id,
-        designacaoProduto: productGroup.designacaoProduto,
-        quantidade: values.quantidade,
-        loteId: values.loteId,
-      };
-      setTempItens((prev) => {
-        const existingLote = prev.find((i) => i.loteId === values.loteId);
-        if (existingLote) {
-          return prev.map((i) =>
-            i.loteId === values.loteId ? { ...i, items: [...i.items, newItem] } : i
-          );
-        }
-        return [
-          ...prev,
-          {
-            loteId: values.loteId,
-            loteDesignacao: lote.designacao,
-            items: [newItem],
-          },
-        ];
-      });
-      form.resetFields(['produtoId', 'quantidade', 'loteId']);
-      message.success('Item adicionado à lista temporária');
-    } catch (error) {
-      console.error('Erro ao adicionar item:', error);
-      message.error('Preencha todos os campos obrigatórios');
-    }
-  };
-
   const tempItemColumns = [
     {
       title: 'Lote',
       dataIndex: 'loteDesignacao',
       key: 'loteDesignacao',
-      render: (text) => <Tag color="blue">{text}</Tag>,
+      render: (text) => <Tag color="blue" style={{ fontSize: 14, padding: '4px 8px' }}>{text}</Tag>,
     },
     {
-      title: 'Produto',
-      dataIndex: 'designacaoProduto',
-      key: 'designacaoProduto',
-      render: (_, record) =>
-        record.items.map((item) => (
-          <Tag color="green" key={item.id}>
-            {item.designacaoProduto}
-          </Tag>
-        )),
+      title: 'Tipo de Produto',
+      dataIndex: 'designacaoTipoProduto',
+      key: 'designacaoTipoProduto',
+      render: (text) => <Tag color="green" style={{ fontSize: 14, padding: '4px 8px' }}>{text}</Tag>,
     },
     {
       title: 'Quantidade',
+      dataIndex: 'quantidade',
       key: 'quantidade',
-      render: (_, record) =>
-        record.items.map((item) => (
-          <div key={item.id}>
-            <InputNumber
-              min={1}
-              value={item.quantidade}
-              style={{ width: 100 }}
-              onChange={(value) => {
-                setTempItens((prev) =>
-                  prev.map((i) =>
-                    i.loteId === record.loteId
-                      ? {
-                          ...i,
-                          items: i.items.map((it) =>
-                            it.id === item.id ? { ...it, quantidade: value } : it
-                          ),
-                        }
-                      : i
-                  )
-                );
-              }}
-            />
-          </div>
-        )),
+      render: (quantidade, record) => (
+        <InputNumber
+          min={1}
+          value={quantidade}
+          style={{ width: 100 }}
+          onChange={(value) => {
+            setTempItens((prev) =>
+              prev.map((item) =>
+                item.id === record.id ? { ...item, quantidade: value } : item
+              )
+            );
+          }}
+        />
+      ),
     },
     {
       title: 'Ações',
       key: 'actions',
       render: (_, record) => (
         <Space>
-          {record.items.map((item) => (
-            <Popconfirm
-              key={item.id}
-              title="Confirmar remoção do produto?"
-              onConfirm={() => {
-                setTempItens((prev) =>
-                  prev.map((i) =>
-                    i.loteId === record.loteId
-                      ? { ...i, items: i.items.filter((it) => it.id !== item.id) }
-                      : i
-                  ).filter((i) => i.items.length > 0)
-                );
-              }}
-              okText="OK"
-              cancelText="Cancelar"
-            >
-              <Button icon={<DeleteOutlined />} type="text" danger />
-            </Popconfirm>
-          ))}
+          <Button
+            icon={<EditOutlined />}
+            type="link"
+            onClick={() => handleEditItem(record)}
+            title="Editar item"
+          />
           <Popconfirm
-            title="Confirmar remoção do lote?"
+            title="Confirmar remoção do item?"
             onConfirm={() => {
-              setTempItens((prev) => prev.filter((i) => i.loteId !== record.loteId));
+              setTempItens((prev) => prev.filter((item) => item.id !== record.id));
+              message.success('Item removido da lista temporária');
             }}
             okText="OK"
             cancelText="Cancelar"
           >
-            <Button icon={<DeleteOutlined />} type="text" danger />
+            <Button icon={<DeleteOutlined />} type="link" danger title="Remover item" />
           </Popconfirm>
         </Space>
       ),
@@ -648,19 +610,15 @@ const Farmacia = () => {
       render: (_, record) => (Array.isArray(record.lotes) ? record.lotes.map((l) => lotes.find((lot) => lot.id === l.id)?.designacao || l.id).join(', ') : '-'),
     },
     {
-      title: 'Produtos',
+      title: 'Tipos de Produto',
       key: 'produtos',
-      render: async (_, record) => {
-        try {
-          if (!record.lotes?.[0]?.id) return '-';
-          const linhasRes = await api.get(`/linha-operacao-stock/lotes/${record.lotes[0].id}`);
-          return (Array.isArray(linhasRes.data) ? linhasRes.data : [])
-            .map((linha) => `${produtos.find((p) => p.id === linha.produtoId)?.designacaoProduto || 'Desconhecido'} (Lote: ${lotes.find((l) => l.id === linha.loteIdOrigem)?.designacao || linha.loteIdOrigem}, Qty: ${linha.qtdOperacao})`)
-            .join(', ');
-        } catch {
-          return '-';
-        }
-      },
+      render: (_, record) =>
+        (record.linhas || [])
+          .map((linha) => {
+            const produto = produtos.find((p) => p.id === linha.produtoId);
+            return `${produto?.productType || 'Sem Tipo'} (Qtd: ${linha.qtdOperacao})`;
+          })
+          .join(', ') || '-',
     },
     { title: 'Descrição', dataIndex: 'descricao', key: 'descricao' },
     {
@@ -668,10 +626,7 @@ const Farmacia = () => {
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEditOperacao(record)}
-          />
+          <Button icon={<EditOutlined />} onClick={() => handleEditOperacao(record)} />
           <Popconfirm
             title="Confirmar exclusão da operação?"
             onConfirm={() => handleDeleteOperacao(record.id)}
@@ -689,21 +644,9 @@ const Farmacia = () => {
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
     {
-      title: 'Data de Criação',
-      dataIndex: 'dataCriacao',
-      key: 'dataCriacao',
-      render: (date) => (date ? moment(date).format('YYYY-MM-DD') : '-'),
-    },
-    {
       title: 'Data de Vencimento',
       dataIndex: 'dataVencimento',
       key: 'dataVencimento',
-      render: (date) => (date ? moment(date).format('YYYY-MM-DD') : '-'),
-    },
-    {
-      title: 'Data de Entrada',
-      dataIndex: 'dataEntrada',
-      key: 'dataEntrada',
       render: (date) => (date ? moment(date).format('YYYY-MM-DD') : '-'),
     },
     {
@@ -756,7 +699,7 @@ const Farmacia = () => {
       title: 'Produto',
       dataIndex: 'produto_id',
       key: 'produto_id',
-      render: (produto_id) => produtos.find((p) => p.id === produto_id)?.designacaoProduto || 'Desconhecido',
+      render: (produto_id) => produtos.find((p) => p.id === produto_id)?.productType || 'Sem Tipo',
     },
     { title: 'Quantidade', dataIndex: 'quantidade', key: 'quantidade' },
     {
@@ -815,9 +758,7 @@ const Farmacia = () => {
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Nome', dataIndex: 'nome', key: 'nome' },
     { title: 'Contato', dataIndex: 'contacto', key: 'contacto', render: (c) => c || '-' },
-    { title: 'NIF', dataIndex: 'nif', key: 'nif' },
-    { title: 'Endereço', dataIndex: 'endereco', key: 'endereco', render: (e) => e || '-' },
-    { title: 'Regime Tributário', dataIndex: 'regimeTributario', key: 'regimeTributario' },
+    { title: 'Estado', dataIndex: 'estadoFornecedor', key: 'estadoFornecedor', render: (estado) => <Tag color={estado === 'ATIVO' ? 'green' : 'red'}>{estado}</Tag> },
     {
       title: 'Ações',
       key: 'actions',
@@ -855,7 +796,7 @@ const Farmacia = () => {
     <div>
       {activeSection === 'entrada-saida' && (
         <div className="section-content">
-          <h2>{editOperacaoId ? 'Editar Operação' : 'Registrar Operação'}</h2>
+          <Title level={2}>{editOperacaoId ? 'Editar Operação' : 'Registrar Operação'}</Title>
           {(produtos.length === 0 || armazens.length === 0 || lotes.length === 0) && (
             <Alert
               message="Aviso"
@@ -867,15 +808,23 @@ const Farmacia = () => {
           )}
           <Form form={form} layout="vertical" className="operation-form">
             <div className="form-grid">
-              <Form.Item name="tipoOperacao" label="Tipo de Operação" rules={[{ required: true, message: 'Selecione o tipo de operação' }]}>
+              <Form.Item
+                name="tipoOperacao"
+                label="Tipo de Operação"
+                rules={[{ required: true, message: 'Selecione o tipo de operação' }]}
+              >
                 <Select placeholder="Selecione a operação">
                   {['ENTRADA', 'SAIDA', 'TRANSFERENCIA', 'ANULACAO'].map((op) => (
                     <Option key={op} value={op}>{op}</Option>
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item name="armazemId" label="Armazém" rules={[{ required: true, message: 'Selecione o armazém' }]}>
-                <Select placeholder="Selecione o armazém" showSearch optionFilterProp="children">
+              <Form.Item
+                name="armazemId"
+                label="Armazém Origem"
+                rules={[{ required: true, message: 'Selecione o armazém de origem' }]}
+              >
+                <Select placeholder="Selecione o armazém">
                   {armazens.map((armazem) => (
                     <Option key={armazem.id} value={armazem.id}>
                       {armazem.designacao}
@@ -884,25 +833,27 @@ const Farmacia = () => {
                 </Select>
               </Form.Item>
               <Form.Item
-                noStyle
-                shouldUpdate={(prevValues, currentValues) => prevValues.tipoOperacao !== currentValues.tipoOperacao}
+                name="armazemDestinoId"
+                label="Armazém Destino"
+                rules={[{ required: form.getFieldValue('tipoOperacao') === 'TRANSFERENCIA', message: 'Selecione o armazém de destino' }]}
               >
-                {({ getFieldValue }) =>
-                  getFieldValue('tipoOperacao') === 'TRANSFERENCIA' && (
-                    <Form.Item name="armazemDestinoId" label="Armazém Destino" rules={[{ required: true, message: 'Selecione o armazém de destino' }]}>
-                      <Select placeholder="Selecione o armazém de destino" showSearch optionFilterProp="children">
-                        {armazens.map((armazem) => (
-                          <Option key={armazem.id} value={armazem.id}>
-                            {armazem.designacao}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  )
-                }
+                <Select placeholder="Selecione o armazém de destino" allowClear>
+                  {armazens.map((armazem) => (
+                    <Option key={armazem.id} value={armazem.id}>
+                      {armazem.designacao}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
-              <Form.Item name="loteId" label="Lote" rules={[{ required: true, message: 'Selecione o lote' }]}>
-                <Select placeholder="Selecione o lote" showSearch optionFilterProp="children">
+              <Form.Item name="descricao" label="Descrição">
+                <Input placeholder="Descrição da operação" />
+              </Form.Item>
+              <Form.Item
+                name="loteId"
+                label="Lote"
+                rules={[{ required: true, message: 'Selecione o lote' }]}
+              >
+                <Select placeholder="Selecione o lote">
                   {lotes.map((lote) => (
                     <Option key={lote.id} value={lote.id}>
                       {lote.designacao}
@@ -910,69 +861,88 @@ const Farmacia = () => {
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item name="produtoId" label="Produto" rules={[{ required: true, message: 'Selecione o produto' }]}>
-                <Select
-                  placeholder="Selecione o produto"
-                  showSearch
-                  optionFilterProp="children"
-                  disabled={produtos.length === 0}
-                >
+              <Form.Item
+                name="produtoId"
+                label="Tipo de Produto"
+                rules={[{ required: true, message: 'Selecione o tipo de produto' }]}
+              >
+                <Select placeholder="Selecione o tipo de produto">
                   {produtos.map((produto) => (
                     <Option key={produto.id} value={produto.id}>
-                      {produto.designacaoProduto}
+                      {produto.productType || 'Sem Tipo'} (ID: {produto.id})
                     </Option>
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item name="quantidade" label="Quantidade" rules={[{ required: true, message: 'Digite a quantidade' }]}>
-                <InputNumber min={1} style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item name="descricao" label="Descrição" rules={[{ required: true, message: 'Descrição é obrigatória' }]}>
-                <Input.TextArea rows={2} placeholder="Descrição da operação" />
+              <Form.Item
+                name="quantidade"
+                label="Quantidade"
+                rules={[{ required: true, message: 'Insira a quantidade' }]}
+              >
+                <InputNumber min={1} placeholder="Quantidade" style={{ width: '100%' }} />
               </Form.Item>
             </div>
-            <Space style={{ marginTop: 16 }}>
+            <Space style={{ marginBottom: 16 }}>
               <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem}>
-                Adicionar Item
+                {editItemId ? 'Atualizar Item' : 'Adicionar Item'}
               </Button>
               <Button
-                type="default"
-                icon={<ClearOutlined />}
-                onClick={() => setTempItens([])}
+                icon={<SaveOutlined />}
+                type="primary"
+                onClick={handleSaveOperacao}
+                loading={loading}
               >
-                Limpar Itens
+                Salvar Operação
               </Button>
-              <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveOperacao} loading={loading}>
-                Finalizar Operação
+              <Button
+                icon={<CloseOutlined />}
+                onClick={() => {
+                  form.resetFields();
+                  setTempItens([]);
+                  setEditOperacaoId(null);
+                  setEditItemId(null);
+                }}
+              >
+                Cancelar
               </Button>
             </Space>
-          </Form>
-          {tempItens.length > 0 && (
             <Table
-              dataSource={tempItens}
               columns={tempItemColumns}
-              rowKey="loteId"
+              dataSource={tempItens}
+              rowKey="id"
               pagination={false}
               style={{ marginTop: 16 }}
-              title={() => <h3>Itens Temporários</h3>}
             />
-          )}
-          {operacoesList.length > 0 && (
-            <Table
-              dataSource={operacoesList}
-              columns={operacaoColumns}
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-              style={{ marginTop: 16 }}
-              title={() => <h3>Operações</h3>}
-            />
-          )}
+          </Form>
         </div>
       )}
       {activeSection === 'lotes' && (
         <div className="section-content">
-          <h2>Gerenciar Lotes</h2>
           <Space style={{ marginBottom: 16 }}>
+            <Input
+              prefix={<SearchOutlined />}
+              placeholder="Pesquisar por designação"
+              value={loteSearch}
+              onChange={(e) => debouncedSetLoteSearch(e.target.value)}
+              style={{ width: 250 }}
+            />
+            <Select
+              placeholder="Filtrar por status"
+              value={loteStatus}
+              onChange={setLoteStatus}
+              style={{ width: 150 }}
+              allowClear
+            >
+              <Option value="ativo">Ativo</Option>
+              <Option value="inativo">Inativo</Option>
+            </Select>
+            <RangePicker
+              format="YYYY-MM-DD"
+              value={loteDateRange}
+              onChange={setLoteDateRange}
+              placeholder={['Data Início', 'Data Fim']}
+            />
+            <Button onClick={clearLoteFilters}>Limpar Filtros</Button>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -997,12 +967,13 @@ const Farmacia = () => {
             </Button>
           </Space>
           <Table
-            dataSource={lotes}
+            dataSource={filteredLotes}
             columns={loteColumns}
             rowKey="id"
             pagination={{ pageSize: 10 }}
             loading={loading || contextLoading}
-            title={() => <h3>Lotes</h3>}
+            className="custom-table"
+            title={() => <Title level={3}>Lotes</Title>}
           />
           <Table
             dataSource={linhasLotes}
@@ -1010,77 +981,82 @@ const Farmacia = () => {
             rowKey="id"
             pagination={{ pageSize: 10 }}
             loading={loading || contextLoading}
-            title={() => <h3>Linhas de Lotes</h3>}
+            className="custom-table"
+            title={() => <Title level={3}>Linhas de Lotes</Title>}
           />
         </div>
       )}
       {activeSection === 'fornecedores' && (
         <div className="section-content">
-          <h2>Gerenciar Fornecedores</h2>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            style={{ marginBottom: 16 }}
-            onClick={() => {
-              setShowFornecedorModal(true);
-              setEditFornecedorId(null);
-              fornecedorForm.resetFields();
-            }}
-          >
-            Adicionar Fornecedor
-          </Button>
+          <Space style={{ marginBottom: 16 }}>
+            <Input
+              prefix={<SearchOutlined />}
+              placeholder="Pesquisar por nome"
+              value={fornecedorSearch}
+              onChange={(e) => debouncedSetFornecedorSearch(e.target.value)}
+              style={{ width: 250 }}
+            />
+            <Select
+              placeholder="Filtrar por estado"
+              value={fornecedorEstado}
+              onChange={setFornecedorEstado}
+              style={{ width: 150 }}
+              allowClear
+            >
+              <Option value="ATIVO">Ativo</Option>
+              <Option value="INATIVO">Inativo</Option>
+            </Select>
+            <Button onClick={clearFornecedorFilters}>Limpar Filtros</Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setShowFornecedorModal(true);
+                setEditFornecedorId(null);
+                fornecedorForm.resetFields();
+              }}
+            >
+              Adicionar Fornecedor
+            </Button>
+          </Space>
           <Table
-            dataSource={fornecedores}
+            dataSource={filteredFornecedores}
             columns={fornecedorColumns}
             rowKey="id"
             pagination={{ pageSize: 10 }}
             loading={loading || contextLoading}
+            className="custom-table"
           />
         </div>
       )}
       {activeSection === 'monitoramento' && (
-        <div className="monitoramento-container">
-          <Title level={2} className="section-title">Monitoramento de Estoque</Title>
-          <div className="filters">
+        <div className="section-content">
+          <Space style={{ marginBottom: 16 }}>
             <Input
               prefix={<SearchOutlined />}
-              placeholder="Pesquisar por designação ou nome do produto"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: 250, marginRight: 16 }}
-              disabled={loading || contextLoading}
+              placeholder="Pesquisar por designação"
+              value={loteSearch}
+              onChange={(e) => debouncedSetLoteSearch(e.target.value)}
+              style={{ width: 250 }}
             />
             <Select
               placeholder="Filtrar por status"
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value)}
-              style={{ width: 150, marginRight: 16 }}
+              value={loteStatus}
+              onChange={setLoteStatus}
+              style={{ width: 150 }}
               allowClear
-              disabled={loading || contextLoading}
             >
               <Option value="ativo">Ativo</Option>
               <Option value="inativo">Inativo</Option>
             </Select>
             <RangePicker
               format="YYYY-MM-DD"
-              value={dateRange}
-              onChange={(dates) => setDateRange(dates)}
-              style={{ marginRight: 16 }}
+              value={loteDateRange}
+              onChange={setLoteDateRange}
               placeholder={['Data Início', 'Data Fim']}
-              disabled={loading || contextLoading}
             />
-            <Button
-              icon={<FilterOutlined />}
-              type="primary"
-              style={{ marginRight: 8 }}
-              disabled={loading || contextLoading}
-            >
-              Aplicar Filtros
-            </Button>
-            <Button onClick={clearFilters} disabled={loading || contextLoading}>
-              Limpar Filtros
-            </Button>
-          </div>
+            <Button onClick={clearLoteFilters}>Limpar Filtros</Button>
+          </Space>
           {expiringLotes.length > 0 && (
             <Alert
               message="Lotes Próximos do Vencimento"
@@ -1090,27 +1066,21 @@ const Farmacia = () => {
               style={{ marginBottom: 16 }}
             />
           )}
-          <Title level={3}>Lotes Próximos do Vencimento</Title>
           <Table
             columns={expiringLoteColumns}
             dataSource={expiringLotes}
             rowKey="id"
             pagination={{ pageSize: 10 }}
-            scroll={{ x: 'max-content' }}
             className="custom-table"
-            style={expiringLotes.length > 0 ? { marginBottom: 24 } : { marginBottom: 0 }}
-            locale={{ emptyText: 'Nenhum lote próximo do vencimento encontrado.' }}
+            title={() => <Title level={3}>Lotes Próximos do Vencimento</Title>}
           />
-          <Title level={3}>Lotes</Title>
           <Table
             columns={loteColumns}
             dataSource={filteredLotes}
             rowKey="id"
             pagination={{ pageSize: 10 }}
-            scroll={{ x: 'max-content' }}
             className="custom-table"
-            style={{ marginBottom: 24 }}
-            locale={{ emptyText: 'Nenhum lote encontrado.' }}
+            title={() => <Title level={3}>Lotes</Title>}
           />
         </div>
       )}
@@ -1130,7 +1100,7 @@ const Farmacia = () => {
               type="card"
               style={{ padding: '0 16px' }}
             >
-              <TabPane tab="Entrada/Saída" key="entrada-saida" />
+              <TabPane tab="Entradas e Saídas" key="entrada-saida" />
               <TabPane tab="Lotes" key="lotes" />
               <TabPane tab="Fornecedores" key="fornecedores" />
               <TabPane tab="Monitoramento" key="monitoramento" />
@@ -1309,18 +1279,18 @@ const Farmacia = () => {
             </Form.Item>
             <Form.Item
               name="produtoId"
-              label="Produto"
-              rules={[{ required: true, message: 'Selecione o produto' }]}
+              label="Tipo de Produto"
+              rules={[{ required: true, message: 'Selecione o tipo de produto' }]}
             >
               <Select
-                placeholder="Selecione o produto"
+                placeholder="Selecione o tipo de produto"
                 showSearch
                 optionFilterProp="children"
                 disabled={produtos.length === 0}
               >
                 {produtos.map((produto) => (
                   <Option key={produto.id} value={produto.id}>
-                    {produto.designacaoProduto}
+                    {produto.productType || 'Sem Tipo'} (ID: {produto.id})
                   </Option>
                 ))}
               </Select>
@@ -1328,7 +1298,7 @@ const Farmacia = () => {
             <Form.Item
               name="quantidade"
               label="Quantidade"
-              rules={[{ required: true, message: 'Digite a quantidade' }]}
+              rules={[{ required: true, message: 'Digite a quantidade', type: 'number', min: 1 }]}
             >
               <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
