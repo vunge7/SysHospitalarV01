@@ -1,14 +1,4 @@
-import { PropaneSharp } from '@mui/icons-material';
 import React, { useState } from 'react';
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-import { Table, Input, Button, Pagination, Space, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import styles from './style.module.css';
-=======
->>>>>>> 59a366fad1f969781450b77a084d0798e5d4db08
->>>>>>> ba4502e (Resolvendo o dynamictable)
 
 const DynamicTable = (props) => {
     const [searchTerm, setSearchTerm] = useState('');
