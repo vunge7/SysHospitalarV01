@@ -2,16 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Card, notification, Typography, Popconfirm, InputNumber, Space } from 'antd';
 import { CheckCircleOutlined, EditOutlined, DeleteOutlined, UndoOutlined } from '@ant-design/icons';
 import moment from 'moment';
+import { api } from '../../service/api';
 
 const { Title, Text } = Typography;
 
-function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, setExames, fetchAllData, updateExame, deleteExame }) {
+function AvaliacaoExameRequisitado({ pacientes, medicos, tiposExame, setExames, updateExame, deleteExame, fetchAllData }) {
   const [form] = Form.useForm();
+  const [exames, setExamesLocal] = useState([]);
   const [selectedExame, setSelectedExame] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedRequisicao, setSelectedRequisicao] = useState(null);
-  const [valores, setValores] = useState({});
+  const [valores, setValores] = useState([]);
+
+  useEffect(() => {
+    fetchRequisicoes();
+  }, []);
+
+  const fetchRequisicoes = async () => {
+    try {
+      const response = await api.get('requisicaoexame/all/composto');
+      const requisicoes = response.data;
+      setExamesLocal(requisicoes);
+    } catch (error) {
+      console.error('Erro ao buscar requisições:', error);
+      notification.error({ message: 'Erro ao buscar requisições de exames!' });
+    }
+  };
 
   const handleRowClick = (record) => {
     setSelectedRequisicao(record);
@@ -37,16 +54,10 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
   const handleFinishResult = async (values) => {
     setLoading(true);
     try {
-      if (selectedExame.composto) {
-        const referenciasKeys = Object.keys(selectedExame.referencias);
-        if (!referenciasKeys.every((key) => values.valores[key])) {
-          throw new Error('Preencha todos os valores dos componentes do exame.');
-        }
-      } else {
-        const key = Object.keys(selectedExame.referencias)[0];
-        if (!values.valores[key]) {
-          throw new Error('Preencha o valor do exame.');
-        }
+      const referenciasKeys = Object.keys(selectedExame.referencias);
+      const todosPreenchidos = referenciasKeys.every((key) => values.valores[key] !== undefined);
+      if (!todosPreenchidos) {
+        throw new Error('Preencha todos os valores dos componentes do exame.');
       }
 
       const updatedExame = {
@@ -61,13 +72,12 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
       };
 
       await updateExame(selectedExame.id, updatedExame);
-      setExames(exames.map((e) => (e.id === selectedExame.id ? updatedExame : e)));
-      notification.success({ message: 'Resultado do exame finalizado com sucesso!' });
+      notification.success({ message: 'Resultado finalizado com sucesso!' });
       handleCancel();
+      fetchRequisicoes();
       fetchAllData();
     } catch (error) {
       notification.error({ message: error.message || 'Erro ao finalizar resultado!' });
-      console.error('Erro:', error);
     } finally {
       setLoading(false);
     }
@@ -78,10 +88,9 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
       await deleteExame(id);
       notification.success({ message: 'Exame excluído com sucesso!' });
       setSelectedRequisicao(null);
-      fetchAllData();
+      fetchRequisicoes();
     } catch (error) {
       notification.error({ message: 'Erro ao excluir exame!' });
-      console.error('Erro:', error);
     }
   };
 
@@ -93,12 +102,11 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
         status: 'PENDENTE',
       };
       await updateExame(exame.id, updatedExame);
-      setExames(exames.map((e) => (e.id === exame.id ? updatedExame : e)));
       notification.success({ message: 'Exame reaberto com sucesso!' });
+      fetchRequisicoes();
       fetchAllData();
     } catch (error) {
       notification.error({ message: 'Erro ao reabrir exame!' });
-      console.error('Erro:', error);
     }
   };
 
@@ -115,16 +123,22 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
   const requisicoesColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
     {
+      title: 'Paciente',
+      dataIndex: 'pacienteId',
+      key: 'pacienteId',
+      render: (id) => pacientes.find((p) => p.id === id)?.nome || 'N/A',
+    },
+    {
       title: 'Médico',
       dataIndex: 'medicoId',
       key: 'medicoId',
       render: (id) => medicos.find((m) => m.id === id)?.nome || 'N/A',
     },
     {
-      title: 'Paciente',
-      dataIndex: 'pacienteId',
-      key: 'pacienteId',
-      render: (id) => pacientes.find((p) => p.id === id)?.nome || 'N/A',
+      title: 'Data da Requisição',
+      dataIndex: 'dataRequisicao',
+      key: 'dataRequisicao',
+      render: (data) => moment(data).format('DD/MM/YYYY HH:mm'),
     },
   ];
 
@@ -157,9 +171,7 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
               okText="Sim"
               cancelText="Não"
             >
-              <Button type="default" icon={<UndoOutlined />}>
-                Reabrir
-              </Button>
+              <Button icon={<UndoOutlined />}>Reabrir</Button>
             </Popconfirm>
           )}
           <Popconfirm
@@ -168,7 +180,7 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
             okText="Sim"
             cancelText="Não"
           >
-            <Button type="danger" icon={<DeleteOutlined />}>
+            <Button danger icon={<DeleteOutlined />}>
               Excluir
             </Button>
           </Popconfirm>
@@ -177,28 +189,16 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
     },
   ];
 
-  const requisicoesData = exames.map((exame) => ({
-    id: exame.id,
-    medicoId: exame.medicoId || null,
-    pacienteId: exame.pacienteId,
-  }));
-
-  const examesFiltrados = selectedRequisicao
-    ? exames.filter((exame) => exame.id === selectedRequisicao.id)
-    : [];
-
   return (
     <div>
-      <Title level={2} className="section-title">
-        Avaliação de Exames Requisitados
-      </Title>
-      <Card title="Requisições de Exames" className="card-custom">
-        {requisicoesData.length === 0 ? (
-          <Text>Nenhuma requisição de exame disponível.</Text>
+      <Title level={2}>Avaliação de Exames Requisitados</Title>
+      <Card title="Requisições de Exames">
+        {exames.length === 0 ? (
+          <Text>Nenhuma requisição disponível.</Text>
         ) : (
           <Table
             columns={requisicoesColumns}
-            dataSource={requisicoesData}
+            dataSource={exames}
             rowKey="id"
             onRow={(record) => ({
               onClick: () => handleRowClick(record),
@@ -207,133 +207,129 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
               type: 'radio',
               onChange: (_, selectedRows) => handleRowClick(selectedRows[0]),
             }}
-            className="table-custom"
           />
         )}
       </Card>
       {selectedRequisicao ? (
-        <Card title="Detalhes do Exame" className="card-custom">
-          <Table columns={examesColumns} dataSource={examesFiltrados} rowKey="id" className="table-custom" />
+        <Card title="Detalhes do Exame">
+          <Table
+            columns={examesColumns}
+            dataSource={selectedRequisicao.exames || []}
+            rowKey="id"
+          />
         </Card>
       ) : (
-        <Card className="card-custom">
-          <Text>Selecione uma requisição para visualizar os detalhes.</Text>
+        <Card>
+          <Text>Selecione uma requisição para ver os exames.</Text>
         </Card>
       )}
+
       <Modal
         title="Resultado do Exame"
         visible={isModalVisible}
         onCancel={handleCancel}
         footer={null}
-        className="modal-custom"
       >
         {selectedExame && (
           <Form form={form} layout="vertical" onFinish={handleFinishResult}>
-            {selectedExame.composto && Object.keys(selectedExame.referencias).length > 0 ? (
-              <div>
-                <Text strong>Componentes do Exame</Text>
-                <Table
-                  dataSource={Object.entries(selectedExame.referencias).map(([key, ref]) => ({
-                    key,
-                    exame: key,
-                    unidade: ref.unidade,
-                    intervalo: ref.valor,
-                  }))}
-                  columns={[
-                    { title: 'Exame', dataIndex: 'exame', key: 'exame' },
-                    { title: 'Unidade', dataIndex: 'unidade', key: 'unidade' },
-                    { title: 'Intervalo de Referência', dataIndex: 'intervalo', key: 'intervalo' },
-                    {
-                      title: 'Valor do Resultado',
-                      key: 'valor',
-                      render: (_, record) => (
-                        <Form.Item
-                          name={['valores', record.exame]}
-                          rules={[
-                            { required: true, message: `Insira o valor para ${record.exame}` },
-                            {
-                              validator: (_, value) =>
-                                !value || !isNaN(value)
-                                  ? Promise.resolve()
-                                  : Promise.reject('Insira um valor numérico válido'),
-                            },
-                          ]}
-                          noStyle
-                        >
-                          <InputNumber
-                            placeholder="Insira o resultado"
-                            style={{
-                              width: '100%',
-                              borderColor:
-                                getValueStatus(valores[record.exame], record.intervalo) === 'alto'
-                                  ? '#ff4d4f'
-                                  : getValueStatus(valores[record.exame], record.intervalo) === 'baixo'
-                                  ? '#fadb14'
-                                  : '#1890ff',
-                            }}
-                            onChange={(value) => setValores({ ...valores, [record.exame]: value })}
-                          />
-                        </Form.Item>
-                      ),
-                    },
-                  ]}
-                  pagination={false}
-                  size="small"
-                  className="table-custom"
-                />
-              </div>
+            {selectedExame.composto ? (
+              <Table
+                dataSource={Object.entries(selectedExame.referencias).map(([key, ref]) => ({
+                  key,
+                  exame: key,
+                  unidade: ref.unidade,
+                  intervalo: ref.valor,
+                }))}
+                columns={[
+                  { title: 'Exame', dataIndex: 'exame' },
+                  { title: 'Unidade', dataIndex: 'unidade' },
+                  { title: 'Intervalo de Referência', dataIndex: 'intervalo' },
+                  {
+                    title: 'Valor',
+                    render: (_, record) => (
+                      <Form.Item
+                        name={['valores', record.exame]}
+                        rules={[
+                          { required: true, message: `Insira valor para ${record.exame}` },
+                          {
+                            validator: (_, value) =>
+                              !value || !isNaN(value)
+                                ? Promise.resolve()
+                                : Promise.reject('Valor deve ser numérico'),
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <InputNumber
+                          style={{
+                            width: '100%',
+                            borderColor:
+                              getValueStatus(valores[record.exame], record.intervalo) === 'alto'
+                                ? '#ff4d4f'
+                                : getValueStatus(valores[record.exame], record.intervalo) === 'baixo'
+                                ? '#fadb14'
+                                : '#1890ff',
+                          }}
+                          onChange={(value) => setValores({ ...valores, [record.exame]: value })}
+                        />
+                      </Form.Item>
+                    ),
+                  },
+                ]}
+                pagination={false}
+                size="small"
+              />
             ) : (
               <>
-                <Form.Item
-                  label="Intervalo de Referência"
-                  style={{ marginBottom: 8 }}
-                >
+                <Form.Item label="Intervalo de Referência">
                   <Input
-                    value={selectedExame.referencias[Object.keys(selectedExame.referencias)[0]]?.valor}
                     disabled
+                    value={Object.values(selectedExame.referencias)[0]?.valor}
                   />
                 </Form.Item>
                 <Form.Item
-                  name={['valores', Object.keys(selectedExame.referencias)[0] || 'valor']}
-                  label="Valor do Resultado"
+                  name={['valores', Object.keys(selectedExame.referencias)[0]]}
+                  label="Valor"
                   rules={[
-                    { required: true, message: 'Insira o valor do resultado' },
+                    { required: true, message: 'Insira o valor' },
                     {
                       validator: (_, value) =>
-                        !value || !isNaN(value) ? Promise.resolve() : Promise.reject('Insira um valor numérico válido'),
+                        !value || !isNaN(value) ? Promise.resolve() : Promise.reject('Valor inválido'),
                     },
                   ]}
                 >
                   <InputNumber
-                    placeholder="Insira o resultado"
                     style={{
                       width: '100%',
                       borderColor:
                         getValueStatus(
                           valores[Object.keys(selectedExame.referencias)[0]],
-                          selectedExame.referencias[Object.keys(selectedExame.referencias)[0]]?.valor
+                          Object.values(selectedExame.referencias)[0]?.valor
                         ) === 'alto'
                           ? '#ff4d4f'
                           : getValueStatus(
                               valores[Object.keys(selectedExame.referencias)[0]],
-                              selectedExame.referencias[Object.keys(selectedExame.referencias)[0]]?.valor
+                              Object.values(selectedExame.referencias)[0]?.valor
                             ) === 'baixo'
                           ? '#fadb14'
                           : '#1890ff',
                     }}
                     onChange={(value) =>
-                      setValores({ ...valores, [Object.keys(selectedExame.referencias)[0]]: value })
+                      setValores({
+                        ...valores,
+                        [Object.keys(selectedExame.referencias)[0]]: value,
+                      })
                     }
                   />
                 </Form.Item>
               </>
             )}
             <Form.Item name="observacao" label="Observação">
-              <Input.TextArea rows={4} placeholder="Observações sobre o resultado" />
+              <Input.TextArea rows={4} placeholder="Observações sobre o exame" />
             </Form.Item>
             <Form.Item>
               <Popconfirm
-                title="Deseja finalizar o resultado deste exame?"
+                title="Finalizar resultado?"
                 onConfirm={() => form.submit()}
                 okText="Sim"
                 cancelText="Não"
@@ -342,7 +338,7 @@ function AvaliacaoExameRequisitado({ exames, pacientes, medicos, tiposExame, set
                   Finalizar
                 </Button>
               </Popconfirm>
-              <Button style={{ marginLeft: 8 }} onClick={handleCancel}>
+              <Button onClick={handleCancel} style={{ marginLeft: 8 }}>
                 Cancelar
               </Button>
             </Form.Item>
