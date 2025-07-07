@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './style.css';
+import { Button, Popconfirm } from 'antd';
+import { EditOutlined, DeleteOutlined, CheckOutlined, StopOutlined } from '@ant-design/icons';
 
 function FacturacaoLinha(props) {
     const [editavel, setEditavel] = useState(false);
@@ -38,7 +40,7 @@ function FacturacaoLinha(props) {
                         autoFocus={true}
                         type="text"
                         value={qtd}
-                        onChange={(e) => setQtd(e.target.value)}
+                        onChange={(e) => setQtd(Number(e.target.value))}
                         onKeyPress={(event) => handleKeyPress(event)}
                     />
                 ) : (
@@ -49,7 +51,7 @@ function FacturacaoLinha(props) {
                     <input
                         type="text"
                         value={desconto}
-                        onChange={(e) => setDesconto(e.target.value)}
+                        onChange={(e) => setDesconto(Number(e.target.value))}
                         onKeyPress={(event) => handleKeyPress(event)}
                     />
                 ) : (
@@ -61,15 +63,51 @@ function FacturacaoLinha(props) {
                 </div>
                 <div>
                     {editavel ? (
-                        <button onClick={() => updateRow()}>actualizar</button>
+                        <Button
+                            type="primary"
+                            onClick={() => updateRow()}
+                            disabled={props.designacao === 'Serviço Especial'}
+                            icon={
+                                props.designacao === 'Serviço Especial'
+                                    ? <StopOutlined />
+                                    : <CheckOutlined />
+                            }
+                        >
+                            {props.designacao === 'Serviço Especial'
+                                ? 'Bloqueado'
+                                : 'actualizar'}
+                        </Button>
                     ) : (
-                        <button onClick={() => setEditavel(true)}>
-                            editar
-                        </button>
+                        <Button
+                            onClick={() => setEditavel(true)}
+                            type={
+                                props.designacao === 'Medicamento'
+                                    ? 'dashed'
+                                    : 'default'
+                            }
+                            icon={<EditOutlined />}
+                        >
+                            {props.designacao === 'Medicamento'
+                                ? 'editar medicamento'
+                                : 'editar'}
+                        </Button>
                     )}
-                    <button onClick={(e) => props.removerItem(props.id)}>
-                        remover
-                    </button>
+                    <Popconfirm
+                        title="Tens a certeza que queres remover?"
+                        onConfirm={() => props.removerItem(props.id)}
+                        okText="Sim"
+                        cancelText="Não"
+                        disabled={props.designacao === 'Serviço Especial'}
+                    >
+                        <Button
+                            type="text"
+                            danger
+                            disabled={props.designacao === 'Serviço Especial'}
+                            icon={<DeleteOutlined />}
+                        >
+                            remover
+                        </Button>
+                    </Popconfirm>
                 </div>
             </div>
         </div>

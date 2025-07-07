@@ -26,3 +26,13 @@
         flex-direction: column;
     }
 }
+
+.gradient-btn {
+    background: linear-gradient(90deg, #ff7e5f 0%, #feb47b 100%);
+    color: #fff !important;
+    border: none !important;
+}
+.gradient-btn:hover, .gradient-btn:focus {
+    background: linear-gradient(90deg, #feb47b 0%, #ff7e5f 100%);
+    color: #fff !important;
+}

@@ -13,6 +13,7 @@ import { format as dateFormat, formatDate } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { viewPdf } from '../util/utilitarios';
+import { Table, Pagination } from 'antd';
 
 const options = { locales: 'en', maximumFractionDigits: 2 };
 Modal.setAppElement('#root');
@@ -508,55 +509,36 @@ function Facturacao() {
                     style={{ marginBottom: '20px' }}
                 />
                 <div>
-                    <table className="table">
-                        <thead className="thead">
-                            <tr>
-                                <th className="th">Designação</th>
-                                <th className="th">Grupo</th>
-                                <th className="th">Preço</th>
-                                <th className="th">Taxa Iva</th>
-                                <th className="th">Preço c/Iva</th>
-                            </tr>
-                        </thead>
-
-                        <tbody className="tbody">
-                            {currentProducts.length > 0 ? (
-                                currentProducts.map((item) => (
-                                    <Artigo
-                                        key={item.id}
-                                        id={item.id}
-                                        designacao={item.designacao}
-                                        grupo={item.grupo}
-                                        preco={item.preco}
-                                        iva={item.iva}
-                                        subTotal={novoSubTotal(item, 1, 0)}
-                                    />
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="7">
-                                        Nenhum produto encontrado
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-
-                    {/* Paginação */}
-                    <div className="pagination">
-                        {Array.from(
-                            {
-                                length: Math.ceil(artigos.length / 5),
+                    <Table
+                        columns={columns}
+                        dataSource={currentProducts.map((item) => ({
+                            ...item,
+                            key: item.id,
+                            subTotal: novoSubTotal(item, 1, 0),
+                        }))}
+                        pagination={false}
+                        onRow={(record) => ({
+                            onClick: () => {
+                                let artigo = buscaArtigoById(record.id);
+                                newLineArtigo(artigo);
+                                closeModal();
                             },
-                            (_, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => paginate(index + 1)}
-                                >
-                                    {index + 1}
-                                </button>
-                            )
-                        )}
+                            style: { cursor: 'pointer' },
+                        })}
+                        locale={{ emptyText: 'Nenhum produto encontrado' }}
+                        size="small"
+                    />
+                    <div
+                        className="pagination"
+                        style={{ marginTop: 16, textAlign: 'center' }}
+                    >
+                        <Pagination
+                            current={currentPage}
+                            pageSize={productsPerPage}
+                            total={artigos.length}
+                            onChange={paginate}
+                            showSizeChanger={false}
+                        />
                     </div>
                 </div>
                 <button onClick={closeModal} style={{ marginTop: '20px' }}>
@@ -568,6 +550,15 @@ function Facturacao() {
                 isOpen={isOpenGasto}
                 onAfterClose={closeModalGasto}
                 style={{
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        width: 'auto', // ajuste conforme necessário
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                    },
                     overlay: {
                         backgroundColor: 'rgba(0, 0, 0, 0.2)',
                     },
@@ -585,5 +576,33 @@ function Facturacao() {
         </div>
     );
 }
+
+const columns = [
+    {
+        title: 'Designação',
+        dataIndex: 'designacao',
+        key: 'designacao',
+    },
+    {
+        title: 'Grupo',
+        dataIndex: 'grupo',
+        key: 'grupo',
+    },
+    {
+        title: 'Preço',
+        dataIndex: 'preco',
+        key: 'preco',
+    },
+    {
+        title: 'Taxa Iva',
+        dataIndex: 'iva',
+        key: 'iva',
+    },
+    {
+        title: 'Preço c/Iva',
+        dataIndex: 'subTotal',
+        key: 'subTotal',
+    },
+];
 
 export default Facturacao;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
 import { AuthContext } from '../../contexts/auth';
@@ -8,40 +8,30 @@ import Rodape from '../../components/Rodape';
 
 import {
     MenuFoldOutlined,
-    MenuUnfoldOutlined,
     HomeFilled,
     PoweroffOutlined,
 } from '@ant-design/icons';
 
+const menuItems = [
+    {
+        key: '/facturacao',
+        icon: <HomeFilled />,
+        label: 'Home',
+    },
+    {
+        key: '/facturacao/criar',
+        icon: <MenuFoldOutlined />,
+        label: 'Criar',
+    },
+    {
+        key: '/logout',
+        icon: <PoweroffOutlined />,
+        label: 'Signout',
+        danger: true,
+    },
+];
+
 function PainelFacturacao({ children }) {
-    const [menu, setmenu] = useState([]);
-
-    useEffect(() => {
-        let items;
-
-        items = [
-            {
-                key: '/facturacao',
-                icon: <HomeFilled />,
-                label: 'Home',
-            },
-            {
-                key: '/facturacao/criar',
-                icon: <MenuFoldOutlined />,
-                label: 'Criar',
-            },
-
-            {
-                key: '/logout',
-                icon: <PoweroffOutlined />,
-                label: 'Signout',
-                danger: true,
-            },
-        ];
-
-        setmenu([...items]);
-    }, []);
-
     return (
         <div
             style={{
@@ -60,7 +50,7 @@ function PainelFacturacao({ children }) {
                     flex: 1,
                 }}
             >
-                <SideMenu menu={menu} />
+                <SideMenu menu={menuItems} />
                 <Content>{children}</Content>
             </div>
             <Rodape />
@@ -73,7 +63,7 @@ function SideMenu(props) {
     const navigate = useNavigate();
     const { logout } = useContext(AuthContext);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const handleResize = () => {
             setCollapsed(window.innerWidth <= 768);
         };
@@ -100,7 +90,6 @@ function SideMenu(props) {
             <Menu
                 onClick={({ key }) => onClick({ key })}
                 defaultSelectedKeys={[window.location.pathname]}
-                defaultOpenKeys={['sub1']}
                 mode="inline"
                 theme="light"
                 inlineCollapsed={collapsed}

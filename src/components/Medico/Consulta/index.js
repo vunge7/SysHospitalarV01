@@ -9,7 +9,7 @@ import { formatDate } from 'date-fns';
 import Cid10 from '../../Cid10';
 
 import { ConfigProvider } from 'antd';
-import ptBR from 'antd/lib/locale/pt_BR';
+import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
 
 import { viewPdfGenerico } from '../../util/utilitarios';
@@ -377,7 +377,7 @@ function Consulta() {
             key: '10',
             label: 'Procedimentos',
             children: (
-                <ConfigProvider locale={ptBR}>
+                <ConfigProvider locale={ptPT}>
                     <Procedimento idInscricao={idInscricao} />
                 </ConfigProvider>
             ),
