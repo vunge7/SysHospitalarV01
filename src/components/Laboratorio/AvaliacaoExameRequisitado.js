@@ -19,6 +19,8 @@ function AvaliacaoExameRequisitado({ pacientes, medicos, tiposExame, setExames, 
     fetchRequisicoes();
   }, []);
 
+
+  /*
   const fetchRequisicoes = async () => {
     try {
       const response = await api.get('requisicaoexame/all/composto');
@@ -28,6 +30,17 @@ function AvaliacaoExameRequisitado({ pacientes, medicos, tiposExame, setExames, 
       console.error('Erro ao buscar requisições:', error);
       notification.error({ message: 'Erro ao buscar requisições de exames!' });
     }
+  };
+  */
+
+  const fetchRequisicoes = async () => {
+
+     await api.get('requisicaoexame/all/composto').then((r) => {
+          setExamesLocal([... r.data]);
+
+     }).catch
+      ((e) => console.error(e))
+
   };
 
   const handleRowClick = (record) => {
@@ -267,8 +280,8 @@ function AvaliacaoExameRequisitado({ pacientes, medicos, tiposExame, setExames, 
                               getValueStatus(valores[record.exame], record.intervalo) === 'alto'
                                 ? '#ff4d4f'
                                 : getValueStatus(valores[record.exame], record.intervalo) === 'baixo'
-                                ? '#fadb14'
-                                : '#1890ff',
+                                  ? '#fadb14'
+                                  : '#1890ff',
                           }}
                           onChange={(value) => setValores({ ...valores, [record.exame]: value })}
                         />
@@ -308,11 +321,11 @@ function AvaliacaoExameRequisitado({ pacientes, medicos, tiposExame, setExames, 
                         ) === 'alto'
                           ? '#ff4d4f'
                           : getValueStatus(
-                              valores[Object.keys(selectedExame.referencias)[0]],
-                              Object.values(selectedExame.referencias)[0]?.valor
-                            ) === 'baixo'
-                          ? '#fadb14'
-                          : '#1890ff',
+                            valores[Object.keys(selectedExame.referencias)[0]],
+                            Object.values(selectedExame.referencias)[0]?.valor
+                          ) === 'baixo'
+                            ? '#fadb14'
+                            : '#1890ff',
                     }}
                     onChange={(value) =>
                       setValores({
