@@ -10,6 +10,7 @@ import Cid10 from '../../Cid10';
 
 import { ConfigProvider } from 'antd';
 import ptBR from 'antd/lib/locale/pt_BR';
+import TextToSpeech from '../../TextToSpeech';
 
 import { viewPdfGenerico } from '../../util/utilitarios';
 
@@ -73,9 +74,9 @@ function Consulta() {
         diagnosticoFinal,
     ]);
 
-    useEffect(()=>{
-       console.log('Data CID', dataCID);
-    }, [dataCID])
+    useEffect(() => {
+        console.log('Data CID', dataCID);
+    }, [dataCID]);
 
     const _showModal = async (id, nome) => {
         setNomePaciente(nome);
@@ -123,7 +124,11 @@ function Consulta() {
         setHistoriaClinica('');
         setExameFisico('');
         setReceita('');
+        setDiagnosticoInicial('');
+        setDiagnosticoFinal('');
         setId(0);
+        setListaExamesRequisitado([]);
+        formConsulta.resetFields();
     };
 
     const _carrgarDados = async () => {
@@ -233,7 +238,7 @@ function Consulta() {
 
     const salvarRequisicao = async () => {
         let requisicaoExame = {
-            dataRequisicao: formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+            dataRequisicao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'), // Troque formatDate por format
             status: true,
             usuarioId: 1,
             inscricaoId: idInscricao,
@@ -273,9 +278,9 @@ function Consulta() {
                             },
                         ]}
                     >
-                        <TextArea
-                            rows={10}
-                            placeholder="Digite o motivo da consulta"
+                        <TextToSpeech
+                            inputText={motivoConsulta}
+                            setInputText={setMotivoConsulta}
                         />
                     </Form.Item>
                 </>
@@ -287,9 +292,9 @@ function Consulta() {
             children: (
                 <>
                     <Form.Item name="historiaClinica">
-                        <TextArea
-                            rows={10}
-                            placeholder="Digite a história clínica "
+                        <TextToSpeech
+                            inputText={historiaClinica}
+                            setInputText={setHistoriaClinica}
                         />
                     </Form.Item>
                 </>
@@ -301,10 +306,9 @@ function Consulta() {
             children: (
                 <>
                     <Form.Item name="exameFisico">
-                        <TextArea
-                            id="exameFisico"
-                            rows={10}
-                            placeholder="Insira o detalhe do exame físico"
+                        <TextToSpeech
+                            inputText={exameFisico}
+                            setInputText={setExameFisico}
                         />
                     </Form.Item>
                 </>
@@ -317,7 +321,7 @@ function Consulta() {
             children: (
                 <>
                     <Form.Item name="diagnosticoInicial">
-                        <Cid10   data={dataCID} setData={setDataCID} />
+                        <Cid10 data={dataCID} setData={setDataCID} />
                     </Form.Item>
                 </>
             ),

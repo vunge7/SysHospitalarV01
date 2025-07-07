@@ -1,84 +1,150 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Input, Button, Space } from 'antd';
+import { AudioOutlined, SoundOutlined, StopOutlined } from '@ant-design/icons';
+const { TextArea } = Input;
 
-function TextToSpeech() {
-    const [inputText, setInputText] = useState('');
-    const [voices, setVoices] = useState([]);
-    const [selectedVoice, setSelectedVoice] = useState(null);
-    const [message, setMessage] = useState('Aguardando a hora...');
+function TextToSpeech({ inputText, setInputText }) {
+    const recognitionRef = useRef(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const textAreaRef = useRef(null); // Adicione este ref
 
-    useEffect(() => {
-        const targetHour = 21;
-        const targetMinute = 35;
-
-        const loadVoices = () => {
-            const availableVoices = speechSynthesis.getVoices();
-            //console.log(availableVoices);
-            setVoices(availableVoices);
-            setSelectedVoice(availableVoices[0]); // Selecionar a primeira voz por padrão
-        };
-        speechSynthesis.onvoiceschanged = loadVoices;
-
-        // Função para calcular o tempo até a hora alvo
-        const calculateTimeUntilTarget = () => {
-            const now = new Date();
-            const targetTime = new Date();
-            targetTime.setHours(targetHour, targetMinute, 0, 0);
-
-            const timeDifference = targetTime.getTime() - now.getTime();
-            return timeDifference;
-        };
-
-        // Calcula o tempo restante até a hora alvo
-        const timeUntilTarget = calculateTimeUntilTarget();
-
-        if (timeUntilTarget > 0) {
-            // Define um timeout para disparar o evento quando atingir o horário
-            const timer = setTimeout(() => {
-                setMessage('A hora chegou! Evento disparado!');
-                handleSpeak();
-            }, timeUntilTarget);
-            // Limpa o timeout quando o componente for desmontado
-            return () => clearTimeout(timer);
-        } else {
-            // Se a hora já tiver passado, define a mensagem como "Hora já passou"
-            setMessage('A hora já passou.');
+    // Iniciar reconhecimento de voz
+    const handleStartRecognition = () => {
+        const SpeechRecognition =
+            window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert('Seu navegador não suporta reconhecimento de voz.');
+            return;
         }
-    }, []);
+        // Foca no campo de texto ao iniciar
+        if (textAreaRef.current) {
+            // Para Ant Design TextArea, acesse o textarea nativo assim:
+            const nativeTextArea =
+                textAreaRef.current.resizableTextArea?.textArea;
+            if (nativeTextArea) {
+                nativeTextArea.focus();
+                const length = nativeTextArea.value.length;
+                nativeTextArea.setSelectionRange(length, length);
+            }
+        }
+        // Limpa o texto ao iniciar nova gravação
+        //setInputText('');
+        if (!recognitionRef.current) {
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.lang = 'pt-PT';
+            recognitionRef.current.continuous = true; // Captura contínua
+            recognitionRef.current.interimResults = false;
+            recognitionRef.current.onresult = (event) => {
+                const lastResultIndex = event.results.length - 1;
+                let transcript = event.results[lastResultIndex][0].transcript;
 
-    const handleSpeak = () => {
-        console.log('cheguei aqui. no listen');
+                // Remove ponto final automático no fim da frase (com ou sem espaço)
+                transcript = transcript.replace(/[.。]\s*$/, '');
 
-        const utterance = new SpeechSynthesisUtterance(inputText);
-        utterance.voice = selectedVoice;
-        speechSynthesis.speak(utterance);
+                setInputText((prev) =>
+                    prev ? prev + ' ' + transcript : transcript
+                );
+            };
+            recognitionRef.current.onerror = (event) => {
+                alert('Erro no reconhecimento de voz: ' + event.error);
+                setIsRecording(false);
+            };
+            recognitionRef.current.onend = () => {
+                setIsRecording(false);
+            };
+        }
+        recognitionRef.current.start();
+        setIsRecording(true);
     };
 
+    // Parar reconhecimento de voz
+    const handleStopRecognition = () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    // Falar o texto digitado
+    const handleSpeak = () => {
+        if (!inputText) return;
+        const utterance = new window.SpeechSynthesisUtterance(inputText);
+        utterance.lang = 'pt-PT';
+        window.speechSynthesis.speak(utterance);
+    };
+
+    function AudioVisualizer({ isActive }) {
+        const [bars, setBars] = useState([10, 20, 15, 25, 18, 22, 12, 17]);
+
+        useEffect(() => {
+            if (!isActive) return;
+            const interval = setInterval(() => {
+                setBars((bars) =>
+                    bars.map(() => 10 + Math.round(Math.random() * 20))
+                );
+            }, 120);
+            return () => clearInterval(interval);
+        }, [isActive]);
+
+        return (
+            <svg
+                width="120"
+                height="30"
+                style={{ display: 'block', margin: '10px auto' }}
+            >
+                {bars.map((h, i) => (
+                    <rect
+                        key={i}
+                        x={i * 15}
+                        y={30 - h}
+                        width={10}
+                        height={h}
+                        rx={2}
+                        fill="#1890ff"
+                    />
+                ))}
+            </svg>
+        );
+    }
+
     return (
-        <div>
-            <span>{message}</span>
-            <h1>Conversor de Texto para Áudio</h1>
-            <textarea
-                rows="4"
-                cols="50"
+        <div style={{ maxWidth: 500, padding: 5 }}>
+            <TextArea
+                ref={textAreaRef}
+                rows={4}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Digite o texto aqui"
+                placeholder="Digite o texto aqui ou use o microfone"
+                style={{ marginBottom: 16 }}
             />
-            <br />
-            <label>Escolha uma voz: </label>
-            <select
-                onChange={(e) =>
-                    setSelectedVoice(voices[e.target.selectedIndex])
-                }
-            >
-                {voices.map((voice, index) => (
-                    <option key={index} value={voice.name}>
-                        {voice.name} ({voice.lang})
-                    </option>
-                ))}
-            </select>
-            <br />
-            <button onClick={handleSpeak}>Falar</button>
+            <div style={{ minHeight: 40, marginBottom: 8 }}>
+                {isRecording && <AudioVisualizer isActive={isRecording} />}
+            </div>
+            <Space>
+                <Button
+                    type="primary"
+                    icon={<AudioOutlined />}
+                    onClick={handleStartRecognition}
+                    disabled={isRecording}
+                >
+                    Falar
+                </Button>
+                <Button
+                    icon={<StopOutlined />}
+                    onClick={handleStopRecognition}
+                    disabled={!isRecording}
+                    danger
+                >
+                    Parar
+                </Button>
+                <Button
+                    icon={<SoundOutlined />}
+                    onClick={handleSpeak}
+                    disabled={!inputText}
+                >
+                    Ouvir
+                </Button>
+            </Space>
         </div>
     );
 }
