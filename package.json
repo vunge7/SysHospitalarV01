@@ -16,11 +16,7 @@
     "@mui/icons-material": "^6.0.2",
     "@mui/material": "^6.0.2",
     "@react-input/number-format": "^2.0.3",
-<<<<<<< HEAD
     "@react-spring/web": "^10.0.1",
-=======
-    "@stomp/stompjs": "^7.1.1",
->>>>>>> 9533637 (Teste)
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
