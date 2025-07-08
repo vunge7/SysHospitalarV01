@@ -25,11 +25,39 @@ const tipoSubsidioMap = {
   DESEMPENHO: 'Desempenho',
 };
 
+const tiposDeContrato = [
+  { value: 'TEMPO_INDETERMINADO', label: 'Tempo Indeterminado' },
+  { value: 'TERMO_CERTO', label: 'Termo Certo' },
+  { value: 'TERMO_INCERTO', label: 'Termo Incerto' },
+  { value: 'ESTAGIO', label: 'Estágio' },
+  { value: 'PRESTACAO_SERVICOS', label: 'Prestação de Serviços' },
+  { value: 'EVENTUAL', label: 'Eventual' },
+  { value: 'APRENDIZ', label: 'Aprendiz' }
+];
+
+const segurancaSocialOpcoes = [
+  { value: 'SIM', label: 'Sim' },
+  { value: 'NAO', label: 'Não' }
+];
+
+const fechoDeContasOpcoes = [
+  { value: 'MENSAL', label: 'Mensal' },
+  { value: 'QUINZENAL', label: 'Quinzenal' },
+  { value: 'ANUAL', label: 'Anual' }
+];
+
+const estadosFuncionario = [
+  { value: 'ATIVO', label: 'Ativo' },
+  { value: 'INATIVO', label: 'Inativo' }
+];
+
 const Ficha = () => {
   const [pessoas, setPessoas] = useState([]);
   const [subsidios, setSubsidios] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubsidiosLoading, setIsSubsidiosLoading] = useState(false);
+  const [isDepartamentosLoading, setIsDepartamentosLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPessoa, setSelectedPessoa] = useState(null);
@@ -46,24 +74,6 @@ const Ficha = () => {
     { value: 'MASCULINO', label: 'Masculino' },
     { value: 'FEMININO', label: 'Feminino' },
     { value: 'OUTRO', label: 'Outro' },
-  ];
-
-  const tiposDeContrato = [
-    { value: 'EFETIVO', label: 'Efetivo' },
-    { value: 'TEMPORARIO', label: 'Temporário' },
-    { value: 'ESTAGIO', label: 'Estágio' },
-    { value: 'FREELANCE', label: 'Freelance' },
-  ];
-
-  const fechoDeContasOpcoes = [
-    { value: 'MENSAL', label: 'Mensal' },
-    { value: 'QUINZENAL', label: 'Quinzenal' },
-    { value: 'ANUAL', label: 'Anual' },
-  ];
-
-  const estadosFuncionario = [
-    { value: 'ATIVO', label: 'Ativo' },
-    { value: 'INATIVO', label: 'Inativo' },
   ];
 
   const cleanObject = useCallback((obj) => {
@@ -112,25 +122,62 @@ const Ficha = () => {
     }
   }, [cleanObject]);
 
+  const fetchDepartamentos = useCallback(async () => {
+    setIsDepartamentosLoading(true);
+    try {
+      const response = await api.get('departamento/all');
+      const departamentosData = Array.isArray(response.data)
+        ? response.data.map(cleanObject)
+        : [];
+      setDepartamentos(departamentosData);
+    } catch (error) {
+      console.error('Erro ao carregar departamentos:', error.response?.data || error);
+      message.error(error.response?.data?.message || 'Erro ao carregar departamentos.');
+      setDepartamentos([]);
+    } finally {
+      setIsDepartamentosLoading(false);
+    }
+  }, [cleanObject]);
+
   const fetchFuncionarioByPessoaId = useCallback(async (pessoaId) => {
     try {
       const response = await api.get(`funcionario/pessoa/${pessoaId}`);
       if (response.data && response.data.id) {
         const funcionario = response.data;
+        // Verificar e consolidar subsídios duplicados
+        const subsidiosConsolidados = [];
+        const subsidiosMap = new Map();
+        if (funcionario.subsidios) {
+          funcionario.subsidios.forEach((s) => {
+            const subsidio = subsidios.find((sub) => sub.id === s.subsidioId);
+            const descricao = subsidio?.descricao || s.subsidioId;
+            // Manter apenas o último valor para cada subsidioId
+            subsidiosMap.set(s.subsidioId, {
+              subsidioId: s.subsidioId,
+              descricao: descricao,
+              valor: s.valor,
+            });
+          });
+          subsidiosMap.forEach((value) => subsidiosConsolidados.push(value));
+          if (subsidiosMap.size < funcionario.subsidios.length) {
+            message.warning('Subsídios duplicados encontrados. Mantendo apenas o último valor para cada tipo.');
+          }
+        }
+        console.log('Subsídios consolidados:', JSON.stringify(subsidiosConsolidados, null, 2));
+
         setEditMode(true);
         setFuncionarioId(funcionario.id);
         funcionarioForm.setFieldsValue({
           tipoDeContrato: funcionario.tipoDeContrato,
           salario: funcionario.salario,
-          dataAdmissao: moment(funcionario.dataAdmissao),
+          dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmissao) : null,
           descricao: funcionario.descricao,
-          fechoDeContas: funcionario.fechoDeContas,
+          cargo: funcionario.cargo,
+          departamentoId: funcionario.departamentoId,
+          segurancaSocial: funcionario.segurancaSocial,
+          fechoContas: funcionario.fechoContas,
           estadoFuncionario: funcionario.estadoFuncionario,
-          subsidios: funcionario.subsidios.map((s) => ({
-            subsidioId: s.subsidioId,
-            descricao: subsidios.find((sub) => sub.id === s.subsidioId)?.descricao || s.subsidioId,
-            valor: s.valor,
-          })),
+          subsidios: subsidiosConsolidados,
         });
         message.info('Funcionário carregado para edição.');
       } else {
@@ -140,12 +187,13 @@ const Ficha = () => {
       }
     } catch (error) {
       console.error('Erro ao verificar funcionário:', error.response?.data || error);
-      if (error.response?.status !== 404) {
+      if (error.response?.status === 404) {
+        setEditMode(false);
+        setFuncionarioId(null);
+        funcionarioForm.resetFields();
+      } else {
         message.error(error.response?.data?.message || 'Erro ao verificar funcionário.');
       }
-      setEditMode(false);
-      setFuncionarioId(null);
-      funcionarioForm.resetFields();
     }
   }, [funcionarioForm, subsidios]);
 
@@ -170,7 +218,8 @@ const Ficha = () => {
   useEffect(() => {
     fetchPessoas();
     fetchSubsidios();
-  }, [fetchPessoas, fetchSubsidios]);
+    fetchDepartamentos();
+  }, [fetchPessoas, fetchSubsidios, fetchDepartamentos]);
 
   const abrirModal = () => setIsModalOpen(true);
   const fecharModal = () => {
@@ -212,7 +261,7 @@ const Ficha = () => {
       setSelectedPessoa(novaPessoa);
       setIsPessoaMarked(true);
       fecharModal();
-      message.success('Pessoa cadastrada sucesso!');
+      message.success('Pessoa cadastrada com sucesso!');
       await fetchPessoas();
     } catch (error) {
       console.error('Erro ao adicionar pessoa:', error.response?.data || error);
@@ -245,21 +294,24 @@ const Ficha = () => {
     setIsSubmitting(true);
     try {
       const salario = parseFloat(values.salario);
-      if (isNaN(salario) || salario <= 0) {
-        message.error('O salário deve ser um número positivo.');
+      if (isNaN(salario) || salario < 0) {
+        message.error('O salário deve ser maior ou igual a zero.');
         return;
       }
 
       const formSubsidios = values.subsidios || [];
-      console.log('Subsidios no formulário:', formSubsidios);
+      console.log('Subsídios no formulário:', JSON.stringify(formSubsidios, null, 2));
 
       const funcionarioData = {
         pessoaId: Number(selectedPessoa.id),
         tipoDeContrato: values.tipoDeContrato,
         salario: salario,
-        dataAdmissao: moment.utc(values.dataAdmissao).format("YYYY-MM-DD'T'HH:mm:ss.SSS'Z'"),
+        dataAdmissao: moment.utc(values.dataAdmissao).format('YYYY-MM-DD HH:mm:ss'),
         descricao: values.descricao || '',
-        fechoDeContas: values.fechoDeContas,
+        cargo: values.cargo,
+        departamentoId: Number(values.departamentoId),
+        fechoContas: values.fechoContas,
+        segurancaSocial: values.segurancaSocial,
         estadoFuncionario: values.estadoFuncionario,
         subsidios: formSubsidios.map((s) => {
           const valor = parseFloat(s.valor);
@@ -268,7 +320,7 @@ const Ficha = () => {
             throw new Error(`Subsídio ${s.descricao} não encontrado.`);
           }
           if (isNaN(valor) || valor <= 0) {
-            throw new Error(`Valor inválido para o subsídio ${s.descricao}`);
+            throw new Error(`Valor inválido para o subsídio ${s.descricao}. Deve ser maior que zero.`);
           }
           return {
             subsidioId: Number(subsidio.id),
@@ -289,7 +341,7 @@ const Ficha = () => {
         ? await api.put(`funcionario/update/${funcionarioId}`, funcionarioData)
         : await api.post('funcionario/add', funcionarioData);
 
-      console.log('Resposta do servidor:', response.data);
+      console.log('Resposta do servidor:', JSON.stringify(response.data, null, 2));
 
       funcionarioForm.resetFields();
       setSelectedPessoa(null);
@@ -299,19 +351,21 @@ const Ficha = () => {
       message.success(editMode ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar funcionário:', error.response?.data || error);
-      const errorMessage = error.response?.data?.message;
-      if (error.response?.status === 404) {
-        message.error('Recurso não encontrado (pessoa, subsídio ou funcionário).');
-      } else if (error.response?.status === 400 && typeof errorMessage === 'string') {
+      const errorMessage = error.response?.data?.message || 'Falha ao cadastrar/atualizar funcionário.';
+      if (error.response?.status === 400) {
         if (errorMessage.includes('obrigatório')) {
-          message.error(errorMessage || 'Campos obrigatórios não preenchidos.');
+          message.error('Campos obrigatórios não preenchidos: ' + errorMessage);
         } else if (errorMessage.includes('Cannot deserialize')) {
-          message.error('Formato de data inválido. Tente novamente.');
+          message.error('Formato de dados inválido (ex.: data ou enum). Verifique os campos e tente novamente.');
+        } else if (errorMessage.includes('valor deve ser positivo')) {
+          message.error('O valor de algum subsídio deve ser maior que zero.');
         } else {
-          message.error(errorMessage || 'Falha ao cadastrar/atualizar funcionário.');
+          message.error(errorMessage);
         }
+      } else if (error.response?.status === 404) {
+        message.error('Recurso não encontrado (ex.: pessoa, subsídio ou departamento).');
       } else {
-        message.error(errorMessage || 'Falha ao cadastrar/atualizar funcionário. Verifique os dados e tente novamente.');
+        message.error(errorMessage);
       }
     } finally {
       setIsSubmitting(false);
@@ -345,6 +399,33 @@ const Ficha = () => {
     message.success('Subsídio removido da lista!');
   };
 
+  const handleAddSubsidio = () => {
+    const valor = parseFloat(subsidioTemp.valor);
+    if (subsidioTemp.id && subsidioTemp.descricao && !isNaN(valor) && valor > 0) {
+      const currentSubsidios = funcionarioForm.getFieldValue('subsidios') || [];
+      const existingSubsidioIndex = currentSubsidios.findIndex((s) => s.descricao === subsidioTemp.descricao);
+      let newSubsidios;
+      if (existingSubsidioIndex !== -1) {
+        // Sobrescrever subsídio existente
+        newSubsidios = [...currentSubsidios];
+        newSubsidios[existingSubsidioIndex] = {
+          subsidioId: subsidioTemp.id,
+          descricao: subsidioTemp.descricao,
+          valor,
+        };
+        message.info(`Subsídio ${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao} atualizado na lista!`);
+      } else {
+        // Adicionar novo subsídio
+        newSubsidios = [...currentSubsidios, { subsidioId: subsidioTemp.id, descricao: subsidioTemp.descricao, valor }];
+        message.success('Subsídio adicionado à lista!');
+      }
+      funcionarioForm.setFieldsValue({ subsidios: newSubsidios });
+      setSubsidioTemp({ id: null, descricao: '', valor: '' });
+    } else {
+      message.warning('Preencha todos os campos do subsídio com valores válidos e positivos!');
+    }
+  };
+
   const subsidiosColumns = [
     {
       title: 'Tipo',
@@ -371,7 +452,7 @@ const Ficha = () => {
 
   return (
     <div className="form-container">
-      {isLoading ? (
+      {isLoading || isSubsidiosLoading || isDepartamentosLoading ? (
         <p>Carregando dados...</p>
       ) : (
         <>
@@ -414,7 +495,7 @@ const Ficha = () => {
                   </Col>
                   <Col span={12}>
                     <Form.Item label="Data de Nascimento">
-                      <Input value={moment(selectedPessoa.dataNascimento).format('YYYY-MM-DD')} />
+                      <Input value={selectedPessoa.dataNascimento ? moment(selectedPessoa.dataNascimento).format('YYYY-MM-DD') : ''} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -477,10 +558,97 @@ const Ficha = () => {
                     label="Salário (Kz)"
                     rules={[
                       { required: true, message: 'O salário é obrigatório.' },
-                      { type: 'number', min: 0.01, message: 'O salário deve ser maior que zero.', transform: Number },
+                      { type: 'number', min: 0, message: 'O salário deve ser maior ou igual a zero.', transform: Number },
                     ]}
                   >
                     <Input type="number" step="0.01" disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="cargo"
+                    label="Cargo"
+                    rules={[{ required: true, message: 'O cargo é obrigatório.' }]}
+                  >
+                    <Input disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="departamentoId"
+                    label="Departamento"
+                    rules={[{ required: true, message: 'Selecione o departamento.' }]}
+                  >
+                    <Select
+                      loading={isDepartamentosLoading}
+                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting || isDepartamentosLoading || departamentos.length === 0}
+                      placeholder={isDepartamentosLoading ? 'Carregando...' : departamentos.length === 0 ? 'Nenhum departamento disponível' : 'Selecione um departamento'}
+                    >
+                      {departamentos.map((dep) => (
+                        <Option key={dep.id} value={dep.id}>{dep.descricao}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="segurancaSocial"
+                    label="Segurança Social"
+                    rules={[{ required: true, message: 'Selecione a segurança social.' }]}
+                  >
+                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
+                      {segurancaSocialOpcoes.map((tipo) => (
+                        <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="fechoContas"
+                    label="Fecho de Contas"
+                    rules={[{ required: true, message: 'Selecione o fecho de contas.' }]}
+                  >
+                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
+                      {fechoDeContasOpcoes.map((tipo) => (
+                        <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="estadoFuncionario"
+                    label="Estado"
+                    rules={[{ required: true, message: 'Selecione o estado.' }]}
+                  >
+                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
+                      {estadosFuncionario.map((tipo) => (
+                        <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="dataAdmissao"
+                    label="Data de Admissão"
+                    rules={[{ required: true, message: 'Selecione a data de admissão.' }]}
+                  >
+                    <DatePicker
+                      showTime
+                      format="YYYY-MM-DD HH:mm:ss"
+                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="descricao"
+                    label="Descrição"
+                    rules={[{ required: true, message: 'A descrição é obrigatória.' }]}
+                  >
+                    <Input.TextArea disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting} />
                   </Form.Item>
                 </Col>
                 <Col span={24}>
@@ -513,22 +681,7 @@ const Ficha = () => {
                       />
                       <Button
                         type="primary"
-                        onClick={() => {
-                          const valor = parseFloat(subsidioTemp.valor);
-                          if (subsidioTemp.id && subsidioTemp.descricao && !isNaN(valor) && valor > 0) {
-                            const currentSubsidios = funcionarioForm.getFieldValue('subsidios') || [];
-                            if (currentSubsidios.some((s) => s.descricao === subsidioTemp.descricao)) {
-                              message.warning('Este subsídio já foi adicionado!');
-                              return;
-                            }
-                            const newSubsidios = [...currentSubsidios, { subsidioId: subsidioTemp.id, descricao: subsidioTemp.descricao, valor }];
-                            funcionarioForm.setFieldsValue({ subsidios: newSubsidios });
-                            setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                            message.success('Subsídio adicionado à lista!');
-                          } else {
-                            message.warning('Preencha todos os campos do subsídio com valores válidos e positivos!');
-                          }
-                        }}
+                        onClick={handleAddSubsidio}
                         disabled={!subsidioTemp.descricao || !subsidioTemp.valor || !isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
                       >
                         Adicionar
@@ -541,54 +694,6 @@ const Ficha = () => {
                       pagination={false}
                       style={{ marginTop: 16 }}
                     />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="dataAdmissao"
-                    label="Data de Admissão"
-                    rules={[{ required: true, message: 'Selecione a data de admissão.' }]}
-                  >
-                    <DatePicker
-                      showTime
-                      format="YYYY-MM-DD HH:mm:ss"
-                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="descricao"
-                    label="Descrição"
-                    rules={[{ required: true, message: 'A descrição é obrigatória.' }]}
-                  >
-                    <Input.TextArea disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="fechoDeContas"
-                    label="Fecho de Contas"
-                    rules={[{ required: true, message: 'Selecione o fecho de contas.' }]}
-                  >
-                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
-                      {fechoDeContasOpcoes.map((tipo) => (
-                        <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="estadoFuncionario"
-                    label="Estado"
-                    rules={[{ required: true, message: 'Selecione o estado.' }]}
-                  >
-                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
-                      {estadosFuncionario.map((tipo) => (
-                        <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
-                      ))}
-                    </Select>
                   </Form.Item>
                 </Col>
                 <Col span={24}>
