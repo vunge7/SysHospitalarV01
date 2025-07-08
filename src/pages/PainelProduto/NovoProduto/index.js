@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Modal, Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification } from 'antd';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import './style.css';
+
 import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import ProdutoGroupForm from '../ProdutoGroupForm';
@@ -332,7 +332,7 @@ const NovoProduto = () => {
                       </Select>
                     )}
                   />
-                  <ProdutoGroupForm buscarProdutosGrupos={fetchData} />
+                 
                 </Space>
               </Form.Item>
               <Form.Item

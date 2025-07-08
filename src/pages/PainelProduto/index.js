@@ -6,7 +6,6 @@ import ListarProduto from './ListarProduto';
 import Cabecario from '../../components/Cabecario';
 import Rodape from '../../components/Rodape';
 
-import './style.css';
 
 import {
     MenuFoldOutlined,

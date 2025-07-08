@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Modal, Form, Input, Button, Table, Spin, Space } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import './style.css';
+
 import { api } from '../../../service/api';
 
 // Definindo o esquema de validação com Zod
