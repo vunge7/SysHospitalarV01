@@ -1,6 +1,10 @@
 import axios from 'axios';
 
 //const ip = '10.84.211.78';
+<<<<<<< HEAD
+//const ip = '192.168.110.78';
+const ip = 'localhost';
+=======
 //const ip = '10.59.24.78';
 //const ip = '192.168.110.78';
 <<<<<<< HEAD

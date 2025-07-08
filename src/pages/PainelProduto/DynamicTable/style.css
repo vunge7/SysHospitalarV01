@@ -1,0 +1,205 @@
+/* Container for the DynamicTable */
+.dynamic-table-container {
+    padding: 16px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    box-sizing: border-box;
+  }
+  
+  /* Search Input */
+  .search-input {
+    border-radius: 4px !important;
+    border: 1px solid #d9d9d9 !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    width: 300px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+  }
+  
+  .search-input:hover,
+  .search-input:focus {
+    border-color: #40a9ff !important;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+  }
+  
+  /* Table Styling */
+  .my-custom-table {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .my-custom-table .ant-table {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .my-custom-table .ant-table-thead > tr > th {
+    background: #fafafa;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #e8e8e8;
+    padding: 12px 16px;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal; /* Permitir quebra de linha em cabeçalhos */
+    max-width: 0; /* Impedir que o cabeçalho force largura excessiva */
+    box-sizing: border-box;
+  }
+  
+  .my-custom-table .ant-table-tbody > tr > td {
+    padding: 12px 16px;
+    color: #555;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    box-sizing: border-box;
+  }
+  
+  .my-custom-table .ant-table-tbody > tr:hover > td {
+    background: #f0faff;
+  }
+  
+  .my-custom-table .ant-table-tbody > tr:nth-child(even) {
+    background: #f9f9f9;
+  }
+  
+  .my-custom-table .ant-table-tbody > tr.clickable-row {
+    cursor: pointer;
+  }
+  
+  /* Pagination */
+  .my-custom-table .ant-pagination {
+    margin-top: 16px;
+    text-align: right;
+    padding: 0 8px;
+  }
+  
+  .my-custom-table .ant-pagination-item {
+    border-radius: 4px;
+  }
+  
+  .my-custom-table .ant-pagination-item-active {
+    background: #1890ff;
+    border-color: #1890ff;
+  }
+  
+  .my-custom-table .ant-pagination-item-active a {
+    color: #fff;
+  }
+  
+  /* Buttons in Actions Column */
+  .my-custom-table .ant-btn-primary {
+    border-radius: 4px;
+    padding: 4px 8px;
+  }
+  
+  .my-custom-table .ant-btn-primary:hover {
+    background: #40a9ff;
+  }
+  
+  .my-custom-table .ant-btn-danger {
+    border-radius: 4px;
+    padding: 4px 8px;
+  }
+  
+  .my-custom-table .ant-btn-danger:hover {
+    background: #ff4d4f;
+    border-color: #ff4d4f;
+  }
+  
+  /* No Data Message */
+  .no-data {
+    text-align: center;
+    color: #888;
+    font-size: 16px;
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .dynamic-table-container {
+      padding: 8px;
+    }
+  
+    .search-input {
+      width: 100%;
+      max-width: none;
+    }
+  
+    .my-custom-table .ant-table-thead > tr > th,
+    .my-custom-table .ant-table-tbody > tr > td {
+      padding: 8px;
+      font-size: 12px;
+    }
+  
+    .my-custom-table .ant-table-thead > tr > th {
+      min-width: 80px; /* Garantir largura mínima para cabeçalhos */
+      max-height: 60px; /* Limitar altura para evitar overflow */
+      line-height: 1.2; /* Ajustar altura da linha */
+    }
+  
+    .my-custom-table .ant-btn {
+      padding: 2px 6px;
+      font-size: 12px;
+    }
+  
+    .my-custom-table .ant-btn-icon {
+      font-size: 12px;
+    }
+  
+    .my-custom-table .ant-pagination {
+      text-align: center;
+      font-size: 12px;
+    }
+  
+    .my-custom-table .ant-pagination-item,
+    .my-custom-table .ant-pagination-prev,
+    .my-custom-table .ant-pagination-next {
+      min-width: 24px;
+      height: 24px;
+      line-height: 24px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .my-custom-table .ant-table-thead > tr > th,
+    .my-custom-table .ant-table-tbody > tr > td {
+      padding: 6px;
+      font-size: 11px;
+    }
+  
+    .my-custom-table .ant-table-thead > tr > th {
+      min-width: 60px;
+      font-size: 10px;
+      padding: 6px;
+    }
+  
+    .my-custom-table .ant-btn {
+      padding: 2px 4px;
+      font-size: 10px;
+    }
+  
+    .my-custom-table .ant-btn-icon {
+      font-size: 10px;
+    }
+  
+    .my-custom-table .ant-pagination {
+      font-size: 10px;
+    }
+  
+    .my-custom-table .ant-pagination-item,
+    .my-custom-table .ant-pagination-prev,
+    .my-custom-table .ant-pagination-next {
+      min-width: 20px;
+      height: 20px;
+      line-height: 20px;
+    }
+  }

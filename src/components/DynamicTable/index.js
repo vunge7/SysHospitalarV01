@@ -1,4 +1,3 @@
-import { PropaneSharp } from '@mui/icons-material';
 import React, { useState } from 'react';
 
 const DynamicTable = (props) => {

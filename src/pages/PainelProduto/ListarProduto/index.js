@@ -4,12 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Modal, Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification } from 'antd';
 import { EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import './style.css';
 import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
-import ProdutoGroupForm from '../ProdutoGroupForm';
 import UnidadeMedidaForm from '../UnidadeMedidaForm';
-import DynamicTable from '../../../components/DynamicTable';
+import DynamicTable from '../DynamicTable';
 
 // Esquema de validação com Zod
 const schema = z.object({
@@ -539,7 +537,7 @@ const ListarProduto = () => {
                       </Select>
                     )}
                   />
-                  <ProdutoGroupForm buscarProdutosGrupos={fetchData} />
+                  
                 </Space>
               </Form.Item>
             </div>
@@ -700,8 +698,7 @@ const ListarProduto = () => {
         okText="Confirmar"
         cancelText="Cancelar"
         confirmLoading={carregar}
-        className="produto-form-modal"
-        styles={{ body: { height: '150px', overflow: 'hidden' } }}
+        className='confi'
       />
     </div>
   );
