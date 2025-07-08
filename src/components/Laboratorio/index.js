@@ -9,6 +9,7 @@ import AvaliacaoExameRequisitado from './AvaliacaoExameRequisitado';
 import './Laboratorio.css';
 import Cabecario from '../Cabecario';
 import Rodape from '../Rodape';
+import { api } from '../../service/api';
 
 import {
     MenuFoldOutlined,
@@ -283,9 +284,24 @@ function Laboratorio() {
     const [medicos, setMedicos] = useState(initialMedicos);
     const [artigos, setArtigos] = useState(initialArtigos);
     const [armazens, setArmazens] = useState(initialArmazens);
+    const [examesRequisitados, setExamesRequisitados] = useState([]);
     const [collapsed, setCollapsed] = useState(false);
     const navigate = useNavigate();
 
+    useEffect(() => {
+        const fetchRequisicoes = async () => {
+            await api
+                .get('requisicaoexame/all/composto')
+                .then((r) => {
+                       console.log(r.data)
+                    setExamesRequisitados([...r.data]);
+                 
+                })
+                .catch((e) => console.error(e));
+        };
+
+        fetchRequisicoes();
+    }, []);
     // Persistir exames no localStorage
     useEffect(() => {
         localStorage.setItem('exames', JSON.stringify(exames));
@@ -461,6 +477,8 @@ function Laboratorio() {
                         )}
                         {activeTab === 'avaliacao' && (
                             <AvaliacaoExameRequisitado
+                                examesRequisitados={examesRequisitados}
+                                setExamesRequisitados={setExamesRequisitados}
                                 exames={exames}
                                 pacientes={pacientes}
                                 medicos={medicos}
