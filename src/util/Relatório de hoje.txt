@@ -1,0 +1,9 @@
+Alterações de hoje.
+Back-end:
+Alteração do funcionario
+criação dos resultados e linharesultados
+Front-end:
+alteração no funcionario
+algumas alterações no exame
+alteraçãao no usuario
+atualizações na agenda e no podutos

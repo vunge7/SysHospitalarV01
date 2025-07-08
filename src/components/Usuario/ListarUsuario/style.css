@@ -1,0 +1,367 @@
+/* Estilo geral */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+}
+
+/* Contêiner principal */
+.list-container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Títulos */
+h2, h3, h4 {
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Contêiner de filtros */
+.filter-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+/* Contêiner de input com sugestões */
+.filter-input-container {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Inputs de filtro */
+.filter-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* Lista de sugestões */
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.suggestions li {
+  padding: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.suggestions li:hover {
+  background-color: #f0f0f0;
+}
+
+/* Tabela principal */
+.combined-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.combined-table th,
+.combined-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.combined-table th {
+  background-color: #007bff;
+  color: #fff;
+  font-weight: bold;
+}
+
+.combined-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+/* Linha de detalhes */
+.details-row {
+  background-color: #f9f9f9;
+}
+
+.details-content {
+  padding: 15px;
+}
+
+/* Tabela de detalhes */
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.details-table th,
+.details-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+.details-table th {
+  background-color: #e9ecef;
+  font-weight: bold;
+}
+
+.details-table td {
+  background-color: #fff;
+}
+
+/* Botões de ação */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.details-btn,
+.edit-btn,
+.delete-btn,
+.save-btn,
+.cancel-btn,
+.add-btn,
+.tipo-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s, opacity 0.3s;
+}
+
+.details-btn {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+.details-btn:hover {
+  background-color: #5a6268;
+}
+
+.edit-btn {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.edit-btn:hover {
+  background-color: #218838;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
+
+.save-btn {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.save-btn:hover {
+  background-color: #0056b3;
+}
+
+.cancel-btn {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+.cancel-btn:hover {
+  background-color: #5a6268;
+}
+
+.add-btn {
+  background-color: #17a2b8;
+  color: #fff;
+}
+
+.add-btn:hover {
+  background-color: #138496;
+}
+
+.tipo-btn {
+  background-color: #e9ecef;
+  color: #333;
+}
+
+.tipo-btn.active {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.tipo-btn:hover {
+  background-color: #d3d6da;
+}
+
+.tipo-btn.active:hover {
+  background-color: #0056b3;
+}
+
+/* Botões desabilitados */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Formulário */
+.agenda-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.input-container {
+  flex: 1;
+  min-width: 200px;
+}
+
+.input-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+.form-input textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Contêiner de botões */
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Contêiner de data (para campos de data no CadastrarUsuario) */
+.date-container {
+  display: flex;
+  gap: 10px;
+}
+
+.date-container select {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Mensagens de erro e vazias */
+p {
+  color: #dc3545;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+  .filter-container,
+  .form-row,
+  .button-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal {
+    width: 95%;
+    padding: 15px;
+  }
+
+  .combined-table th,
+  .combined-table td {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .details-table th,
+  .details-table td {
+    padding: 6px;
+    font-size: 12px;
+  }
+}

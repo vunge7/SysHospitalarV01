@@ -94,8 +94,10 @@ function PainelPrincipal() {
                             </Link>
                         </div>
                         <div className="block">
-                            <i className="fas fa-users"></i>
-                            <p>Usuários</p>
+                            <Link to="/admin/usuario">
+                                <i className="fas fa-users"></i>
+                                <p>Usuários</p>
+                            </Link>
                         </div>
                         <div className="block">
                             <Link to="/stock">
