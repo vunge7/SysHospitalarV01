@@ -16,17 +16,17 @@ const Relatorios = () => {
   const [form] = Form.useForm();
   const [showFilters, setShowFilters] = useState(false);
 
-  // Calculate total stock from linhasLotes
+  // Calcula o stock total da linhasLotes
   const totalEstoque = Array.isArray(linhasLotes) ? linhasLotes.reduce((sum, linha) => sum + Number(linha.quantidade || 0), 0) : 0;
 
-  // Calculate expiring lots (within 30 days)
+  // Calcula os lotes em expiração (menos de 30 dias)
   const lotesVencendo = lotes.filter(
     (lote) => new Date(lote.dataVencimento) < new Date(new Date().setMonth(new Date().getMonth() + 1))
   ).length;
 
   const totalMovimentacoes = operacoesList.length;
 
-  // Prepare data for operation type chart
+  // Prepara dados para o gráfico de tipo de operações
   const operationTypeData = operacoesList.reduce((acc, mov) => {
     const date = moment(mov.dataOperacao).format('YYYY-MM-DD');
     const existing = acc.find((item) => item.date === date);
@@ -38,7 +38,7 @@ const Relatorios = () => {
     return acc;
   }, []);
 
-  // Prepare data for stock trend chart
+  // Prepara os dados para o gráfico de tendências de stock
   const stockTrendData = Array.isArray(linhasLotes)
     ? linhasLotes.reduce((acc, linha) => {
         const produto = produtos.find((p) => p.id === linha.produto_id);
@@ -74,7 +74,7 @@ const Relatorios = () => {
         Armazém: armazens.find((a) => a.id === mov.armazemId)?.designacao || 'N/A',
         Usuário: mov.usuarioId,
         Produtos: linhasRes
-          .map((linha) => `${produtos.find((p) => p.id === linha.produtoId)?.designacaoProduto || 'Desconhecido'} (Qtd: ${linha.qtdOperacao})`)
+          .map((linha) => `${produtos.find((p) => p.id === linha.produtoId)?.productDescription || 'Sem Descrição'} (Qtd: ${linha.qtdOperacao})`)
           .join('; ') || '-',
       };
     });
@@ -103,7 +103,7 @@ const Relatorios = () => {
         armazens.find((a) => a.id === mov.armazemId)?.designacao || 'N/A',
         mov.usuarioId,
         linhasRes
-          .map((linha) => `${produtos.find((p) => p.id === linha.produtoId)?.designacaoProduto || 'Desconhecido'} (Qtd: ${linha.qtdOperacao})`)
+          .map((linha) => `${produtos.find((p) => p.id === linha.produtoId)?.productDescription || 'Sem Descrição'} (Qtd: ${linha.qtdOperacao})`)
           .join('; ') || '-',
       ];
     });
@@ -135,7 +135,7 @@ const Relatorios = () => {
       key: 'produtos',
       render: (_, record) =>
         (record.linhas || [])
-          .map((linha) => `${produtos.find((p) => p.id === linha.produtoId)?.designacaoProduto || 'Desconhecido'} (Qtd: ${linha.qtdOperacao})`)
+          .map((linha) => `${produtos.find((p) => p.id === linha.produtoId)?.productDescription || 'Sem Descrição'} (Qtd: ${linha.qtdOperacao})`)
           .join(', ') || '-',
     },
   ];
@@ -196,7 +196,7 @@ const Relatorios = () => {
                     <Select placeholder="Selecione o produto" allowClear showSearch optionFilterProp="children">
                       {produtos.map((p) => (
                         <Select.Option key={p.id} value={p.id}>
-                          {p.designacaoProduto}
+                          {p.productDescription || 'Sem Descrição'}
                         </Select.Option>
                       ))}
                     </Select>

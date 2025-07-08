@@ -3,77 +3,159 @@ import { Flex, Switch, Table, Tag, Transfer } from 'antd';
 import { api } from '../../service/api';
 import { formatDate } from 'date-fns';
 
-const TableTransfer = (props) => {
-    const { leftColumns, rightColumns, ...restProps } = props;
-    return (
-        <Transfer
-            style={{
-                width: '100%',
-            }}
-            titles={['Disponíveis', 'Selecionado']}
-            {...restProps}
-        >
-            {({
-                direction,
-                filteredItems,
-                onItemSelect,
-                onItemSelectAll,
-                selectedKeys: listSelectedKeys,
-                disabled: listDisabled,
-            }) => {
-                const columns =
-                    direction === 'left' ? leftColumns : rightColumns;
-                const rowSelection = {
-                    getCheckboxProps: () => ({
-                        disabled: listDisabled,
-                    }),
-                    onChange(selectedRowKeys) {
-                        onItemSelectAll(selectedRowKeys, 'replace');
-                    },
-                    selectedRowKeys: listSelectedKeys,
-                    selections: [
-                        Table.SELECTION_ALL,
-                        Table.SELECTION_INVERT,
-                        Table.SELECTION_NONE,
-                    ],
-                };
-                return (
-                    <Table
-                        rowSelection={rowSelection}
-                        columns={columns}
-                        dataSource={filteredItems}
-                        size="small"
-                        style={{
-                            pointerEvents: listDisabled ? 'none' : undefined,
-                        }}
-                        onRow={({ key, disabled: itemDisabled }) => ({
-                            onClick: () => {
-                                if (itemDisabled || listDisabled) {
-                                    return;
-                                }
-                                onItemSelect(
-                                    key,
-                                    !listSelectedKeys.includes(key)
-                                );
-                            },
-                        })}
-                    />
-                );
-            }}
-        </Transfer>
-    );
-};
+const TableTransfer = ({ leftColumns, rightColumns, ...restProps }) => (
+    <Transfer
+        style={{ width: '100%' }}
+        titles={['Disponíveis', 'Selecionado']}
+        {...restProps}
+    >
+        {({
+            direction,
+            filteredItems,
+            onItemSelect,
+            onItemSelectAll,
+            selectedKeys: listSelectedKeys,
+            disabled: listDisabled,
+        }) => {
+            const columns = direction === 'left' ? leftColumns : rightColumns;
+            const rowSelection = {
+                getCheckboxProps: () => ({ disabled: listDisabled }),
+                onChange(selectedRowKeys) {
+                    onItemSelectAll(selectedRowKeys, 'replace');
+                },
+                selectedRowKeys: listSelectedKeys,
+                selections: [
+                    Table.SELECTION_ALL,
+                    Table.SELECTION_INVERT,
+                    Table.SELECTION_NONE,
+                ],
+            };
+            return (
+                <Table
+                    rowSelection={rowSelection}
+                    columns={columns}
+                    dataSource={filteredItems}
+                    size="small"
+                    style={{ pointerEvents: listDisabled ? 'none' : undefined }}
+                    onRow={({ key, disabled: itemDisabled }) => ({
+                        onClick: () => {
+                            if (itemDisabled || listDisabled) return;
+                            onItemSelect(key, !listSelectedKeys.includes(key));
+                        },
+                    })}
+                />
+            );
+        }}
+    </Transfer>
+);
 
 const filterOption = (input, item) =>
-    item.title?.includes(input) || item.tag?.includes(input);
+    item.title?.toLowerCase().includes(input.toLowerCase()) ||
+    item.tag?.toLowerCase().includes(input.toLowerCase());
 
 const Procedimento = (props) => {
     const [targetKeys, setTargetKeys] = useState([]);
     const [disabled, setDisabled] = useState(false);
-    const [mockData1, setMockData1] = useState([]);
-    const [fonteDados, setFonteDados] = useState([]);
-    const [temKeys, setTempKeys] = useState([]);
+    const [mockData, setMockData] = useState([]);
+    const [produtos, setProdutos] = useState([]);
     const [gastoId, setGastoId] = useState(0);
+
+    // Carrega produtos ao montar
+    useEffect(() => {
+        async function carregarProdutos() {
+            try {
+                const { data } = await api.get('produto/all/grupo/3');
+                setProdutos(data);
+                setMockData(
+                    data.map((item) => ({
+                        key: item.id,
+                        title: item.productDescription,
+                        description: item.productDescription,
+                        tag: 'Doc',
+                    }))
+                );
+            } catch {
+                // Trate o erro conforme necessário
+            }
+        }
+        carregarProdutos();
+    }, []);
+
+    // Sempre que targetKeys mudar, sincroniza linhas de gasto
+    useEffect(() => {
+        if (gastoId !== 0) {
+            sincronizarLinhasGasto(targetKeys);
+        }
+    }, [targetKeys, gastoId]);
+
+    // Cria gasto se necessário e atualiza seleção
+    const onChange = async (nextTargetKeys) => {
+        if (gastoId === 0) {
+            const novoGastoId = await criarGasto();
+            setGastoId(novoGastoId);
+            setTargetKeys(nextTargetKeys);
+        } else {
+            setTargetKeys(nextTargetKeys);
+        }
+    };
+
+    // Cria gasto e retorna o id
+    const criarGasto = async () => {
+        const gasto = {
+            convertido: 'ABERTO',
+            dataCriacao: formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+            doc: '',
+            docRef: '',
+            inscricaoId: props.idInscricao,
+            status: true,
+        };
+        try {
+            const { data } = await api.post('gasto/add', gasto);
+            return data.id;
+        } catch {
+            return 0;
+        }
+    };
+
+    // Remove todas as linhas e cria novas para os selecionados
+    const sincronizarLinhasGasto = async (keys) => {
+        await deletarTodasLinhasGasto();
+        for (const key of keys) {
+            await criarLinhaGasto(key);
+        }
+    };
+
+    // Cria uma linha de gasto
+    const criarLinhaGasto = async (produtoId) => {
+        const produto = produtos.find((item) => item.id === produtoId);
+        if (!produto) return;
+        const linha = {
+            dataInsercao: formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+            desconto: 0,
+            gastoId,
+            preco: produto.preco,
+            iva: produto.taxIva,
+            quantidade: 1,
+            servicoDescricao: produto.productDescription,
+            servicoId: produtoId,
+            status: true,
+        };
+        try {
+            await api.post('linhagasto/add', linha);
+        } catch {
+            // Trate o erro conforme necessário
+        }
+    };
+
+    // Remove todas as linhas do gasto
+    const deletarTodasLinhasGasto = async () => {
+        if (!gastoId) return;
+        try {
+            await api.delete(`linhagasto/gasto/${gastoId}`);
+        } catch {
+            // Trate o erro conforme necessário
+        }
+    };
 
     const columns = [
         {
@@ -84,14 +166,7 @@ const Procedimento = (props) => {
             dataIndex: 'tag',
             title: 'Tag',
             render: (tag) => (
-                <Tag
-                    style={{
-                        marginInlineEnd: 0,
-                    }}
-                    color="cyan"
-                >
-                    {tag.toUpperCase()}
-                </Tag>
+                <Tag color="cyan">{tag.toUpperCase()}</Tag>
             ),
         },
     ];
@@ -105,157 +180,15 @@ const Procedimento = (props) => {
             dataIndex: 'tag',
             title: 'Progresso',
             render: (tag) => (
-                <Tag
-                    style={{
-                        marginInlineEnd: 0,
-                    }}
-                    color="cyan"
-                >
-                    {tag.toUpperCase()}
-                </Tag>
+                <Tag color="cyan">{tag.toUpperCase()}</Tag>
             ),
         },
     ];
 
-    useEffect(() => {
-        async function carregar() {
-            await api
-                .get('produto/all/grupo/3')
-                .then((r) => {
-                    let newArray = r.data;
-                    setFonteDados([...newArray]);
-                    console.log(fonteDados);
-                    var itens = [];
-                    newArray.map((item) => {
-                        let value = {
-                            key: item.id,
-                            title: item.productDescription,
-                            description: item.productDescription,
-                            tag: 'Doc',
-                        };
-
-                        itens.push(value);
-                    });
-                    setMockData1([...itens]);
-
-                    //console.log(r.data);
-                })
-                .catch((e) => {
-                    console.log('Falha ao carregar');
-                });
-        }
-
-        carregar();
-    }, []);
-
-    useEffect(() => {
-        procInsertLinhas();
-    }, [temKeys]);
-
-    const criarLinhaGasto = async (index) => {
-        let linha = {
-            dataInsercao: formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            desconto: 0,
-            gastoId: gastoId,
-            preco: getItemProduto(index).preco,
-            iva: getItemProduto(index).taxIva,
-            quantidade: 1,
-            servicoDescricao: getItemProduto(index).productDescription,
-            servicoId: index,
-            status: true,
-        };
-        await api
-            .post('linhagasto/add', linha)
-            .then((r) => {
-                console.log('linha criada com sucesso!...');
-            })
-            .catch((r) => {
-                console.log('Falha ao criar a linha');
-            });
-    };
-
-    const criarGasto = async () => {
-        let gasto = {
-            gastoId: gastoId,
-            convertido: 'ABERTO',
-            dataCriacao: formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            doc: '',
-            docRef: '',
-            inscricaoId: props.idInscricao,
-            status: true,
-        };
-
-        await api
-            .post('gasto/add', gasto)
-            .then((r) => {
-                console.log(r.data);
-                setGastoId(r.data.id);
-                //console.log('Gasto criado com sucesso!...');
-                return r.data;
-            })
-            .catch((e) => {
-                console.log('Erro ao salvar o gasto', e.data);
-            });
-    };
-    const onChange = async (nextTargetKeys) => {
-        console.log(nextTargetKeys);
-        setTempKeys([...nextTargetKeys]);
-
-        if (gastoId === 0) {
-            criarGasto()
-                .then((r) => {
-                    console.log('Gasto criado com sucesso: ', r);
-                })
-                .catch((e) => {
-                    console.log('Falha ao criar o gasto');
-                });
-        }
-
-        /*
-        if (gastoId !== 0) {
-            await deleteAllLinhasGasto();
-            nextTargetKeys.map(async (index) => {
-                await criarLinhaGasto(index);
-            });
-            setTargetKeys(nextTargetKeys);
-        }
-            */
-    };
-
-    async function procInsertLinhas() {
-        await deleteAllLinhasGasto();
-        console.log('GastoIDUpdade:' + gastoId);
-
-        temKeys.map(async (index) => {
-            await criarLinhaGasto(index);
-        });
-        setTargetKeys(temKeys);
-    }
-
-    const deleteAllLinhasGasto = async () => {
-        await api
-            .delete('linhagasto/gasto/' + gastoId)
-            .then((r) => {
-                console.log('Gastos eliminado com sucesso!...');
-            })
-            .catch((e) => {
-                console.log('Falha ao eliminar os gastos');
-            });
-    };
-
-    const toggleDisabled = (checked) => {
-        setDisabled(checked);
-    };
-
-    const getItemProduto = (id) => {
-        return fonteDados.find((item) => item.id === id);
-        //return produto.taxIva;
-    };
-
     return (
         <Flex align="start" gap="middle" vertical>
             <TableTransfer
-                dataSource={mockData1}
+                dataSource={mockData}
                 targetKeys={targetKeys}
                 disabled={disabled}
                 showSearch
@@ -266,12 +199,13 @@ const Procedimento = (props) => {
                 rightColumns={columnsRight}
             />
             <Switch
-                unCheckedChildren="disabled"
-                checkedChildren="disabled"
+                unCheckedChildren="Desativado"
+                checkedChildren="Ativo"
                 checked={disabled}
-                onChange={toggleDisabled}
+                onChange={setDisabled}
             />
         </Flex>
     );
 };
+
 export default Procedimento;

@@ -1,147 +1,195 @@
 import './style.css';
 import { api } from '../../service/api';
 import { useEffect, useState } from 'react';
+import {
+    Button,
+    List,
+    Typography,
+    Space,
+    Divider,
+    message,
+    Card,
+    Row,
+    Col,
+    Spin,
+} from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 
 export default function Gasto(props) {
     const [gastos, setGastos] = useState([]);
     const [linhasGasto, setLinhasGasto] = useState([]);
+    const [loadingGastos, setLoadingGastos] = useState(false);
+    const [loadingLinhas, setLoadingLinhas] = useState(false);
+    const [exportLoading, setExportLoading] = useState(false);
+    const [selectedGasto, setSelectedGasto] = useState(null);
 
     useEffect(() => {
         carregarGastos();
     }, []);
 
     const carregarGastos = async () => {
-        await api
-            .get('gasto/all')
-            .then((r) => {
-                setGastos([...r.data]);
-                console.log(r.data);
-            })
-            .catch((e) => {
-                console.log('Falha ao carregar os dados');
-            });
+        setLoadingGastos(true);
+        try {
+            const r = await api.get('gasto/all');
+            setGastos([...r.data]);
+        } catch {
+            message.error('Falha ao carregar os gastos');
+        }
+        setLoadingGastos(false);
     };
 
     const carregarLinhasGasto = async (gastoId) => {
-        await api
-            .get('linhagasto/gasto/' + gastoId)
-            .then((r) => {
-                setLinhasGasto([...r.data]);
-            })
-            .catch((e) => {
-                console.log('Falha ao buscar as linhas dos gasto');
-            });
-
-        //console.log('ID GASTO = ' + gastoId);
+        setLoadingLinhas(true);
+        setSelectedGasto(gastoId); // Atualiza o selecionado imediatamente
+        try {
+            const r = await api.get('linhagasto/gasto/' + gastoId);
+            setLinhasGasto([...r.data]);
+        } catch {
+            message.error('Falha ao buscar as linhas do gasto');
+        }
+        setLoadingLinhas(false);
     };
 
-    const exportar = (e) => {
+    const exportar = async (e) => {
         e.preventDefault();
-        linhasGasto.map(async (item) => {
-            let artigo;
-            await api
-                .get('produto/' + item.servicoId)
-                .then((r) => {
-                    console.log(r.data);
-                    let _item = r.data;
-                    let item = {
-                        id: _item.id,
-                        designacao: _item.productDescription,
-                        grupo: _item.productGroup,
-                        qtd: 1,
-                        preco: _item.preco,
-                        iva: _item.taxIva,
-                        desconto: 0,
-                        subTotal: props.getSubTotal(_item),
-                    };
-                    artigo = item;
-                })
-                .catch((r) => {
-                    console.log('Falha ao buscar o artigo');
-                });
-
-            props.newLineArtigo(artigo);
-        });
+        setExportLoading(true);
+        for (const item of linhasGasto) {
+            try {
+                const r = await api.get('produto/' + item.servicoId);
+                const _item = r.data;
+                const artigo = {
+                    id: _item.id,
+                    designacao: _item.productDescription,
+                    grupo: _item.productGroup,
+                    qtd: 1,
+                    preco: _item.preco,
+                    iva: _item.taxIva,
+                    desconto: 0,
+                    subTotal: props.getSubTotal(_item),
+                };
+                props.newLineArtigo(artigo);
+            } catch (error) {
+                message.error('Falha ao exportar artigo');
+            }
+        }
+        setExportLoading(false);
         props.setIsOpenGasto(false);
     };
 
     const Linha = (props) => {
         const [nome, setNome] = useState('');
+        const [loading, setLoading] = useState(false);
 
         useEffect(() => {
             paciente(props.item.inscricaoId);
+            // eslint-disable-next-line
         }, []);
 
         async function paciente(id) {
-            await api
-                .get('/inscricao/' + id)
-                .then((r) => {
-                    let dados = r.data;
-                    setNome(dados.nome);
-                })
-                .catch((e) => {
-                    console.log('Falha ao fazer a busca  pelo ID do gasto');
-                });
+            setLoading(true);
+            try {
+                const r = await api.get('/inscricao/' + id);
+                setNome(r.data.nome);
+            } catch {
+                message.error('Falha ao buscar o nome do paciente');
+            }
+            setLoading(false);
         }
 
         return (
-            <>
-                <div
-                    style={{
-                        width: '50%',
-                        display: 'flex',
-                        flexDirection: 'row',
-                    }}
-                >
-                    <strong>{props.item.id}</strong>
-                    <span>{nome}</span>
-                </div>
-
-                <button
-                    style={{
-                        width: '50%',
-                    }}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        props.carregarLinhasGasto(props.item.id);
-                        console.log('Clicado o gasto');
-                    }}
-                >
-                    detalhe
-                </button>
-            </>
+            <List.Item
+                actions={[
+                    <Button
+                        type="link"
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            props.carregarLinhasGasto(props.item.id);
+                        }}
+                    />
+                ]}
+                style={{
+                    background:
+                        selectedGasto === props.item.id ? '#e6f7ff' : undefined,
+                    cursor: 'pointer',
+                }}
+                onClick={() => props.carregarLinhasGasto(props.item.id)}
+            >
+                <Space>
+                    <Typography.Text strong>{props.item.id}</Typography.Text>
+                    <Typography.Text type="secondary">
+                        {loading ? 'Carregando...' : nome}
+                    </Typography.Text>
+                </Space>
+            </List.Item>
         );
     };
 
     return (
         <div className="container-gasto">
-            <div className="container-gasto-item">
-                {gastos.map((item) => (
-                    <div
-                        key={item.id}
+            <Card>
+                <Row gutter={24}>
+                    <Col
+                        xs={24}
+                        md={10}
                         style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                        }}
+                            maxWidth: 350,
+                            minWidth: 250,
+                            flex: '0 0 320px',
+                        }} // largura controlada
                     >
-                        <Linha
-                            item={item}
-                            carregarLinhasGasto={carregarLinhasGasto}
+                        <Divider orientation="left">Gastos</Divider>
+                        <List
+                            className="container-gasto-item"
+                            dataSource={gastos}
+                            renderItem={(item) => (
+                                <Linha
+                                    key={item.id}
+                                    item={item}
+                                    carregarLinhasGasto={carregarLinhasGasto}
+                                />
+                            )}
+                            bordered
+                            loading={loadingGastos}
+                            locale={{ emptyText: 'Nenhum gasto encontrado' }}
                         />
-                    </div>
-                ))}
-            </div>
-            <div className="container-gasto-item">
-                <div>
-                    <button onClick={exportar}>exportar</button>
-                </div>
-                {linhasGasto.map((item) => (
-                    <div key={item.id}>
-                        <span>{item.servicoId}</span>
-                        <span>{item.servicoDescricao}</span>
-                    </div>
-                ))}
-            </div>
+                    </Col>
+                    <Col xs={24} md={14} style={{ flex: 1 }}>
+                        <Divider orientation="left">Linhas do Gasto</Divider>
+                        <Button
+                            type="primary"
+                            onClick={exportar}
+                            style={{ marginBottom: 16 }}
+                            loading={exportLoading}
+                            disabled={linhasGasto.length === 0}
+                        >
+                            Exportar
+                        </Button>
+                        <Spin spinning={loadingLinhas}>
+                            <List
+                                dataSource={linhasGasto}
+                                renderItem={(item) => (
+                                    <List.Item key={item.id}>
+                                        <Space>
+                                            <Typography.Text>
+                                                {item.servicoId}
+                                            </Typography.Text>
+                                            <Typography.Text>
+                                                {item.servicoDescricao}
+                                            </Typography.Text>
+                                        </Space>
+                                    </List.Item>
+                                )}
+                                bordered
+                                locale={{
+                                    emptyText: 'Nenhuma linha encontrada',
+                                }}
+                            />
+                        </Spin>
+                    </Col>
+                </Row>
+            </Card>
         </div>
     );
 }

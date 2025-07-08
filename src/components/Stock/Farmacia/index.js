@@ -1,6 +1,8 @@
 import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import { Table, Input, Button, Modal, Form, Select, Popconfirm, Space, DatePicker, InputNumber, Tag, Tabs, message, Alert, Spin, Typography, Switch } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ClearOutlined, SaveOutlined, CloseOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Input, Button, Modal, Form, Select, Popconfirm, Space,
+   DatePicker, InputNumber, Tag, Tabs, message, Alert, Spin, Typography, Switch } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, SearchOutlined }
+   from '@ant-design/icons';
 import moment from 'moment';
 import 'moment-timezone';
 import { api } from '../../../service/api';
@@ -16,14 +18,7 @@ const { Title } = Typography;
 
 const Farmacia = () => {
   const {
-    armazens,
-    filiais,
-    produtos,
-    lotes,
-    fornecedores,
-    linhasLotes,
-    operacoesList,
-    productTypes,
+    armazens, produtos, lotes, fornecedores, linhasLotes, operacoesList,productTypes,
     setFornecedores,
     setLotes,
     setLinhasLotes,
@@ -54,29 +49,28 @@ const Farmacia = () => {
   const [loteDateRange, setLoteDateRange] = useState([null, null]);
   const [fornecedorSearch, setFornecedorSearch] = useState('');
   const [fornecedorEstado, setFornecedorEstado] = useState(null);
+  const [selectedLoteId, setSelectedLoteId] = useState(null);
 
-  // Log para depuração
   useEffect(() => {
     console.log('Produtos no Farmacia.js:', produtos);
     console.log('ProductTypes no Farmacia.js:', productTypes);
     console.log('Mapeamento de produtos:', 
       produtos.map(p => ({
         id: p.id,
-        productType: p.productType || 'N/A',
+        productDescription: p.productDescription || 'N/A',
         productGroupId: p.productGroupId || 'N/A',
-        productTypeMatch: productTypes.find(pt => pt.designacaoTipoProduto === p.productType)?.designacaoTipoProduto || 'Sem Correspondência'
+        productTypeMatch: productTypes.find(pt => pt.designacaoTipoProduto === p.productDescription)?.designacaoTipoProduto || 'Sem Correspondência'
       }))
     );
     const produto23 = produtos.find(p => p.id === 23);
     if (produto23) {
       console.log('Produto ID 23:', produto23);
-      if (!produto23.productType) {
-        message.warning('Produto ID 23 não possui productType definido.');
+      if (!produto23.productDescription) {
+        message.warning('Produto ID 23 não possui productDescription definido.');
       }
     }
   }, [produtos, productTypes]);
 
-  // Debug de dados do contexto
   useEffect(() => {
     console.log('Context Data - Produtos:', produtos);
     console.log('Context Data - Lotes:', lotes);
@@ -88,7 +82,6 @@ const Farmacia = () => {
     }
   }, [produtos, lotes, armazens, linhasLotes, productTypes]);
 
-  // Limites de expiração para monitoramento
   const expirationThresholds = [
     { label: '1 Ano', days: 365 },
     { label: '9 Meses', days: 270 },
@@ -101,7 +94,6 @@ const Farmacia = () => {
     { label: '5 Dias', days: 5 },
   ];
 
-  // Lotes próximos do vencimento
   const expiringLotes = useMemo(() => {
     const now = moment().tz('Africa/Luanda').startOf('day');
     return lotes
@@ -116,7 +108,6 @@ const Farmacia = () => {
       .filter((lote) => lote.diasRestantes >= 0 && lote.threshold);
   }, [lotes]);
 
-  // Filtros para Lotes com debounce
   const debouncedSetLoteSearch = useCallback(
     debounce((value) => setLoteSearch(value), 300),
     []
@@ -128,7 +119,7 @@ const Farmacia = () => {
       filtered = filtered.filter(
         (lote) =>
           lote.designacao?.toLowerCase().includes(loteSearch.toLowerCase()) ||
-          (produtos.find((p) => p.id === lote.produtoId)?.productType || '')?.toLowerCase().includes(loteSearch.toLowerCase())
+          (produtos.find((p) => p.id === lote.produtoId)?.productDescription || '')?.toLowerCase().includes(loteSearch.toLowerCase())
       );
     }
     if (loteStatus !== null) {
@@ -143,7 +134,6 @@ const Farmacia = () => {
     setFilteredLotes(filtered);
   }, [lotes, produtos, loteSearch, loteStatus, loteDateRange]);
 
-  // Filtros para Fornecedores com debounce
   const debouncedSetFornecedorSearch = useCallback(
     debounce((value) => setFornecedorSearch(value), 300),
     []
@@ -175,7 +165,20 @@ const Farmacia = () => {
     setFilteredFornecedores(fornecedores);
   };
 
-  // Funções para a aba Entradas e Saídas
+  const getProdutosByLote = (loteId) => {
+    return linhasLotes
+      .filter((linha) => linha.lotes_id === loteId)
+      .map((linha) => {
+        const produto = produtos.find((p) => p.id === linha.produto_id);
+        return {
+          id: linha.id,
+          produtoId: linha.produto_id,
+          productDescription: produto?.productDescription || 'Sem Descrição',
+          quantidade: Number(linha.quantidade),
+        };
+      });
+  };
+
   const handleAddItem = async () => {
     try {
       const values = await form.validateFields(['loteId', 'produtoId', 'quantidade']);
@@ -193,8 +196,8 @@ const Farmacia = () => {
         message.error(`Produto não encontrado: ID ${values.produtoId}`);
         return;
       }
-      if (!produto.productType) {
-        message.error(`Produto ID ${values.produtoId} não possui tipo de produto definido.`);
+      if (!produto.productDescription) {
+        message.error(`Produto ID ${values.produtoId} não possui descrição de produto definida.`);
         return;
       }
       if (!values.quantidade || values.quantidade <= 0) {
@@ -202,20 +205,20 @@ const Farmacia = () => {
         return;
       }
       const tipoOperacao = form.getFieldValue('tipoOperacao');
-      if (tipoOperacao === 'SAIDA' || tipoOperacao === 'TRANSFERENCIA') {
+      if (tipoOperacao === 'SAIDA' || tipoOperacao === 'TRANSFERENCIA' || tipoOperacao === 'ANULACAO') {
         const existingLinha = linhasLotes.find(
           (linha) => linha.lotes_id === values.loteId && linha.produto_id === produto.id
         );
-        const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
-        if (qtdAnterior < values.quantidade) {
-          message.error(`Quantidade insuficiente no lote ${lote.designacao} para o tipo de produto ${produto.productType}`);
+        const qtdDisponivel = existingLinha ? Number(existingLinha.quantidade) : 0;
+        if (qtdDisponivel < values.quantidade) {
+          message.error(`Quantidade insuficiente no lote ${lote.designacao} para o produto ${produto.productDescription} (Disponível: ${qtdDisponivel})`);
           return;
         }
       }
       const newItem = {
         id: editItemId || Date.now(),
         produtoId: produto.id,
-        designacaoTipoProduto: produto.productType || 'Sem Tipo',
+        designacaoTipoProduto: produto.productDescription || 'Sem Descrição',
         quantidade: values.quantidade,
         loteId: values.loteId,
         loteDesignacao: lote.designacao,
@@ -227,10 +230,11 @@ const Farmacia = () => {
       );
       form.resetFields(['produtoId', 'quantidade', 'loteId']);
       setEditItemId(null);
+      setSelectedLoteId(null);
       message.success(editItemId ? 'Item atualizado na lista temporária' : 'Item adicionado à lista temporária');
     } catch (error) {
       console.error('Erro ao adicionar item:', error);
-      message.error('Preencha os campos de lote, tipo de produto e quantidade');
+      message.error('Preencha os campos de lote, produto e quantidade corretamente');
     }
   };
 
@@ -241,6 +245,7 @@ const Farmacia = () => {
       quantidade: record.quantidade,
     });
     setEditItemId(record.id);
+    setSelectedLoteId(record.loteId);
   };
 
   const handleSaveOperacao = async () => {
@@ -284,17 +289,15 @@ const Farmacia = () => {
 
           if (values.tipoOperacao === 'ENTRADA') {
             qtdActual = qtdAnterior + qtdOperacao;
-          } else if (values.tipoOperacao === 'SAIDA' || values.tipoOperacao === 'TRANSFERENCIA') {
+          } else if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(values.tipoOperacao)) {
             if (qtdAnterior < qtdOperacao) {
-              throw new Error(`Quantidade insuficiente para o tipo de produto ${produto.productType || 'Sem Tipo'} no lote ${lote.designacao}`);
+              throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote?.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
             }
             qtdActual = qtdAnterior - qtdOperacao;
-          } else if (values.tipoOperacao === 'ANULACAO') {
-            qtdActual = qtdAnterior;
           }
 
           return {
-            id: item.id || null,
+            id: item.id && !isNaN(item.id) ? item.id : null,
             armazemIdOrigem: values.armazemId,
             loteIdOrigem: item.loteId,
             produtoId: produto.id,
@@ -320,6 +323,7 @@ const Farmacia = () => {
       setTempItens([]);
       setEditOperacaoId(null);
       setEditItemId(null);
+      setSelectedLoteId(null);
       form.resetFields();
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message || 'Erro ao salvar operação';
@@ -339,7 +343,7 @@ const Farmacia = () => {
         return {
           id: linha.id || Date.now() + Math.random(),
           produtoId: linha.produtoId,
-          designacaoTipoProduto: produto?.productType || 'Sem Tipo',
+          designacaoTipoProduto: produto?.productDescription || 'Sem Descrição',
           quantidade: Number(linha.qtdOperacao),
           loteId: linha.loteIdOrigem,
           loteDesignacao: lote?.designacao || 'Desconhecido',
@@ -353,6 +357,7 @@ const Farmacia = () => {
         armazemDestinoId: record.linhas[0]?.armazemIdDestino || null,
         descricao: record.descricao,
       });
+      setSelectedLoteId(record.lotes[0]?.id || null);
       message.info('Operação carregada para edição');
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao carregar operação: ${error.message}`;
@@ -532,6 +537,29 @@ const Farmacia = () => {
     }
   };
 
+  const lotesTableColumns = [
+    { title: 'ID', dataIndex: 'id', key: 'id' },
+    { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
+    {
+      title: 'Data de Vencimento',
+      dataIndex: 'dataVencimento',
+      key: 'dataVencimento',
+      render: (date) => (date ? moment(date).format('YYYY-MM-DD') : '-'),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (s) => <Tag color={s ? 'green' : 'red'}>{s ? 'Ativo' : 'Inativo'}</Tag>,
+    },
+  ];
+
+  const produtosPorLoteColumns = [
+    { title: 'ID', dataIndex: 'id', key: 'id' },
+    { title: 'Produto', dataIndex: 'productDescription', key: 'productDescription' },
+    { title: 'Quantidade Disponível', dataIndex: 'quantidade', key: 'quantidade' },
+  ];
+
   const tempItemColumns = [
     {
       title: 'Lote',
@@ -540,7 +568,7 @@ const Farmacia = () => {
       render: (text) => <Tag color="blue" style={{ fontSize: 14, padding: '4px 8px' }}>{text}</Tag>,
     },
     {
-      title: 'Tipo de Produto',
+      title: 'Produto',
       dataIndex: 'designacaoTipoProduto',
       key: 'designacaoTipoProduto',
       render: (text) => <Tag color="green" style={{ fontSize: 14, padding: '4px 8px' }}>{text}</Tag>,
@@ -610,13 +638,13 @@ const Farmacia = () => {
       render: (_, record) => (Array.isArray(record.lotes) ? record.lotes.map((l) => lotes.find((lot) => lot.id === l.id)?.designacao || l.id).join(', ') : '-'),
     },
     {
-      title: 'Tipos de Produto',
+      title: 'Produtos',
       key: 'produtos',
       render: (_, record) =>
         (record.linhas || [])
           .map((linha) => {
             const produto = produtos.find((p) => p.id === linha.produtoId);
-            return `${produto?.productType || 'Sem Tipo'} (Qtd: ${linha.qtdOperacao})`;
+            return `${produto?.productDescription || 'Sem Descrição'} (Qtd: ${linha.qtdOperacao})`;
           })
           .join(', ') || '-',
     },
@@ -699,7 +727,7 @@ const Farmacia = () => {
       title: 'Produto',
       dataIndex: 'produto_id',
       key: 'produto_id',
-      render: (produto_id) => produtos.find((p) => p.id === produto_id)?.productType || 'Sem Tipo',
+      render: (produto_id) => produtos.find((p) => p.id === produto_id)?.productDescription || 'Sem Descrição',
     },
     { title: 'Quantidade', dataIndex: 'quantidade', key: 'quantidade' },
     {
@@ -796,7 +824,6 @@ const Farmacia = () => {
     <div>
       {activeSection === 'entrada-saida' && (
         <div className="section-content">
-          <Title level={2}>{editOperacaoId ? 'Editar Operação' : 'Registrar Operação'}</Title>
           {(produtos.length === 0 || armazens.length === 0 || lotes.length === 0) && (
             <Alert
               message="Aviso"
@@ -813,7 +840,15 @@ const Farmacia = () => {
                 label="Tipo de Operação"
                 rules={[{ required: true, message: 'Selecione o tipo de operação' }]}
               >
-                <Select placeholder="Selecione a operação">
+                <Select
+                  placeholder="Selecione a operação"
+                  onChange={(value) => {
+                    form.setFieldsValue({ loteId: null, produtoId: null, quantidade: null, armazemDestinoId: null });
+                    setSelectedLoteId(null);
+                    setTempItens([]);
+                    form.resetFields(['loteId', 'produtoId', 'quantidade', 'armazemDestinoId']);
+                  }}
+                >
                   {['ENTRADA', 'SAIDA', 'TRANSFERENCIA', 'ANULACAO'].map((op) => (
                     <Option key={op} value={op}>{op}</Option>
                   ))}
@@ -853,8 +888,12 @@ const Farmacia = () => {
                 label="Lote"
                 rules={[{ required: true, message: 'Selecione o lote' }]}
               >
-                <Select placeholder="Selecione o lote">
-                  {lotes.map((lote) => (
+                <Select
+                  placeholder="Selecione o lote"
+                  onChange={(value) => setSelectedLoteId(value)}
+                  disabled={['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(form.getFieldValue('tipoOperacao')) && lotes.length === 0}
+                >
+                  {lotes.filter(l => l.status).map((lote) => (
                     <Option key={lote.id} value={lote.id}>
                       {lote.designacao}
                     </Option>
@@ -863,13 +902,16 @@ const Farmacia = () => {
               </Form.Item>
               <Form.Item
                 name="produtoId"
-                label="Tipo de Produto"
-                rules={[{ required: true, message: 'Selecione o tipo de produto' }]}
+                label="Produto"
+                rules={[{ required: true, message: 'Selecione o produto' }]}
               >
-                <Select placeholder="Selecione o tipo de produto">
-                  {produtos.map((produto) => (
-                    <Option key={produto.id} value={produto.id}>
-                      {produto.productType || 'Sem Tipo'} (ID: {produto.id})
+                <Select
+                  placeholder="Selecione o produto"
+                  disabled={selectedLoteId === null || produtos.length === 0}
+                >
+                  {getProdutosByLote(selectedLoteId).map((produto) => (
+                    <Option key={produto.produtoId} value={produto.produtoId}>
+                      {produto.productDescription} (Disponível: {produto.quantidade})
                     </Option>
                   ))}
                 </Select>
@@ -877,7 +919,25 @@ const Farmacia = () => {
               <Form.Item
                 name="quantidade"
                 label="Quantidade"
-                rules={[{ required: true, message: 'Insira a quantidade' }]}
+                rules={[
+                  { required: true, message: 'Insira a quantidade' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(getFieldValue('tipoOperacao'))) {
+                        const loteId = getFieldValue('loteId');
+                        const produtoId = getFieldValue('produtoId');
+                        const linha = linhasLotes.find(
+                          (l) => l.lotes_id === loteId && l.produto_id === produtoId
+                        );
+                        const quantidadeDisponivel = linha ? Number(linha.quantidade) : 0;
+                        if (value > quantidadeDisponivel) {
+                          return Promise.reject(`Quantidade excede o disponível (${quantidadeDisponivel})`);
+                        }
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
               >
                 <InputNumber min={1} placeholder="Quantidade" style={{ width: '100%' }} />
               </Form.Item>
@@ -901,17 +961,20 @@ const Farmacia = () => {
                   setTempItens([]);
                   setEditOperacaoId(null);
                   setEditItemId(null);
+                  setSelectedLoteId(null);
                 }}
               >
                 Cancelar
               </Button>
             </Space>
+        
             <Table
-              columns={tempItemColumns}
               dataSource={tempItens}
-              rowKey="id"
+              columns={tempItemColumns}
+              rowKey={record => record.id}
               pagination={false}
-              style={{ marginTop: 16 }}
+              title={() => <Title level={4}>Itens Temporários</Title>}
+              className="stock-table"
             />
           </Form>
         </div>
@@ -969,20 +1032,20 @@ const Farmacia = () => {
           <Table
             dataSource={filteredLotes}
             columns={loteColumns}
-            rowKey="id"
+            rowKey={record => record.id}
             pagination={{ pageSize: 10 }}
             loading={loading || contextLoading}
-            className="custom-table"
+            className="stock-table"
             title={() => <Title level={3}>Lotes</Title>}
           />
           <Table
             dataSource={linhasLotes}
             columns={linhasLotesColumns}
-            rowKey="id"
+            rowKey={record => record.id}
             pagination={{ pageSize: 10 }}
             loading={loading || contextLoading}
-            className="custom-table"
-            title={() => <Title level={3}>Linhas de Lotes</Title>}
+            className="stock-table"
+            title={() => <Title level={3}>Produtos em Lotes</Title>}
           />
         </div>
       )}
@@ -1022,10 +1085,10 @@ const Farmacia = () => {
           <Table
             dataSource={filteredFornecedores}
             columns={fornecedorColumns}
-            rowKey="id"
+            rowKey={record => record.id}
             pagination={{ pageSize: 10 }}
             loading={loading || contextLoading}
-            className="custom-table"
+            className="stock-table"
           />
         </div>
       )}
@@ -1067,19 +1130,19 @@ const Farmacia = () => {
             />
           )}
           <Table
-            columns={expiringLoteColumns}
             dataSource={expiringLotes}
-            rowKey="id"
+            columns={expiringLoteColumns}
+            rowKey={record => record.id}
             pagination={{ pageSize: 10 }}
-            className="custom-table"
+            className="stock-table"
             title={() => <Title level={3}>Lotes Próximos do Vencimento</Title>}
           />
           <Table
-            columns={loteColumns}
             dataSource={filteredLotes}
-            rowKey="id"
+            columns={loteColumns}
+            rowKey={record => record.id}
             pagination={{ pageSize: 10 }}
-            className="custom-table"
+            className="stock-table"
             title={() => <Title level={3}>Lotes</Title>}
           />
         </div>
@@ -1100,7 +1163,7 @@ const Farmacia = () => {
               type="card"
               style={{ padding: '0 16px' }}
             >
-              <TabPane tab="Entradas e Saídas" key="entrada-saida" />
+              <TabPane tab="Operação Stock" key="entrada-saida" />
               <TabPane tab="Lotes" key="lotes" />
               <TabPane tab="Fornecedores" key="fornecedores" />
               <TabPane tab="Monitoramento" key="monitoramento" />
@@ -1279,18 +1342,18 @@ const Farmacia = () => {
             </Form.Item>
             <Form.Item
               name="produtoId"
-              label="Tipo de Produto"
-              rules={[{ required: true, message: 'Selecione o tipo de produto' }]}
+              label="Produto"
+              rules={[{ required: true, message: 'Selecione o produto' }]}
             >
               <Select
-                placeholder="Selecione o tipo de produto"
+                placeholder="Selecione o produto"
                 showSearch
                 optionFilterProp="children"
                 disabled={produtos.length === 0}
               >
                 {produtos.map((produto) => (
                   <Option key={produto.id} value={produto.id}>
-                    {produto.productType || 'Sem Tipo'} (ID: {produto.id})
+                    {produto.productDescription || 'Sem Descrição'} (ID: {produto.id})
                   </Option>
                 ))}
               </Select>

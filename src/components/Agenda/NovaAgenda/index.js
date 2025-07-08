@@ -3,6 +3,7 @@ import { Button, Modal, Form, Select, Spin, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import './style.css';
+import {viewPdfGenerico} from "../../util/utilitarios";
 
 const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, agendas, linhasAgenda = [], handleInputChange }) => {
   const [funcionarioFilter, setFuncionarioFilter] = useState(form.funcionarioFilter || '');
@@ -394,7 +395,8 @@ const NovaAgenda = () => {
   const prepareEmailData = (form, pacientes, pessoas, funcionarios, consultas) => {
     const paciente = pacientes.find(p => p.id === Number(form.pacienteId));
     const funcionario = funcionarios.find(f => f.id === Number(form.funcionarioId));
-    const pessoa = pessoas.find(p => p.id === funcionario?.pessoaId);
+    const pessoaMedico = pessoas.find(p => p.id === funcionario?.pessoaId);
+    const pessoaPaciente = pessoas.find(p => p.id === paciente?.pessoaId);
     const consulta = consultas.find(c => c.id === Number(form.consultaId));
 
     const dataRealizacao = new Date(form.dataRealizacao.replace('T', ' '));
@@ -402,13 +404,14 @@ const NovaAgenda = () => {
     const hora = `${dataRealizacao.getHours().toString().padStart(2, '0')}:${dataRealizacao.getMinutes().toString().padStart(2, '0')}`;
 
     return {
-      pacienteEmail: paciente?.email || '',
-      dotorEmail: pessoa?.email || '',
-      pacienteNome: paciente?.nome || 'Paciente Desconhecido',
-      dotorNome: pessoa?.nome || 'Médico Desconhecido',
+      pacienteEmail: pessoaPaciente?.email || '',
+      dotorEmail: pessoaMedico?.email || '',
+      pacienteNome: pessoaPaciente?.nome || 'Paciente Desconhecido',
+      dotorNome: pessoaMedico?.nome || 'Médico Desconhecido',
       data,
       hora,
-      consulta: consulta?.productDescription || 'Consulta Desconhecida'
+      consulta: consulta?.productDescription || 'Consulta Desconhecida',
+      funcionarioId: funcionario?.id || ''
     };
   };
 
@@ -517,6 +520,7 @@ const NovaAgenda = () => {
           >
             Adicionar Novo Agendamento
           </Button>
+          <Button onClick={() => viewPdfGenerico('agendamento', 1)}>Teste PDF</Button>   
           <Modal
             title="Novo Agendamento"
             open={isModalVisible}

@@ -25,6 +25,7 @@ import Laboratorio from '../components/Laboratorio';
 import PainelRecursos from '../components/RecursosHumanos';
 import FormularioQRCode from '../util/FormularioQRCode';
 import Html5QrcodeScanner from '../util/Html5QrcodeScanner';
+import RotaTest from '../util/RotaTest';
 
 function RoutesApp() {
     return (
@@ -34,6 +35,8 @@ function RoutesApp() {
             <Route path="/tm" element={<TriagemManchester />} />
             <Route path="/formqrcode" element={<FormularioQRCode />} />
             <Route path="/qrcode" element={<Html5QrcodeScanner />} />
+            <Route path="/rota" element={<RotaTest />} />
+
 
             <Route path="/admissao/home" element={<PainelAdmissao />} />
 
