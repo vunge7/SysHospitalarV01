@@ -1,8 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { AutoComplete, Select, Input } from 'antd';
 
+import {
+    Modal,
+    Flex,
+    Card,
+    Row,
+    Col,
+    Slider,
+    InputNumber,
+    Radio,
+    Space,
+} from 'antd';
+import TriagemManchester from '../TriagemManchester';
 import { api } from '../../service/api';
-//import { gerarDocumento } from '../../Reports/FacturaReport';
+import { format } from 'date-fns';
 
 export const viewPdf = async (fileName, id) => {
     // Abrir uma nova aba imediatamente
@@ -419,3 +431,295 @@ export const estadoCivilFONTE = [
         value: 'Viuvo(a)',
     },
 ];
+
+export const ModalTriagem = ({
+    estado,
+    inscricaoId,
+    usuarioId = 1,
+    onCancel,
+    exibirManchester = true,
+    exibirEncaminhamento = true,
+}) => {
+    const [pressaoArterialS, setPressaoArterialS] = useState(120);
+    const [pressaoArterialD, setPressaoArterialD] = useState(80);
+    const [temperatura, setTemperatura] = useState(37);
+    const [peso, setPeso] = useState(0);
+    const [pulso, setPulso] = useState(0);
+    const [so, setSo] = useState();
+    const [respiracao, setRespiracao] = useState();
+    const [dor, setDor] = useState();
+    const [encaminhamento, setEncaminhamento] = useState('CONSULTORIO');
+
+    const marks = {
+        0: '0°C',
+        37: '37°C',
+        100: {
+            style: { color: '#f50' },
+            label: <strong>100°C</strong>,
+        },
+    };
+    const sliderStyle = { width: 250 };
+
+    // Ajuste proporcional dinâmico
+    const modalWidth = exibirManchester ? 1020 : 500;
+    const cardWidth = exibirManchester ? '50%' : '100%';
+
+    const salvarTriagem = async () => {
+        try {
+            const triagem = {
+                dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+                inscricaoId: inscricaoId,
+                usuarioId: usuarioId,
+            };
+
+            console.log('Salvando triagem:', triagem);
+            const r = await api.post('triagem/add', triagem);
+            const id = r.data.id;
+            const _linhasTriagem = _getLinhasTriagem(id);
+            await api.post('linha-triagem/add/all', _linhasTriagem);
+            console.log('Triagem e linhas registradas com sucesso');
+            // Aqui pode chamar um callback ou fechar modal, se desejar
+        } catch (e) {
+            console.error('Erro ao registrar triagem ou linhas:', e);
+            // Aqui pode exibir mensagem de erro ao usuário
+        }
+    };
+
+    function _getLinhasTriagem(triagemId) {
+        let _linhas = [];
+        _linhas.push(
+            getItem(
+                triagemId,
+                'Pressão Arterial',
+                pressaoArterialS + '/' + pressaoArterialD,
+                'mmHg'
+            )
+        );
+        _linhas.push(getItem(triagemId, 'Peso', peso, 'Kg'));
+        _linhas.push(getItem(triagemId, 'Temperatura', temperatura, '°C'));
+        _linhas.push(getItem(triagemId, 'Pulso', pulso, 'bpm'));
+        _linhas.push(getItem(triagemId, 'Saturação de Oxigênio', so, '%'));
+        _linhas.push(getItem(triagemId, 'Respiração', respiracao, 'ipm'));
+        _linhas.push(getItem(triagemId, 'Dor', dor, 'Un.'));
+        return _linhas;
+    }
+
+    function getItem(id, campo, valor, unidade) {
+        let _item = {
+            campo: campo,
+            valor: valor,
+            unidade: unidade,
+            triagemId: id,
+        };
+        return _item;
+    }
+
+    return (
+        <Modal
+            title="Triagem"
+            open={estado}
+            onOk={salvarTriagem}
+            okText="Actualizar"
+            onCancel={onCancel}
+            width={modalWidth}
+            style={{
+                maxWidth: modalWidth,
+                minWidth: modalWidth,
+                padding: 0,
+            }}
+        >
+            <Flex gap="large" wrap={false} align="stretch">
+                <Card
+                    bordered
+                    title="Sinais Vitais"
+                    style={{
+                        width: cardWidth,
+                        marginBottom: 10,
+                        marginRight: 0,
+                        boxSizing: 'border-box',
+                    }}
+                >
+                    <Flex gap="middle" vertical>
+                        {/* Pressão Arterial */}
+                        <div>
+                            <label>
+                                Pressão Arterial{' '}
+                                <span
+                                    style={{ fontWeight: 'bold', fontSize: 20 }}
+                                >
+                                    {pressaoArterialS}/{pressaoArterialD}
+                                </span>{' '}
+                                mmHg
+                            </label>
+                            <Row gutter={8}>
+                                <Col span={12}>
+                                    <span>Sistólica</span>
+                                    <Slider
+                                        min={1}
+                                        max={220}
+                                        onChange={setPressaoArterialS}
+                                        value={pressaoArterialS}
+                                    />
+                                </Col>
+                                <Col span={12}>
+                                    <span>Diastólica</span>
+                                    <Slider
+                                        min={1}
+                                        max={220}
+                                        onChange={setPressaoArterialD}
+                                        value={pressaoArterialD}
+                                    />
+                                </Col>
+                            </Row>
+                        </div>
+                        {/* Temperatura */}
+                        <div>
+                            <label>
+                                Temperatura{' '}
+                                <span
+                                    style={{ fontWeight: 'bold', fontSize: 20 }}
+                                >
+                                    {temperatura}
+                                </span>{' '}
+                                °C
+                            </label>
+                            <Row gutter={8}>
+                                <Col span={18}>
+                                    <Slider
+                                        marks={marks}
+                                        value={temperatura}
+                                        onChange={setTemperatura}
+                                        min={1}
+                                        max={100}
+                                        style={sliderStyle}
+                                    />
+                                </Col>
+                                <Col span={6}>
+                                    <InputNumber
+                                        min={1}
+                                        max={100}
+                                        value={temperatura}
+                                        onChange={setTemperatura}
+                                    />
+                                </Col>
+                            </Row>
+                        </div>
+                        {/* Peso */}
+                        <div>
+                            <label>
+                                Peso{' '}
+                                <span
+                                    style={{ fontWeight: 'bold', fontSize: 20 }}
+                                >
+                                    {peso}
+                                </span>{' '}
+                                Kg
+                            </label>
+                            <Row gutter={8}>
+                                <Col span={18}>
+                                    <Slider
+                                        min={1}
+                                        max={220}
+                                        onChange={setPeso}
+                                        value={peso}
+                                        style={sliderStyle}
+                                    />
+                                </Col>
+                                <Col span={6}>
+                                    <InputNumber
+                                        min={1}
+                                        max={220}
+                                        value={peso}
+                                        onChange={setPeso}
+                                    />
+                                </Col>
+                            </Row>
+                        </div>
+                        {/* Outros sinais */}
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <label>Pulso</label>
+                                <InputNumber
+                                    min={1}
+                                    max={220}
+                                    value={pulso}
+                                    onChange={setPulso}
+                                    style={{ width: '100%' }}
+                                />
+                            </Col>
+                            <Col span={12}>
+                                <label>Saturação O₂ (%)</label>
+                                <InputNumber
+                                    min={1}
+                                    max={100}
+                                    value={so}
+                                    onChange={setSo}
+                                    style={{ width: '100%' }}
+                                />
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <label>Respiração (ipm)</label>
+                                <InputNumber
+                                    min={1}
+                                    max={60}
+                                    value={respiracao}
+                                    onChange={setRespiracao}
+                                    style={{ width: '100%' }}
+                                />
+                            </Col>
+                            <Col span={12}>
+                                <label>Dor (0-10)</label>
+                                <InputNumber
+                                    min={0}
+                                    max={10}
+                                    value={dor}
+                                    onChange={setDor}
+                                    style={{ width: '100%' }}
+                                />
+                            </Col>
+                        </Row>
+                        {/* Encaminhamento condicional */}
+                        {exibirEncaminhamento && (
+                            <div>
+                                <label
+                                    style={{
+                                        fontWeight: 'bold',
+                                        marginBottom: 10,
+                                    }}
+                                >
+                                    Encaminhamento:
+                                </label>
+                                <Radio.Group
+                                    onChange={(e) =>
+                                        setEncaminhamento(e.target.value)
+                                    }
+                                    value={encaminhamento}
+                                >
+                                    <Space direction="vertical">
+                                        <Radio value="CONSULTORIO">
+                                            Consultório
+                                        </Radio>
+                                        <Radio value="SO">
+                                            Sala de Observação
+                                        </Radio>
+                                        <Radio value="CADEIRA">Cadeira</Radio>
+                                    </Space>
+                                </Radio.Group>
+                            </div>
+                        )}
+                    </Flex>
+                </Card>
+                {exibirManchester && (
+                    <Card
+                        title="Triagem de Manchester"
+                        style={{ width: '50%' }}
+                    >
+                        <TriagemManchester idInscricao={inscricaoId} />
+                    </Card>
+                )}
+            </Flex>
+        </Modal>
+    );
+};

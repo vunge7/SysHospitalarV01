@@ -36,8 +36,6 @@ function RoutesApp() {
             <Route path="/formqrcode" element={<FormularioQRCode />} />
             <Route path="/qrcode" element={<Html5QrcodeScanner />} />
             <Route path="/rota" element={<RotaTest />} />
-
-
             <Route path="/admissao/home" element={<PainelAdmissao />} />
 
             <Route
