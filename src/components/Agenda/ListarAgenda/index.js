@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Button, Input, Select, Spin, Alert, message, Modal } from 'antd';
+import { Table, Button, Input, Select, Spin, Alert, message, Modal, DatePicker } from 'antd';
 import { EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined, SaveOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import './style.css';
@@ -14,7 +14,7 @@ const ListarAgenda = React.memo(({
   funcionarios: initialFuncionarios,
   pessoas: initialPessoas,
   pacientes: initialPacientes,
-  consultas: initialConsultas,
+  consultas: initialConsultas, 
   setFormularios,
   setActiveTab,
   fetchAgendas,
@@ -192,6 +192,7 @@ const ListarAgenda = React.memo(({
       content: 'Tem certeza que deseja eliminar esta linha da agenda?',
       okText: 'Confirmar',
       cancelText: 'Cancelar',
+
       onOk: async () => {
         try {
           await api.delete(`linhaagenda/${linhaId}`);
@@ -648,70 +649,21 @@ const ListarAgenda = React.memo(({
       render: (data, linha) => {
         if (editandoLinhaId === linha.id) {
           return (
-            <div className="date-time-container">
-              <Select
-                value={ano}
-                onChange={setAno}
-                placeholder="Ano"
-                style={{ width: 100 }}
-              >
-                <Select.Option value="">Ano</Select.Option>
-                {anos.map(a => (
-                  <Select.Option key={a} value={a}>{a}</Select.Option>
-                ))}
-              </Select>
-              <Select
-                value={mes}
-                onChange={setMes}
-                placeholder="Mês"
-                style={{ width: 120 }}
-              >
-                <Select.Option value="">Mês</Select.Option>
-                {meses.map(m => (
-                  <Select.Option key={m.value} value={m.value}>{m.label}</Select.Option>
-                ))}
-              </Select>
-              <Select
-                value={dia}
-                onChange={setDia}
-                placeholder="Dia"
-                style={{ width: 80 }}
-              >
-                <Select.Option value="">Dia</Select.Option>
-                {dias.map(d => (
-                  <Select.Option key={d} value={d}>{d}</Select.Option>
-                ))}
-              </Select>
-              <Select
-                value={hora}
-                onChange={setHora}
-                placeholder="Hora"
-                style={{ width: 80 }}
-              >
-                <Select.Option value="">Hora</Select.Option>
-                {horas.map(h => (
-                  <Select.Option key={h} value={h}>{h}</Select.Option>
-                ))}
-              </Select>
-              <Select
-                value={minuto}
-                onChange={setMinuto}
-                placeholder="Minuto"
-                style={{ width: 80 }}
-              >
-                <Select.Option value="">Minuto</Select.Option>
-                {minutos.map(m => (
-                  <Select.Option key={m} value={m}>{m}</Select.Option>
-                ))}
-              </Select>
-            </div>
+            <DatePicker
+              showTime
+              value={linhaEditada.dataRealizacao ? (typeof linhaEditada.dataRealizacao === 'string' ? (window.moment ? window.moment(linhaEditada.dataRealizacao) : null) : linhaEditada.dataRealizacao) : null}
+              onChange={value => setLinhaEditada(prev => ({ ...prev, dataRealizacao: value ? value.format('YYYY-MM-DD HH:mm:ss') : '' }))}
+              format="YYYY-MM-DD HH:mm"
+              style={{ width: '100%' }}
+              placeholder="Selecione data e hora"
+            />
           );
         }
         return new Date(data).toLocaleString();
       },
     },
     {
-      title: 'Usuário',
+      title: 'Responsavel',
       dataIndex: 'funcionarioId',
       key: 'nome',
       render: (funcionarioId, linha) => {
@@ -724,7 +676,7 @@ const ListarAgenda = React.memo(({
               onSearch={value => handleChange(value, 'usuario', 'funcionarioId')}
               filterOption={false}
               style={{ width: '100%' }}
-              placeholder="Selecione o usuário"
+              placeholder="Selecione o Responsavel"
             >
               {filteredPessoas.map(p => (
                 <Select.Option key={p.id} value={p.id}>{p.nome}</Select.Option>
@@ -734,7 +686,7 @@ const ListarAgenda = React.memo(({
         }
         const funcionario = localData.funcionarios.find(f => f.id === Number(funcionarioId));
         const pessoa = localData.pessoas.find(p => p.id === funcionario?.pessoaId);
-        return pessoa?.nome || 'Usuário não encontrado';
+        return pessoa?.nome || 'Responsavel não encontrado';
       },
     },
     {

@@ -21,6 +21,7 @@ import PainelProduto from '../pages/PainelProduto';
 import PacienteForm from '../pages/PainelAdmissao/PacienteForm';
 import Paciente from '../components/Paciente';
 import Stock from '../components/Stock';
+import Usuarios from '../components/Usuario';
 import Laboratorio from '../components/Laboratorio';
 import PainelRecursos from '../components/RecursosHumanos';
 import FormularioQRCode from '../util/FormularioQRCode';
@@ -151,6 +152,14 @@ function RoutesApp() {
                 element={
                     <Private>
                         <Stock />
+                    </Private>
+                }
+            />
+            <Route
+                path="admin/usuario"
+                element={
+                    <Private>
+                        <Usuarios />
                     </Private>
                 }
             />
