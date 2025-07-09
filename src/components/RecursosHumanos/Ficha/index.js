@@ -51,6 +51,14 @@ const estadosFuncionario = [
   { value: 'INATIVO', label: 'Inativo' }
 ];
 
+const estadosCivis = [
+  { value: 'SOLTEIRO', label: 'Solteiro' },
+  { value: 'CASADO', label: 'Casado' },
+  { value: 'DIVORCIADO', label: 'Divorciado' },
+  { value: 'VIUVO', label: 'Viúvo' },
+  { value: 'UNIAO_ESTAVEL', label: 'União Estável' },
+];
+
 const Ficha = () => {
   const [pessoas, setPessoas] = useState([]);
   const [subsidios, setSubsidios] = useState([]);
@@ -144,14 +152,12 @@ const Ficha = () => {
       const response = await api.get(`funcionario/pessoa/${pessoaId}`);
       if (response.data && response.data.id) {
         const funcionario = response.data;
-        // Verificar e consolidar subsídios duplicados
         const subsidiosConsolidados = [];
         const subsidiosMap = new Map();
         if (funcionario.subsidios) {
           funcionario.subsidios.forEach((s) => {
             const subsidio = subsidios.find((sub) => sub.id === s.subsidioId);
             const descricao = subsidio?.descricao || s.subsidioId;
-            // Manter apenas o último valor para cada subsidioId
             subsidiosMap.set(s.subsidioId, {
               subsidioId: s.subsidioId,
               descricao: descricao,
@@ -170,7 +176,7 @@ const Ficha = () => {
         funcionarioForm.setFieldsValue({
           tipoDeContrato: funcionario.tipoDeContrato,
           salario: funcionario.salario,
-          dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmissao) : null,
+          dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmito) : null,
           descricao: funcionario.descricao,
           cargo: funcionario.cargo,
           departamentoId: funcionario.departamentoId,
@@ -246,12 +252,29 @@ const Ficha = () => {
     try {
       const pessoaData = {
         nome: values.nome,
+        apelido: values.apelido,
         nif: values.nif,
         dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD') : null,
+        localNascimento: values.localNascimento,
         telefone: values.telefone,
         email: values.email,
         endereco: values.endereco,
         genero: values.genero,
+        bairro: values.bairro,
+        estadoCivil: values.estadoCivil,
+        pai: values.pai,
+        mae: values.mae,
+        nacionalidade: values.nacionalidade,
+        raca: values.raca,
+        paisEndereco: values.paisEndereco,
+        provinciaEndereco: values.provinciaEndereco,
+        municipioEndereco: values.municipioEndereco,
+        paisNascimento: values.paisNascimento,
+        provinciaNascimento: values.provinciaNascimento,
+        municipioNascimento: values.municipioNascimento,
+        profissao: values.profissao,
+        habilitacao: values.habilitacao,
+        nomePhoto: values.nomePhoto,
       };
 
       console.log('Enviando pessoa para /pessoa/add:', JSON.stringify(pessoaData, null, 2));
@@ -271,6 +294,10 @@ const Ficha = () => {
           message.error('Nome é obrigatório.');
         } else if (errorMessage.includes('Gênero')) {
           message.error('Gênero inválido. Deve ser MASCULINO, FEMININO ou OUTRO.');
+        } else if (errorMessage.includes('Apelido')) {
+          message.error('Apelido é obrigatório.');
+        } else if (errorMessage.includes('NIF')) {
+          message.error('NIF é obrigatório.');
         } else {
           message.error(errorMessage || 'Falha ao cadastrar pessoa.');
         }
@@ -406,7 +433,6 @@ const Ficha = () => {
       const existingSubsidioIndex = currentSubsidios.findIndex((s) => s.descricao === subsidioTemp.descricao);
       let newSubsidios;
       if (existingSubsidioIndex !== -1) {
-        // Sobrescrever subsídio existente
         newSubsidios = [...currentSubsidios];
         newSubsidios[existingSubsidioIndex] = {
           subsidioId: subsidioTemp.id,
@@ -415,7 +441,6 @@ const Ficha = () => {
         };
         message.info(`Subsídio ${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao} atualizado na lista!`);
       } else {
-        // Adicionar novo subsídio
         newSubsidios = [...currentSubsidios, { subsidioId: subsidioTemp.id, descricao: subsidioTemp.descricao, valor }];
         message.success('Subsídio adicionado à lista!');
       }
@@ -489,6 +514,11 @@ const Ficha = () => {
                     </Form.Item>
                   </Col>
                   <Col span={12}>
+                    <Form.Item label="Apelido">
+                      <Input value={selectedPessoa.apelido} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
                     <Form.Item label="NIF">
                       <Input value={selectedPessoa.nif} />
                     </Form.Item>
@@ -496,6 +526,11 @@ const Ficha = () => {
                   <Col span={12}>
                     <Form.Item label="Data de Nascimento">
                       <Input value={selectedPessoa.dataNascimento ? moment(selectedPessoa.dataNascimento).format('YYYY-MM-DD') : ''} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Local de Nascimento">
+                      <Input value={selectedPessoa.localNascimento} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -514,8 +549,83 @@ const Ficha = () => {
                     </Form.Item>
                   </Col>
                   <Col span={12}>
+                    <Form.Item label="Bairro">
+                      <Input value={selectedPessoa.bairro} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
                     <Form.Item label="Gênero">
                       <Input value={generos.find((g) => g.value === selectedPessoa.genero)?.label || selectedPessoa.genero} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Estado Civil">
+                      <Input value={estadosCivis.find((ec) => ec.value === selectedPessoa.estadoCivil)?.label || selectedPessoa.estadoCivil} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Nome do Pai">
+                      <Input value={selectedPessoa.pai} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Nome da Mãe">
+                      <Input value={selectedPessoa.mae} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Nacionalidade">
+                      <Input value={selectedPessoa.nacionalidade} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Raça">
+                      <Input value={selectedPessoa.raca} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="País (Endereço)">
+                      <Input value={selectedPessoa.paisEndereco} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Província (Endereço)">
+                      <Input value={selectedPessoa.provinciaEndereco} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Município (Endereço)">
+                      <Input value={selectedPessoa.municipioEndereco} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="País (Nascimento)">
+                      <Input value={selectedPessoa.paisNascimento} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Província (Nascimento)">
+                      <Input value={selectedPessoa.provinciaNascimento} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Município (Nascimento)">
+                      <Input value={selectedPessoa.municipioNascimento} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Profissão">
+                      <Input value={selectedPessoa.profissao} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Habilitação">
+                      <Input value={selectedPessoa.habilitacao} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Nome da Foto">
+                      <Input value={selectedPessoa.nomePhoto} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -729,10 +839,22 @@ const Ficha = () => {
                     label="Nome"
                     rules={[
                       { required: true, message: 'Insira o nome.' },
-                      { max: 255, message: 'Máximo de 255 caracteres.' },
+                      { max: 100, message: 'Máximo de 100 caracteres.' },
                     ]}
                   >
-                    <Input maxLength={255} />
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="apelido"
+                    label="Apelido"
+                    rules={[
+                      { required: true, message: 'Insira o apelido.' },
+                      { max: 100, message: 'Máximo de 100 caracteres.' },
+                    ]}
+                  >
+                    <Input maxLength={100} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -762,14 +884,23 @@ const Ficha = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
+                    name="localNascimento"
+                    label="Local de Nascimento"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
                     name="telefone"
                     label="Telefone"
                     rules={[
                       { required: true, message: 'Insira o telefone.' },
-                      { max: 20, message: 'Máximo de 20 caracteres.' },
+                      { max: 100, message: 'Máximo de 100 caracteres.' },
                     ]}
                   >
-                    <Input maxLength={20} />
+                    <Input maxLength={100} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -791,10 +922,19 @@ const Ficha = () => {
                     label="Endereço"
                     rules={[
                       { required: true, message: 'Insira o endereço.' },
-                      { max: 255, message: 'Máximo de 255 caracteres.' },
+                      { max: 150, message: 'Máximo de 150 caracteres.' },
                     ]}
                   >
-                    <Input maxLength={255} />
+                    <Input maxLength={150} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="bairro"
+                    label="Bairro"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -808,6 +948,136 @@ const Ficha = () => {
                         <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
                       ))}
                     </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="estadoCivil"
+                    label="Estado Civil"
+                    rules={[{ required: false, message: 'Selecione o estado civil.' }]}
+                  >
+                    <Select allowClear>
+                      {estadosCivis.map((tipo) => (
+                        <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="pai"
+                    label="Nome do Pai"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="mae"
+                    label="Nome da Mãe"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="nacionalidade"
+                    label="Nacionalidade"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="raca"
+                    label="Raça"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="paisEndereco"
+                    label="País (Endereço)"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="provinciaEndereco"
+                    label="Província (Endereço)"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="municipioEndereco"
+                    label="Município (Endereço)"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="paisNascimento"
+                    label="País (Nascimento)"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="provinciaNascimento"
+                    label="Província (Nascimento)"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="municipioNascimento"
+                    label="Município (Nascimento)"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="profissao"
+                    label="Profissão"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="habilitacao"
+                    label="Habilitação"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="nomePhoto"
+                    label="Nome da Foto"
+                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
+                  >
+                    <Input maxLength={100} />
                   </Form.Item>
                 </Col>
                 <Col span={24}>

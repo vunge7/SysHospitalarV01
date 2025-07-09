@@ -1,27 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Modal, Form, Select, Spin, message } from 'antd';
+import { Button, Modal, Form, Select, Spin, message, DatePicker } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import './style.css';
 import {viewPdfGenerico} from "../../util/utilitarios";
+import dayjs from 'dayjs';
+import { v4 as uuidv4 } from 'uuid';
 
 const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, agendas, linhasAgenda = [], handleInputChange }) => {
   const [funcionarioFilter, setFuncionarioFilter] = useState(form.funcionarioFilter || '');
   const [pacienteFilter, setPacienteFilter] = useState(form.pacienteFilter || '');
   const [consultaFilter, setConsultaFilter] = useState(form.consultaFilter || '');
-  const [dia, setDia] = useState(form.dataRealizacao ? new Date(form.dataRealizacao).getDate().toString().padStart(2, '0') : '');
-  const [mes, setMes] = useState(form.dataRealizacao ? (new Date(form.dataRealizacao).getMonth() + 1).toString().padStart(2, '0') : '');
-  const [ano, setAno] = useState(form.dataRealizacao ? new Date(form.dataRealizacao).getFullYear().toString() : '');
-  const [hora, setHora] = useState(form.dataRealizacao ? new Date(form.dataRealizacao).getHours().toString().padStart(2, '0') : '');
-  const [minuto, setMinuto] = useState(form.dataRealizacao ? new Date(form.dataRealizacao).getMinutes().toString().padStart(2, '0') : '');
+  const [dateTime, setDateTime] = useState(form.dataRealizacao ? (typeof form.dataRealizacao === 'string' ? dayjs(form.dataRealizacao) : form.dataRealizacao) : null);
 
   useEffect(() => {
-    console.log('Dados recebido em FormRow:', {
-      formDataRealizacao: form.dataRealizacao,
-      funcionarios: funcionarios.map(f => ({ id: f.id, pessoaId: f.pessoaId })),
-      linhasAgenda
-    });
-  }, [form.dataRealizacao, funcionarios, linhasAgenda]);
+    setDateTime(form.dataRealizacao ? (typeof form.dataRealizacao === 'string' ? dayjs(form.dataRealizacao) : form.dataRealizacao) : null);
+  }, [form.dataRealizacao]);
 
   const normalizeDate = (dateString) => {
     if (!dateString) return null;
@@ -37,33 +31,19 @@ const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, age
   const isMedicoDisponivel = (funcionarioId, dataRealizacao) => {
     const selectedDate = normalizeDate(dataRealizacao);
     if (!selectedDate) {
-      console.log('Nenhuma data válida selecionada, todos médicos disponíveis');
       return true;
     }
     if (!Array.isArray(linhasAgenda) || linhasAgenda.length === 0) {
-      console.log('Nenhuma linha de agenda existente, todos médicos disponíveis');
       return true;
     }
-
     const ONE_HOUR = 60 * 60 * 1000;
-    console.log(`Verificando médico ${funcionarioId} em ${selectedDate.toISOString()}`);
-
     const medicoOcupado = linhasAgenda.some(linha => {
       const linhaDate = normalizeDate(linha.dataRealizacao);
-      if (!linhaDate) {
-        console.error('Data da linha inválida:', linha.dataRealizacao);
-        return false;
-      }
-
+      if (!linhaDate) return false;
       const medicoIgual = Number(linha.funcionarioId) === Number(funcionarioId);
       const diffInMs = Math.abs(selectedDate.getTime() - linhaDate.getTime());
-      const conflito = medicoIgual && diffInMs < ONE_HOUR;
-
-      console.log(`- Médico: ${linha.funcionarioId}, Data: ${linhaDate.toISOString()}, Diferença: ${diffInMs / 60000} minutos, Conflito: ${conflito}`);
-      return conflito;
+      return medicoIgual && diffInMs < ONE_HOUR;
     });
-
-    console.log(`Resultado: Médico ${funcionarioId} está ${medicoOcupado ? 'ocupado' : 'disponível'}`);
     return !medicoOcupado;
   };
 
@@ -71,7 +51,6 @@ const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, age
     const pessoa = pessoas.find(p => p.id === func.pessoaId);
     const matchesFilter = pessoa?.nome.toLowerCase().includes(funcionarioFilter.toLowerCase());
     const isAvailable = isMedicoDisponivel(func.id, form.dataRealizacao);
-    console.log(`Filtrando médico ${func.id} (${pessoa?.nome}): matchesFilter=${matchesFilter}, isAvailable=${isAvailable}`);
     return matchesFilter && isAvailable;
   });
 
@@ -84,138 +63,22 @@ const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, age
     cons.productDescription.toLowerCase().includes(consultaFilter.toLowerCase())
   );
 
-  const isLeapYear = (year) => {
-    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const handleDateChange = (value) => {
+    setDateTime(value);
+    handleInputChange(index, { target: { name: 'dataRealizacao', value: value ? value.format('YYYY-MM-DD HH:mm:ss') : '' } });
   };
-
-  const getDaysInMonth = (month, year) => {
-    const daysInMonth = {
-      '01': 31,
-      '02': isLeapYear(Number(year)) ? 29 : 28,
-      '03': 31,
-      '04': 30,
-      '05': 31,
-      '06': 30,
-      '07': 31,
-      '08': 31,
-      '09': 30,
-      '10': 31,
-      '11': 30,
-      '12': 31
-    };
-    return daysInMonth[month] || 31;
-  };
-
-  const updateDataRealizacao = () => {
-    if (dia && mes && ano && hora && minuto) {
-      const newDateTime = `${ano}-${mes}-${dia} ${hora}:${minuto}:00`;
-      console.log('Nova data/hora combinada:', newDateTime);
-      handleInputChange(index, { target: { name: 'dataRealizacao', value: newDateTime } });
-    }
-  };
-
-  useEffect(() => {
-    updateDataRealizacao();
-  }, [dia, mes, ano, hora, minuto]);
-
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-  const currentDay = currentDate.getDate().toString().padStart(2, '0');
-
-  const anos = Array.from({ length: 10 }, (_, i) => (currentYear + i).toString());
-  const meses = [
-    { value: '01', label: 'Janeiro' },
-    { value: '02', label: 'Fevereiro' },
-    { value: '03', label: 'Março' },
-    { value: '04', label: 'Abril' },
-    { value: '05', label: 'Maio' },
-    { value: '06', label: 'Junho' },
-    { value: '07', label: 'Julho' },
-    { value: '08', label: 'Agosto' },
-    { value: '09', label: 'Setembro' },
-    { value: '10', label: 'Outubro' },
-    { value: '11', label: 'Novembro' },
-    { value: '12', label: 'Dezembro' }
-  ].filter(m => Number(ano) > currentYear || (Number(ano) === currentYear && m.value >= currentMonth));
-
-  const dias = Array.from({ length: getDaysInMonth(mes, ano) }, (_, i) => (i + 1).toString().padStart(2, '0'))
-    .filter(d => Number(ano) > currentYear ||
-      (Number(ano) === currentYear && mes > currentMonth) ||
-      (Number(ano) === currentYear && mes === currentMonth && d >= currentDay));
-
-  const horas = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
-  const minutos = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-
-  useEffect(() => {
-    if (dia && mes && ano) {
-      const maxDays = getDaysInMonth(mes, ano);
-      if (Number(dia) > maxDays) {
-        setDia(maxDays.toString().padStart(2, '0'));
-      }
-    }
-  }, [mes, ano]);
 
   return (
     <div className="form-row">
       <Form.Item label="Data e Hora" required style={{ width: '100%' }}>
-        <div className="date-time-container">
-          <Select
-            value={ano || undefined}
-            onChange={(value) => setAno(value)}
-            placeholder="Ano"
-            style={{ width: 100 }}
-          >
-            <Select.Option value="">Ano</Select.Option>
-            {anos.map(a => (
-              <Select.Option key={a} value={a}>{a}</Select.Option>
-            ))}
-          </Select>
-          <Select
-            value={mes || undefined}
-            onChange={(value) => setMes(value)}
-            placeholder="Mês"
-            style={{ width: 120 }}
-          >
-            <Select.Option value="">Mês</Select.Option>
-            {meses.map(m => (
-              <Select.Option key={m.value} value={m.value}>{m.label}</Select.Option>
-            ))}
-          </Select>
-          <Select
-            value={dia || undefined}
-            onChange={(value) => setDia(value)}
-            placeholder="Dia"
-            style={{ width: 80 }}
-          >
-            <Select.Option value="">Dia</Select.Option>
-            {dias.map(d => (
-              <Select.Option key={d} value={d}>{d}</Select.Option>
-            ))}
-          </Select>
-          <Select
-            value={hora || undefined}
-            onChange={(value) => setHora(value)}
-            placeholder="Hora"
-            style={{ width: 80 }}
-          >
-            <Select.Option value="">Hora</Select.Option>
-            {horas.map(h => (
-              <Select.Option key={h} value={h}>{h}</Select.Option>
-            ))}
-          </Select>
-          <Select
-            value={minuto || undefined}
-            onChange={(value) => setMinuto(value)}
-            placeholder="Minuto"
-            style={{ width: 80 }}
-          >
-            <Select.Option value="">Minuto</Select.Option>
-            {minutos.map(m => (
-              <Select.Option key={m} value={m}>{m}</Select.Option>
-            ))}
-          </Select>
-        </div>
+        <DatePicker
+          showTime
+          value={dateTime}
+          onChange={handleDateChange}
+          format="YYYY-MM-DD HH:mm"
+          style={{ width: '100%' }}
+          placeholder="Selecione data e hora"
+        />
       </Form.Item>
       <Form.Item label="Médico" name={`funcionarioId_${index}`} rules={[{ required: true, message: 'Selecione um médico' }]} style={{ width: '100%' }}>
         <Select
@@ -367,7 +230,7 @@ const NovaAgenda = () => {
       pacienteId: '',
       dataRealizacao: '',
       agendaId: agendas[0]?.id || '',
-      uniqueKey: Date.now()
+      uniqueKey: uuidv4()
     };
     setFormularios([novoFormulario]);
     setIsModalVisible(true);
@@ -501,9 +364,11 @@ const NovaAgenda = () => {
   };
 
   const handleCancel = () => {
-    form.resetFields();
-    setFormularios([]);
     setIsModalVisible(false);
+    setTimeout(() => {
+      form.resetFields();
+      setFormularios([]);
+    }, 300); // Aguarda o modal fechar antes de limpar
   };
 
   return (
@@ -519,8 +384,7 @@ const NovaAgenda = () => {
             className="add-btn"
           >
             Adicionar Novo Agendamento
-          </Button>
-          <Button onClick={() => viewPdfGenerico('agendamento', 1)}>Teste PDF</Button>   
+          </Button> 
           <Modal
             title="Novo Agendamento"
             open={isModalVisible}
@@ -535,7 +399,7 @@ const NovaAgenda = () => {
             <Form form={form} layout="vertical" className="agenda-form">
               {formularios.map((formItem, index) => (
                 <FormRow
-                  key={formItem.uniqueKey || index}
+                  key={formItem.uniqueKey}
                   form={formItem}
                   index={index}
                   funcionarios={funcionarios}
