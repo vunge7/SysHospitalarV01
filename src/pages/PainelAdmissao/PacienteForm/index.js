@@ -81,6 +81,8 @@ const PacienteForm = () => {
                             });
                         });
                 }
+
+                await api.delete('api/qr-data');
             } catch (error) {
                 console.log(`Erro ao buscar dados do QR Code: ${error}`);
                 // Se não houver dado, apenas ignora

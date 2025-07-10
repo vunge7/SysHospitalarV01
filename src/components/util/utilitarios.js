@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AutoComplete, Select, Input } from 'antd';
+import { toast } from 'react-toastify';
 
 import {
     Modal,
@@ -161,7 +162,6 @@ export const VoiceCapture = () => {
             // Atualiza o texto final e intermediário
             setCurrentSentence(finalTranscript + interimTranscript);
         };
-
         newRecognition.onerror = (event) => {
             console.error('Erro no reconhecimento de voz:', event.error);
             stopListening(); // Para em caso de erro
@@ -177,7 +177,6 @@ export const VoiceCapture = () => {
                 setCurrentSentence(''); // Limpa a frase atual após adicionar ao histórico
             }
         };
-
         return newRecognition;
     };
 
@@ -437,8 +436,8 @@ export const ModalTriagem = ({
     inscricaoId,
     usuarioId = 1,
     onCancel,
-    exibirManchester = true,
-    exibirEncaminhamento = true,
+    exibirManchester = false,
+    exibirEncaminhamento = false,
 }) => {
     const [pressaoArterialS, setPressaoArterialS] = useState(120);
     const [pressaoArterialD, setPressaoArterialD] = useState(80);
@@ -464,7 +463,108 @@ export const ModalTriagem = ({
     const modalWidth = exibirManchester ? 1020 : 500;
     const cardWidth = exibirManchester ? '50%' : '100%';
 
+    // Refs para os campos
+    const pressaoArterialSRef = useRef();
+    const pressaoArterialDRef = useRef();
+    const temperaturaRef = useRef();
+    const pesoRef = useRef();
+    const pulsoRef = useRef();
+    const soRef = useRef();
+    const respiracaoRef = useRef();
+    const dorRef = useRef();
+
     const salvarTriagem = async () => {
+        // Validação dos campos obrigatórios e foco
+        if (!pressaoArterialS) {
+            toast.error('Preencha a Pressão Arterial Sistólica!', {
+                autoClose: 2000,
+            });
+            pressaoArterialSRef.current && pressaoArterialSRef.current.focus();
+            return;
+        }
+        if (!pressaoArterialD) {
+            toast.error('Preencha a Pressão Arterial Diastólica!', {
+                autoClose: 2000,
+            });
+            pressaoArterialDRef.current && pressaoArterialDRef.current.focus();
+            return;
+        }
+        if (!temperatura) {
+            toast.error('Preencha a Temperatura!', { autoClose: 2000 });
+            temperaturaRef.current && temperaturaRef.current.focus();
+            return;
+        }
+        if (!peso) {
+            toast.error('Preencha o Peso!', { autoClose: 2000 });
+            pesoRef.current && pesoRef.current.focus();
+            return;
+        }
+        if (!pulso) {
+            toast.error('Preencha o Pulso!', { autoClose: 2000 });
+            pulsoRef.current && pulsoRef.current.focus();
+            return;
+        }
+        if (!so) {
+            toast.error('Preencha a Saturação O₂!', { autoClose: 2000 });
+            soRef.current && soRef.current.focus();
+            return;
+        }
+        if (!respiracao) {
+            toast.error('Preencha a Respiração!', { autoClose: 2000 });
+            respiracaoRef.current && respiracaoRef.current.focus();
+            return;
+        }
+        if (dor === undefined || dor === null) {
+            toast.error('Preencha o campo Dor!', { autoClose: 2000 });
+            dorRef.current && dorRef.current.focus();
+            return;
+        }
+
+        // Validação de intervalos (exemplo)
+        if (
+            pressaoArterialS < 1 ||
+            pressaoArterialS > 220 ||
+            pressaoArterialD < 1 ||
+            pressaoArterialD > 220 ||
+            temperatura < 1 ||
+            temperatura > 100 ||
+            peso < 1 ||
+            peso > 220 ||
+            pulso < 1 ||
+            pulso > 220 ||
+            so < 1 ||
+            so > 100 ||
+            respiracao < 1 ||
+            respiracao > 60 ||
+            dor < 0 ||
+            dor > 10
+        ) {
+            toast.error('Algum valor está fora do intervalo permitido!', {
+                autoClose: 2000,
+            });
+            // Foca no primeiro campo fora do intervalo
+            if (pressaoArterialS < 1 || pressaoArterialS > 220) {
+                pressaoArterialSRef.current &&
+                    pressaoArterialSRef.current.focus();
+            } else if (pressaoArterialD < 1 || pressaoArterialD > 220) {
+                pressaoArterialDRef.current &&
+                    pressaoArterialDRef.current.focus();
+            } else if (temperatura < 1 || temperatura > 100) {
+                temperaturaRef.current && temperaturaRef.current.focus();
+            } else if (peso < 1 || peso > 220) {
+                pesoRef.current && pesoRef.current.focus();
+            } else if (pulso < 1 || pulso > 220) {
+                pulsoRef.current && pulsoRef.current.focus();
+            } else if (so < 1 || so > 100) {
+                soRef.current && soRef.current.focus();
+            } else if (respiracao < 1 || respiracao > 60) {
+                respiracaoRef.current && respiracaoRef.current.focus();
+            } else if (dor < 0 || dor > 10) {
+                dorRef.current && dorRef.current.focus();
+            }
+            return;
+        }
+
         try {
             const triagem = {
                 dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
@@ -478,9 +578,21 @@ export const ModalTriagem = ({
             const _linhasTriagem = _getLinhasTriagem(id);
             await api.post('linha-triagem/add/all', _linhasTriagem);
             console.log('Triagem e linhas registradas com sucesso');
-            // Aqui pode chamar um callback ou fechar modal, se desejar
+
+            if (exibirEncaminhamento) {
+                await encaminhar();
+            }
+
+            onCancel();
+
+            toast.success('Paciente Traiado com sucesso!', {
+                autoClose: 2000,
+            });
         } catch (e) {
             console.error('Erro ao registrar triagem ou linhas:', e);
+            toast.success('Falha ao triar o paciente!', {
+                autoClose: 2000,
+            });
             // Aqui pode exibir mensagem de erro ao usuário
         }
     };
@@ -513,6 +625,18 @@ export const ModalTriagem = ({
         };
         return _item;
     }
+
+    const encaminhar = async () => {
+        try {
+            await api.put(
+                'inscricao/edit/' + inscricaoId + '/TRIADO/' + encaminhamento
+            );
+            console.log('Encaminhamento efectuado com sucesso');
+            viewPdfPacienteFita('paciente_fita', inscricaoId);
+        } catch (e) {
+            console.log('Falha ao efectuar o encaminhamento', e);
+        }
+    };
 
     return (
         <Modal
@@ -645,6 +769,7 @@ export const ModalTriagem = ({
                                     value={pulso}
                                     onChange={setPulso}
                                     style={{ width: '100%' }}
+                                    ref={pulsoRef}
                                 />
                             </Col>
                             <Col span={12}>
@@ -655,6 +780,7 @@ export const ModalTriagem = ({
                                     value={so}
                                     onChange={setSo}
                                     style={{ width: '100%' }}
+                                    ref={soRef}
                                 />
                             </Col>
                         </Row>

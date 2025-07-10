@@ -12,7 +12,7 @@ import { ConfigProvider } from 'antd';
 import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
 
-import { viewPdfGenerico } from '../../util/utilitarios';
+import { viewPdfGenerico, ModalTriagem } from '../../util/utilitarios';
 
 import {
     List,
@@ -25,9 +25,14 @@ import {
     Form,
     message,
     AutoComplete,
+    Tooltip,
 } from 'antd';
 
-import { UserOutlined } from '@ant-design/icons';
+import {
+    MedicineBoxOutlined,
+    CloseCircleOutlined,
+    FileSearchOutlined,
+} from '@ant-design/icons';
 import { format } from 'date-fns';
 const { TextArea } = Input;
 
@@ -51,6 +56,8 @@ function Consulta() {
     const [listaExamesRequisitado, setListaExamesRequisitado] = useState([]);
 
     const [messageApi, contextHolder] = message.useMessage();
+    const [isModalTriagem, setIsModalTriagem] = useState(false);
+    const [inscricaoIdTriagem, setInscricaoIdTriagem] = useState(null);
 
     useEffect(() => {
         _carrgarDados();
@@ -444,33 +451,92 @@ function Consulta() {
                                 description=""
                             />
                             <Flex horizontal="true">
-                                <Button
-                                    size="small"
-                                    type="primary"
-                                    onClick={(e) =>
-                                        _showModal(item.inscricaoId, item.nome)
+                                <Tooltip
+                                    title={'Consultar o paciente ' + item.nome}
+                                >
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        onClick={(e) =>
+                                            _showModal(
+                                                item.inscricaoId,
+                                                item.nome
+                                            )
+                                        }
+                                        style={{
+                                            marginRight: 20,
+                                            padding: 10,
+                                            height: 35,
+                                            borderRadius: 30,
+                                        }}
+                                        icon={
+                                            <FileSearchOutlined
+                                                style={{
+                                                    fontSize: 24,
+                                                    color: '#fff',
+                                                }}
+                                            />
+                                        }
+                                    >
+                                        Consultar
+                                    </Button>
+                                </Tooltip>
+
+                                <Tooltip
+                                    title={'Triar do paciente ' + item.nome}
+                                >
+                                    <Button
+                                        size="small"
+                                        type="link"
+                                        style={{
+                                            marginRight: 20,
+                                            padding: 10,
+                                            height: 35,
+                                            borderRadius: 30,
+                                        }}
+                                        onClick={() => {
+                                            setInscricaoIdTriagem(
+                                                item.inscricaoId
+                                            );
+                                            setIsModalTriagem(true);
+                                        }}
+                                        icon={
+                                            <MedicineBoxOutlined
+                                                style={{
+                                                    fontSize: 30,
+                                                    color: '#52c41a',
+                                                }}
+                                            />
+                                        }
+                                    />
+                                </Tooltip>
+                                <Tooltip
+                                    title={
+                                        'Finalizar a inscrição do paciente ' +
+                                        item.nome
                                     }
-                                    style={{
-                                        marginRight: 20,
-                                        padding: 10,
-                                        height: 35,
-                                        borderRadius: 30,
-                                    }}
                                 >
-                                    Consultar
-                                </Button>
-                                <Button
-                                    size="small"
-                                    type="link"
-                                    style={{
-                                        marginRight: 20,
-                                        padding: 10,
-                                        height: 35,
-                                        borderRadius: 30,
-                                    }}
-                                >
-                                    Finalizar
-                                </Button>
+                                    <Button
+                                        size="small"
+                                        type="link"
+                                        style={{
+                                            marginRight: 20,
+                                            padding: 10,
+                                            height: 35,
+                                            borderRadius: 30,
+                                        }}
+                                        icon={
+                                            <CloseCircleOutlined
+                                                style={{
+                                                    fontSize: 24,
+                                                    color: 'red',
+                                                }}
+                                            />
+                                        }
+                                    >
+                                        Finalizar
+                                    </Button>
+                                </Tooltip>
                             </Flex>
                         </List.Item>
                     )}
@@ -520,6 +586,18 @@ function Consulta() {
                     />
                 </Form>
             </Modal>
+
+            <ModalTriagem
+                estado={isModalTriagem}
+                inscricaoId={inscricaoIdTriagem}
+                usuarioId={1}
+                onCancel={() => {
+                    setIsModalTriagem(false);
+                    setInscricaoIdTriagem(null);
+                }}
+                exibirEncaminhamento={false}
+                exibirManchester={false}
+            />
         </>
     );
 }

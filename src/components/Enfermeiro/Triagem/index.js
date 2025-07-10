@@ -112,10 +112,11 @@ function Triagem() {
             <>
                 <ModalTriagem
                     estado={isModalTriagem}
-                    idInscricao={idInscricao}
+                    inscricaoId={idInscricao}
+                    usuarioId={1}
                     onCancel={() => setIsModalTriagem(false)} //
-                    exibirEncaminhamento={false}
-                    exibirManchester={false}
+                    exibirEncaminhamento={true}
+                    exibirManchester={true}
                 />
             </>
         </Flex>
