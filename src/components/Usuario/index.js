@@ -7,6 +7,7 @@ import ListarUsuario from './ListarUsuario';
 import Cabecario from '../Cabecario';
 import Rodape from '../Rodape';
 import './Usuario.css';
+import { format } from 'date-fns';
 
 import {
   MenuFoldOutlined,
@@ -279,10 +280,9 @@ function Usuario() {
         estadoUsuario,
         tipoUsuario,
         funcaoId: Number(funcaoId),
-        funcionarioId: selectedPessoa.id, // ajuste conforme sua lógica
+        funcionarioId: selectedPessoa.id,
         ip,
         usuarioId, // ajuste conforme o usuário logado
-        status,
       };
       console.log('Payload enviado para cadastro de usuário:', usuarioData);
       const response = await api.post('usuario/add', usuarioData);

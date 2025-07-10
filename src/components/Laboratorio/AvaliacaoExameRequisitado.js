@@ -39,6 +39,12 @@ function AvaliacaoExameRequisitado({
     const [valores, setValores] = useState({});
 
     const [linhasRequisicao, setLinhasRequisicao] = useState([]);
+    const [linhasResultado, setLinhasResultado] = useState([]);
+    const [produtos, setProdutos] = useState([]);
+    const [pacientes, setPacientes] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
+    const [medicos, setMedicos] = useState([]);
+    const [unidades, setUnidades] = useState([]);
 
     // Reset selection when examesRequisitados changes
     useEffect(() => {
@@ -62,6 +68,7 @@ function AvaliacaoExameRequisitado({
                 referencias: item.referencias || {}, // Fallback to empty object
                 requisicaoExameId: item.requisicaoExameId || null,
                 statusBoolean: item.status, // Store boolean status for backend updates
+                finalizado: item.finalizado, // Adicionar finalizado
             }));
             setLinhasRequisicao(mappedData);
         } catch (error) {
@@ -72,6 +79,27 @@ function AvaliacaoExameRequisitado({
             setLinhasRequisicao([]);
         }
     };
+
+    const fetchLinhasResultado = async () => {
+        const res = await api.get('linharesultado/all');
+        setLinhasResultado(res.data || []);
+    };
+
+    useEffect(() => {
+        if (selectedRequisicao) {
+            fetchLinhasRequisicao(selectedRequisicao.id);
+            fetchLinhasResultado();
+        }
+    }, [selectedRequisicao]);
+
+    // Corrija os endpoints para bater com o backend
+    useEffect(() => {
+        api.get('produto/all').then(res => setProdutos(res.data || []));
+        api.get('/paciente/all').then(res => setPacientes(res.data || []));
+        api.get('usuario/all').then(res => setUsuarios(res.data || []));
+        api.get('unidade/all').then(res => setUnidades(res.data || []));
+        // Remova api.get('medico/all') se não existir no backend
+    }, []);
 
     const handleRowClick = (record) => {
         setSelectedRequisicao(record);
@@ -104,39 +132,37 @@ function AvaliacaoExameRequisitado({
     const handleFinishResult = async (values) => {
         setLoading(true);
         try {
-            console.log('Finalizing exame ID:', selectedExame.id, 'Payload:', values);
-            const referenciasKeys = Object.keys(selectedExame.referencias || {});
-            // Only validate referencias if they exist
-            if (referenciasKeys.length > 0) {
-                const todosPreenchidos = referenciasKeys.every(
-                    (key) => values.valores[key] !== undefined
-                );
-                if (!todosPreenchidos) {
-                    throw new Error('Preencha todos os valores dos componentes do exame.');
-                }
+            // Extrair o valor do resultado corretamente
+            let valorReferencia = null;
+            if (values.valores && typeof values.valores === 'object') {
+                // Se houver múltiplos exames, pega o primeiro valor
+                const firstKey = Object.keys(values.valores)[0];
+                valorReferencia = Number(values.valores[firstKey]);
+            } else if (values.valorReferencia !== undefined) {
+                valorReferencia = Number(values.valorReferencia);
             }
-
-            const updatedExame = {
-                ...selectedExame,
-                resultado: {
-                    valor: values.valores,
-                    observacao: values.observacao,
-                    finalizado: true,
-                    dataFinalizacao: new Date().toISOString(),
-                },
-                status: true, // Boolean for backend
+            const linhaResultado = {
+                exameId: selectedExame.id,
+                valorReferencia: valorReferencia,
+                unidadeId: selectedExame.unidadeId || null,
+                observacao: values.observacao || "",
+                pacienteId: selectedRequisicao.pacienteId || selectedRequisicao.paciente_id,
+                usuarioId: selectedRequisicao.medicoId || selectedRequisicao.medico_id,
+                resultadoId: selectedExame.resultado?.id || null, // Adicionar resultadoId
             };
+            await api.post('linharesultado/add', linhaResultado);
 
-            const response = await updateExame(selectedExame.id, updatedExame);
-            console.log('Update response:', response.data);
             notification.success({ message: 'Resultado finalizado com sucesso!' });
             handleCancel();
             fetchAllData();
-            fetchLinhasRequisicao(selectedRequisicao.id);
+            if (selectedRequisicao && selectedRequisicao.id) {
+                await fetchLinhasRequisicao(selectedRequisicao.id);
+                await fetchLinhasResultado();
+            }
         } catch (error) {
-            console.error('Error finalizing exame:', error);
             notification.error({
-                message: error.response?.data || error.message || 'Erro ao finalizar resultado!',
+                message: 'Erro ao finalizar resultado!',
+                description: error.response?.data?.message || error.message || JSON.stringify(error.response?.data) || 'Erro desconhecido'
             });
         } finally {
             setLoading(false);
@@ -165,7 +191,7 @@ function AvaliacaoExameRequisitado({
             const updatedExame = {
                 ...exame,
                 resultado: null,
-                status: false, // Boolean for backend
+                finalizado: false, // Boolean for backend
             };
             const response = await updateExame(exame.id, updatedExame);
             console.log('Reopen response:', response.data);
@@ -212,8 +238,42 @@ function AvaliacaoExameRequisitado({
         },
     ];
 
+    const isLinhaInserida = (linha) =>
+        linhasResultado.some(lr => lr.exameId === linha.id);
+
+    const getUnidadeId = (linha) => {
+        const produto = produtos.find(p => p.id === linha.produtoId);
+        return produto ? produto.unidadeMedidaId : '';
+    };
+    const getUnidadeNome = (linha) => {
+        const unidadeId = getUnidadeId(linha);
+        const unidade = unidades.find(u => u.id === unidadeId);
+        return unidade ? `${unidade.descricao} (${unidade.abrevicao})` : unidadeId || '';
+    };
+    const getLinhaResultado = (linha) => linhasResultado.find(lr => lr.exameId === linha.id) || {};
+    const getPacienteNome = (linha) => {
+        const lr = getLinhaResultado(linha);
+        const pacienteId = lr.pacienteId || selectedRequisicao?.pacienteId || selectedRequisicao?.paciente_id;
+        const paciente = pacientes.find(p => p.id === pacienteId);
+        return paciente ? paciente.nome : pacienteId || '';
+    };
+    const getUsuarioNome = (linha) => {
+        const lr = getLinhaResultado(linha);
+        const usuarioId = lr.usuarioId || selectedRequisicao?.usuarioId || selectedRequisicao?.medicoId || selectedRequisicao?.medico_id;
+        const usuario = usuarios.find(u => u.id === usuarioId);
+        return usuario ? usuario.userName : usuarioId || '';
+    };
+    const getMedicoNome = (linha) => {
+        const lr = getLinhaResultado(linha);
+        const usuarioId = lr.usuarioId || selectedRequisicao?.usuarioId || selectedRequisicao?.medicoId || selectedRequisicao?.medico_id;
+        const medico = medicos.find(m => m.usuarioId === usuarioId);
+        return medico ? medico.nome : '';
+    };
+
+    // Corrija a tabela para não duplicar IDs e mostrar corretamente o resultadoId
     const examesColumns = [
-        { title: 'ID', dataIndex: 'id', key: 'id' },
+        // Remova a duplicidade: mantenha apenas uma coluna de ID
+        // { title: 'ID', dataIndex: 'id', key: 'id' },
         {
             title: 'Exame',
             dataIndex: 'exame',
@@ -227,10 +287,43 @@ function AvaliacaoExameRequisitado({
             render: (text) => text || 'Sem descrição',
         },
         {
+            title: 'Paciente',
+            key: 'paciente',
+            render: (_, record) => getPacienteNome(record)
+        },
+        {
+            title: 'Usuário',
+            key: 'usuario',
+            render: (_, record) => getUsuarioNome(record)
+        },
+        {
+            title: 'Médico',
+            key: 'medico',
+            render: (_, record) => getMedicoNome(record)
+        },
+        {
+            title: 'Resultado ID',
+            key: 'resultadoId',
+            render: (_, record) => {
+                // Mostre o mesmo resultadoId para todas as linhas relacionadas
+                const lr = getLinhaResultado(record);
+                return lr.resultadoId || '';
+            }
+        },
+        {
+            title: 'Unidade',
+            key: 'unidade',
+            render: (_, record) => getUnidadeNome(record)
+        },
+        {
             title: 'Status',
-            dataIndex: 'status',
             key: 'status',
-            render: (text) => text || 'PENDENTE',
+            render: (_, record) =>
+                isLinhaInserida(record) ? (
+                    <span style={{ color: 'green', fontWeight: 'bold' }}>Inserido</span>
+                ) : (
+                    <span style={{ color: 'orange' }}>Pendente</span>
+                ),
         },
         {
             title: 'Ações',
@@ -238,36 +331,63 @@ function AvaliacaoExameRequisitado({
             render: (_, record) => (
                 <Space>
                     <Button
-                        type="primary"
-                        icon={record.resultado?.finalizado ? <CheckCircleOutlined /> : <EditOutlined />}
+                        type={isLinhaInserida(record) ? 'default' : 'primary'}
+                        disabled={isLinhaInserida(record)}
                         onClick={() => showResultModal(record)}
                     >
-                        {record.resultado?.finalizado ? 'Ver Resultado' : 'Inserir Resultado'}
+                        {isLinhaInserida(record) ? 'Inserido' : 'Inserir Resultado'}
                     </Button>
-                    {record.resultado?.finalizado && (
-                        <Popconfirm
-                            title="Deseja reabrir este exame?"
-                            onConfirm={() => handleReopenExame(record)}
-                            okText="Sim"
-                            cancelText="Não"
-                        >
-                            <Button icon={<UndoOutlined />}>Reabrir</Button>
-                        </Popconfirm>
-                    )}
-                    <Popconfirm
-                        title="Deseja excluir este exame?"
-                        onConfirm={() => handleDeleteExame(record.id)}
-                        okText="Sim"
-                        cancelText="Não"
-                    >
-                        <Button danger icon={<DeleteOutlined />}>
-                            Excluir
-                        </Button>
-                    </Popconfirm>
                 </Space>
             ),
         },
     ];
+
+    const allLinhasInseridas = linhasRequisicao.length > 0 && linhasRequisicao.every(linha => isLinhaInserida(linha));
+
+    const handleFinalizarExame = async () => {
+        try {
+            // 1. Cria o resultado principal
+            const payload = {
+                pacienteId: selectedRequisicao.pacienteId || selectedRequisicao.paciente_id,
+                usuarioId: selectedRequisicao.medicoId || selectedRequisicao.medico_id,
+                dataResultado: moment().format('YYYY-MM-DD HH:mm:ss'),
+            };
+            const res = await api.post('resultado/add', payload);
+            const resultadoId = res.data.id;
+
+            // 2. Para cada linha, cria LinhaResultado com o mesmo resultadoId e todos os campos obrigatórios
+            for (const linha of linhasRequisicao) {
+                const produto = produtos.find(p => p.id === linha.produtoId);
+                const unidadeId = produto ? produto.unidadeMedidaId : null;
+                let valorReferencia = null;
+                if (linha.resultado && typeof linha.resultado === 'object') {
+                    const firstKey = Object.keys(linha.resultado)[0];
+                    valorReferencia = Number(linha.resultado[firstKey]);
+                } else if (linha.valorReferencia !== undefined) {
+                    valorReferencia = Number(linha.valorReferencia);
+                }
+                const linhaResultado = {
+                    exameId: linha.id,
+                    valorReferencia: valorReferencia,
+                    unidadeId: unidadeId,
+                    pacienteId: payload.pacienteId,
+                    usuarioId: payload.usuarioId,
+                    resultadoId: resultadoId, // Corrigido de 'resutaldoId' para 'resultadoId'
+                    observacao: linha.observacao || ''
+                };
+                await api.post('linharesultado/add', linhaResultado);
+            }
+
+            notification.success({ message: 'Exame finalizado com sucesso!' });
+            setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
+            setSelectedRequisicao(null);
+            setLinhasRequisicao([]);
+            setLinhasResultado([]);
+            fetchAllData();
+        } catch (error) {
+            notification.error({ message: 'Erro ao finalizar exame!' });
+        }
+    };
 
     return (
         <div>
@@ -297,6 +417,7 @@ function AvaliacaoExameRequisitado({
                         dataSource={linhasRequisicao}
                         rowKey="id"
                     />
+                    <Button type="primary" style={{ marginTop: 16 }} onClick={handleFinalizarExame} disabled={!allLinhasInseridas}>Finalizar</Button>
                 </Card>
             ) : (
                 <Card>

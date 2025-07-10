@@ -909,11 +909,17 @@ const Farmacia = () => {
                   placeholder="Selecione o produto"
                   disabled={selectedLoteId === null || produtos.length === 0}
                 >
-                  {getProdutosByLote(selectedLoteId).map((produto) => (
-                    <Option key={produto.produtoId} value={produto.produtoId}>
-                      {produto.productDescription} (Disponível: {produto.quantidade})
-                    </Option>
-                  ))}
+                  {form.getFieldValue('tipoOperacao') === 'ENTRADA'
+                    ? produtos.map((produto) => (
+                        <Option key={produto.id} value={produto.id}>
+                          {produto.productDescription}
+                        </Option>
+                      ))
+                    : getProdutosByLote(selectedLoteId).map((produto) => (
+                        <Option key={produto.produtoId} value={produto.produtoId}>
+                          {produto.productDescription} (Disponível: {produto.quantidade})
+                        </Option>
+                      ))}
                 </Select>
               </Form.Item>
               <Form.Item
