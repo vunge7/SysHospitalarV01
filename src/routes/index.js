@@ -27,12 +27,14 @@ import PainelRecursos from '../components/RecursosHumanos';
 import FormularioQRCode from '../util/FormularioQRCode';
 import Html5QrcodeScanner from '../util/Html5QrcodeScanner';
 import RotaTest from '../util/RotaTest';
+import GraficoTriagem from '../components/GraficoTriagem';
 
 function RoutesApp() {
     return (
         <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/tts" element={<TextToSpeech />} />
+            <Route path="/gt" element={<GraficoTriagem />} />
             <Route path="/tm" element={<TriagemManchester />} />
             <Route path="/formqrcode" element={<FormularioQRCode />} />
             <Route path="/qrcode" element={<Html5QrcodeScanner />} />
