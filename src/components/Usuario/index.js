@@ -51,6 +51,7 @@ function Usuario() {
   const [ip, setIp] = useState('127.0.0.1');
   const [status, setStatus] = useState(true);
   const [usuarioId, setUsuarioId] = useState(1); // Ajuste conforme o usuário logado
+  const [funcionarios, setFuncionarios] = useState([]);
   const navigate = useNavigate();
 
   const generos = [
@@ -96,8 +97,17 @@ function Usuario() {
     }
   };
 
+  const fetchFuncionarios = async () => {
+    try {
+      const response = await api.get('funcionario/all');
+      setFuncionarios(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Erro ao buscar funcionários:', error);
+    }
+  };
+
   const fetchAllData = async () => {
-    await Promise.all([fetchUsuarios(), fetchPessoas(), fetchFuncoes()]);
+    await Promise.all([fetchUsuarios(), fetchPessoas(), fetchFuncoes(), fetchFuncionarios()]);
   };
 
   const verificarNifExistente = async (nif) => {
@@ -112,6 +122,11 @@ function Usuario() {
 
   useEffect(() => {
     fetchAllData();
+    // Buscar IP real do usuário
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => setIp(data.ip))
+      .catch(() => setIp('127.0.0.1'));
   }, []);
 
   // Configuração do menu com ícones
@@ -127,7 +142,18 @@ function Usuario() {
 
   // Filtragem de pessoas para a modal de pesquisa
   useEffect(() => {
-    const filtered = pessoas.filter((pessoa) => {
+    // 1. Pega todos os funcionarioId já usados em usuários
+    const funcionarioIdsComUsuario = usuarios.map(u => Number(u.funcionarioId));
+
+    // 2. Filtra pessoas que são funcionários e ainda não têm usuário
+    const pessoasQueSaoFuncionariosSemUsuario = pessoas.filter(pessoa =>
+      funcionarios.some(func =>
+        Number(func.pessoaId) === Number(pessoa.id) &&
+        !funcionarioIdsComUsuario.includes(Number(func.id))
+      )
+    );
+
+    const filtered = pessoasQueSaoFuncionariosSemUsuario.filter((pessoa) => {
       const query = searchQuery.toLowerCase();
       return (
         pessoa.nome.toLowerCase().includes(query) ||
@@ -135,7 +161,7 @@ function Usuario() {
       );
     });
     setFilteredPessoas(filtered);
-  }, [searchQuery, pessoas]);
+  }, [searchQuery, pessoas, funcionarios, usuarios]);
 
   const handleTabClick = ({ key }) => {
     setActiveTab(key);
@@ -154,6 +180,10 @@ function Usuario() {
   };
 
   const abrirSearchModal = () => {
+    fetchUsuarios();
+    fetchPessoas();
+    fetchFuncionarios();
+    fetchFuncoes();
     setIsSearchModalOpen(true);
   };
 
@@ -178,7 +208,13 @@ function Usuario() {
         alert('Erro: Pessoa não encontrada no backend.');
         return;
       }
-      setSelectedPessoa(pessoaData);
+      // Encontre o funcionário correspondente
+      const funcionario = funcionarios.find(f => Number(f.pessoaId) === Number(pessoaData.id));
+      if (!funcionario) {
+        alert('Erro: Funcionário não encontrado para esta pessoa.');
+        return;
+      }
+      setSelectedPessoa({ ...pessoaData, funcionarioId: funcionario.id });
       setIsPessoaMarked(true);
       setIsSearchModalOpen(false);
       setSearchQuery('');
@@ -280,9 +316,8 @@ function Usuario() {
         estadoUsuario,
         tipoUsuario,
         funcaoId: Number(funcaoId),
-        funcionarioId: selectedPessoa.id,
+        funcionarioId: Number(selectedPessoa.funcionarioId),
         ip,
-        usuarioId, // ajuste conforme o usuário logado
       };
       console.log('Payload enviado para cadastro de usuário:', usuarioData);
       const response = await api.post('usuario/add', usuarioData);
@@ -338,6 +373,28 @@ function Usuario() {
           {activeTab === 'novo-usuario' && (
             <div className="novo-usuario-container">
               <h2>Cadastrar Usuário</h2>
+              <div className="tipo-usuario-container">
+                <h3>Tipo de Usuário</h3>
+                <Radio.Group
+                  onChange={(e) => setTipoUsuario(e.target.value)}
+                  value={tipoUsuario}
+                  disabled={!isPessoaMarked || !selectedPessoa?.id}
+                >
+                  {tiposUsuario.map((tipo) => (
+                    <Radio key={tipo} value={tipo}>
+                      {tipo}
+                    </Radio>
+                  ))}
+                </Radio.Group>
+              </div>
+              <div className="search-container">
+                <Input
+                  placeholder="Pesquisar por nome ou NIF"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  suffix={<SearchOutlined onClick={abrirSearchModal} className="search-icon" />}
+                />
+              </div>
               {selectedPessoa && (
                 <div className="pessoa-selecionada-container">
                   <h3>Dados Pessoais</h3>
@@ -403,7 +460,7 @@ function Usuario() {
                 </div>
                 <div className="input-container">
                   <label>IP</label>
-                  <Input value={ip} onChange={e => setIp(e.target.value)} placeholder="IP" disabled={!selectedPessoa} />
+                  <Input value={ip} placeholder="IP" readOnly />
                 </div>
                 <div className="input-container">
                   <label>Status</label>
@@ -412,28 +469,6 @@ function Usuario() {
                     <Option value={false}>Inativo</Option>
                   </Select>
                 </div>
-              </div>
-              <div className="tipo-usuario-container">
-                <h3>Tipo de Usuário</h3>
-                <Radio.Group
-                  onChange={(e) => setTipoUsuario(e.target.value)}
-                  value={tipoUsuario}
-                  disabled={!isPessoaMarked || !selectedPessoa?.id}
-                >
-                  {tiposUsuario.map((tipo) => (
-                    <Radio key={tipo} value={tipo}>
-                      {tipo}
-                    </Radio>
-                  ))}
-                </Radio.Group>
-              </div>
-              <div className="search-container">
-                <Input
-                  placeholder="Pesquisar por nome ou NIF"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  suffix={<SearchOutlined onClick={abrirSearchModal} className="search-icon" />}
-                />
               </div>
               <div className="button-container">
                 <Button

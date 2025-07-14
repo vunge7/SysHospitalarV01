@@ -67,6 +67,17 @@ function UsuarioForm() {
             </h2>
             <Form form={form} layout="vertical" onFinish={onFinish}>
                 <Form.Item
+                    name="nivelAcesso"
+                    label="Nível de Acesso"
+                    rules={[{ required: true, message: 'Selecione o nível de acesso' }]}
+                >
+                    <Select placeholder="Selecione o nível de acesso">
+                        <Option value="ADMIN">Administrador</Option>
+                        <Option value="TECNICO">Técnico</Option>
+                        <Option value="USUARIO">Usuário</Option>
+                    </Select>
+                </Form.Item>
+                <Form.Item
                     name="nome"
                     label="Nome"
                     rules={[{ required: true, message: 'Informe o nome do usuário' }]}
@@ -92,17 +103,6 @@ function UsuarioForm() {
                         <Input.Password placeholder="Digite a senha" />
                     </Form.Item>
                 )}
-                <Form.Item
-                    name="nivelAcesso"
-                    label="Nível de Acesso"
-                    rules={[{ required: true, message: 'Selecione o nível de acesso' }]}
-                >
-                    <Select placeholder="Selecione o nível de acesso">
-                        <Option value="ADMIN">Administrador</Option>
-                        <Option value="TECNICO">Técnico</Option>
-                        <Option value="USUARIO">Usuário</Option>
-                    </Select>
-                </Form.Item>
                 <Form.Item>
                     <Button type="primary" htmlType="submit" loading={loading} className="bg-blue-600 hover:bg-blue-700">
                         {id ? 'Atualizar' : 'Criar'}

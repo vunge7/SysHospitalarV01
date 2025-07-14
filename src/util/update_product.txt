@@ -1,0 +1,14 @@
+Alteraçoes que precisam ser feitas
+
+modulo serviço/produto
+
+alguns campos só devem aparecer consuante o tipo de conta, administrador, analista, etc.
+
+colocar a imagem no principio do formulario, retirar o requisito obrigatorio
+
+
+usuario precisa de alteração no formulario.
+alterar o layout
+colocar a barra de pesquisa da pessoa no principio do formulario
+validação de usuario por completo pra deixar tudo configurado pra configurações avançadas de altenticações
+ 

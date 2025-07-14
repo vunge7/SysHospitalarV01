@@ -46,6 +46,12 @@ const schema = z.object({
     ),
 });
 
+// Função utilitária para extrair a descrição da unidade
+function extrairDescricaoUnidade(str) {
+  if (!str) return '';
+  return str.split(' (')[0];
+}
+
 const ListarProduto = () => {
   const [carregar, setCarregar] = useState(false);
   const [gruposDeProduto, setGruposDeProduto] = useState([]);
@@ -233,7 +239,7 @@ const ListarProduto = () => {
     setValue('taxIva', prod.taxIva ? prod.taxIva.toString() : '0');
     setValue('preco', prod.preco ? prod.preco.toString() : '0');
     setValue('finalPrice', prod.finalPrice ? prod.finalPrice.toString() : '0.00');
-    setValue('unidadeMedida', unidade?.descricao || prod.unidadeMedida || '');
+    setValue('unidadeMedida', unidade?.descricao || extrairDescricaoUnidade(prod.unidadeMedida) || '');
     setValue('status', true);
     setFinalPrice(prod.finalPrice ? prod.finalPrice.toString() : '0.00');
 
@@ -461,6 +467,30 @@ const ListarProduto = () => {
           >
             <div className="form-row">
               <Form.Item
+                label="Imagem"
+                validateStatus={errors.imagem ? 'error' : ''}
+                help={errors.imagem?.message}
+                className="form-item"
+              >
+                <Controller
+                  name="imagem"
+                  control={control}
+                  render={({ field: { onChange } }) => (
+                    <Upload {...uploadProps} onChange={({ fileList }) => onChange(fileList)}>
+                      <Button icon={<UploadOutlined />}>Selecionar Imagem</Button>
+                    </Upload>
+                  )}
+                />
+                {preview && (
+                  <img src={preview} alt="Pré-visualização" className="imagem-preview" />
+                )}
+                {!preview && existingImage && (
+                  <img src={existingImage} alt="Imagem Atual" className="imagem-preview" />
+                )}
+              </Form.Item>
+            </div>
+            <div className="form-row">
+              <Form.Item
                 label="Tipo de Produto"
                 validateStatus={errors.productType ? 'error' : ''}
                 help={errors.productType?.message}
@@ -645,37 +675,6 @@ const ListarProduto = () => {
                 />
               </Form.Item>
             </div>
-            <Form.Item
-              label="Imagem"
-              validateStatus={errors.imagem ? 'error' : ''}
-              help={errors.imagem?.message}
-              className="form-item"
-            >
-              <Controller
-                name="imagem"
-                control={control}
-                render={({ field: { onChange } }) => (
-                  <Upload
-                    {...uploadProps}
-                    onChange={({ fileList }) => onChange(fileList)}
-                  >
-                    <Button icon={<UploadOutlined />}>Selecionar Imagem</Button>
-                  </Upload>
-                )}
-              />
-              {(existingImage || preview) && (
-                <img
-                  src={preview || existingImage}
-                  alt="Imagem do Produto"
-                  className="imagem-preview"
-                  style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '4px' }}
-                  onError={(e) => {
-                    console.error('Erro ao carregar imagem no preview:', preview || existingImage);
-                    e.target.src = 'https://placehold.co/200x200';
-                  }}
-                />
-              )}
-            </Form.Item>
             <Form.Item>
               <Controller
                 name="status"

@@ -7,7 +7,6 @@ import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 
 import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
-import ProdutoGroupForm from '../ProdutoGroupForm';
 import UnidadeMedidaForm from '../UnidadeMedidaForm';
 
 // Esquema de validação com Zod
@@ -39,10 +38,10 @@ const schema = z.object({
   status: z.boolean().default(true),
   imagem: z
     .any()
-    .refine((file) => file?.length >= 1, 'A imagem é obrigatória')
-    .refine((file) => file?.[0]?.size <= 2 * 1024 * 1024, 'A imagem deve ter no máximo 2MB')
+    .optional()
+    .refine((file) => !file || file.length === 0 || file?.[0]?.size <= 2 * 1024 * 1024, 'A imagem deve ter no máximo 2MB')
     .refine(
-      (file) => ['image/jpeg', 'image/png'].includes(file?.[0]?.type),
+      (file) => !file || file.length === 0 || ['image/jpeg', 'image/png'].includes(file?.[0]?.type),
       'Apenas imagens JPEG ou PNG são permitidas'
     ),
 });
@@ -154,7 +153,9 @@ const NovoProduto = () => {
       formData.append('taxIva', data.taxIva.toString());
       formData.append('finalPrice', data.finalPrice.toString());
       formData.append('status', data.status ? '1' : '0');
-      formData.append('imagem', data.imagem[0].originFileObj);
+      if (data.imagem && data.imagem.length > 0) {
+        formData.append('imagem', data.imagem[0].originFileObj);
+      }
 
       await api.post('produto/add', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -254,6 +255,27 @@ const NovoProduto = () => {
             />
           )}
           <Form onFinish={handleSubmit(onSubmit)} layout="vertical" className="product-form">
+            <div className="form-row">
+              <Form.Item
+                label="Imagem"
+                validateStatus={errors.imagem ? 'error' : ''}
+                help={errors.imagem?.message}
+                className="form-item"
+              >
+                <Controller
+                  name="imagem"
+                  control={control}
+                  render={({ field: { onChange } }) => (
+                    <Upload {...uploadProps} onChange={({ fileList }) => onChange(fileList)}>
+                      <Button icon={<UploadOutlined />}>Selecionar Imagem</Button>
+                    </Upload>
+                  )}
+                />
+                {preview && (
+                  <img src={preview} alt="Pré-visualização" className="imagem-preview" />
+                )}
+              </Form.Item>
+            </div>
             <div className="form-row">
               <Form.Item
                 label="Tipo de Produto"
@@ -441,25 +463,6 @@ const NovoProduto = () => {
               </Form.Item>
             </div>
             <div className="form-row">
-              <Form.Item
-                label="Imagem"
-                validateStatus={errors.imagem ? 'error' : ''}
-                help={errors.imagem?.message}
-                className="form-item"
-              >
-                <Controller
-                  name="imagem"
-                  control={control}
-                  render={({ field: { onChange } }) => (
-                    <Upload {...uploadProps} onChange={({ fileList }) => onChange(fileList)}>
-                      <Button icon={<UploadOutlined />}>Selecionar Imagem</Button>
-                    </Upload>
-                  )}
-                />
-                {preview && (
-                  <img src={preview} alt="Pré-visualização" className="imagem-preview" />
-                )}
-              </Form.Item>
               <Form.Item className="form-item">
                 <Controller
                   name="status"
