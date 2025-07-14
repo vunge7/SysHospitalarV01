@@ -270,7 +270,7 @@ const Farmacia = () => {
         return;
       }
       setLoading(true);
-      const operacaoDTO = {
+      const OperacaoStockDTO = {
         id: editOperacaoId || null,
         dataOperacao: moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm:ss'),
         tipoOperacao: values.tipoOperacao,
@@ -312,7 +312,7 @@ const Farmacia = () => {
       };
       const endpoint = editOperacaoId ? `/operacao-stock/edit-with-linhas/${editOperacaoId}` : '/operacao-stock/add-with-linhas';
       const method = editOperacaoId ? api.put : api.post;
-      await method(endpoint, operacaoDTO);
+      await method(endpoint, OperacaoStockDTO);
       message.success('Operação salva com sucesso');
       const [linhasLotesRes, operacoesRes] = await Promise.all([
         api.get('/linhaslotes/all'),
@@ -909,11 +909,17 @@ const Farmacia = () => {
                   placeholder="Selecione o produto"
                   disabled={selectedLoteId === null || produtos.length === 0}
                 >
-                  {getProdutosByLote(selectedLoteId).map((produto) => (
-                    <Option key={produto.produtoId} value={produto.produtoId}>
-                      {produto.productDescription} (Disponível: {produto.quantidade})
-                    </Option>
-                  ))}
+                  {form.getFieldValue('tipoOperacao') === 'ENTRADA'
+                    ? produtos.map((produto) => (
+                        <Option key={produto.id} value={produto.id}>
+                          {produto.productDescription}
+                        </Option>
+                      ))
+                    : getProdutosByLote(selectedLoteId).map((produto) => (
+                        <Option key={produto.produtoId} value={produto.produtoId}>
+                          {produto.productDescription} (Disponível: {produto.quantidade})
+                        </Option>
+                      ))}
                 </Select>
               </Form.Item>
               <Form.Item
