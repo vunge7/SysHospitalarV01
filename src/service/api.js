@@ -2,7 +2,7 @@ import axios from 'axios';
 
 
 //const ip = '192.168.110.78';
-const ip = 'localhost';
+const ip = '10.117.181.78';
 //const ip = '10.59.24.78';
 //const ip = '192.168.110.78';
 

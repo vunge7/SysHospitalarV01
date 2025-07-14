@@ -1,0 +1,95 @@
+.monitor-container {
+  display: flex;
+  background: #101820;
+  color: #00ffe7;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 24px #0008;
+  font-family: 'Consolas', monospace;
+  max-width: 700px;
+}
+
+.monitor-graph {
+  flex: 2;
+  background: repeating-linear-gradient(
+    to right, #1a2a3a 0 2px, transparent 2px 40px
+  ), repeating-linear-gradient(
+    to bottom, #1a2a3a 0 2px, transparent 2px 40px
+  );
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: flex-start;
+  min-width: 350px;
+}
+
+.ecg-line {
+  width: 95%;
+  height: 32px;
+  background: none;
+  border-bottom: 2px solid #00ffe7;
+  position: relative;
+  margin-left: 10px;
+}
+.ecg-line::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 100%;
+  height: 2px;
+  background: none;
+  border-bottom: 2px solid #00ffe7;
+  /* Simula um traçado de ECG */
+  clip-path: polygon(
+    0% 50%, 10% 50%, 12% 10%, 14% 90%, 16% 50%, 20% 50%, 22% 30%, 24% 70%, 26% 50%, 100% 50%
+  );
+}
+
+.monitor-info {
+  flex: 1;
+  background: #181f2a;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 24px 16px;
+  min-width: 150px;
+}
+
+.vital {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.icon {
+  font-size: 1.5em;
+}
+
+.label {
+  font-size: 0.9em;
+  color: #fff;
+  margin-right: 4px;
+}
+
+.value {
+  font-size: 2em;
+  font-weight: bold;
+  color: #00ffe7;
+}
+
+.unit {
+  font-size: 1em;
+  color: #fff;
+}
+
+.ecg-svg {
+  background: repeating-linear-gradient(
+    to right, #1a2a3a 0 2px, transparent 2px 40px
+  ), repeating-linear-gradient(
+    to bottom, #1a2a3a 0 2px, transparent 2px 40px
+  );
+  border-radius: 4px;
+  margin-bottom: 12px;
+}

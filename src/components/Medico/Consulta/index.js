@@ -32,6 +32,7 @@ import {
     MedicineBoxOutlined,
     CloseCircleOutlined,
     FileSearchOutlined,
+    PrinterOutlined,
 } from '@ant-design/icons';
 import { format } from 'date-fns';
 const { TextArea } = Input;
@@ -285,6 +286,24 @@ function Consulta() {
                             },
                         ]}
                     >
+                        <Tooltip title="Imprimir Motivo da Consulta">
+                            <Button
+                                type="primary"
+                                onClick={() => visualizar('motivo_consulta')}
+                                icon={<PrinterOutlined />}
+                                style={{
+                                    backgroundColor: '#184d77', // azul escuro
+                                    borderColor: '#133a5c',
+                                    color: '#fff',
+                                    fontWeight: 'bold',
+                                    borderRadius: 8,
+                                    boxShadow: '0 2px 8px rgba(24,77,119,0.10)',
+                                    padding: '0 24px',
+                                    height: 40,
+                                    fontSize: 16,
+                                }}
+                            ></Button>
+                        </Tooltip>
                         <TextToSpeech
                             inputText={motivoConsulta}
                             setInputText={setMotivoConsulta}
@@ -299,6 +318,24 @@ function Consulta() {
             children: (
                 <>
                     <Form.Item name="historiaClinica">
+                        <Tooltip title="Imprimir História Clínica">
+                            <Button
+                                type="primary"
+                                onClick={() => visualizar('historia_clinica')}
+                                icon={<PrinterOutlined />}
+                                style={{
+                                    backgroundColor: '#184d77', // azul escuro
+                                    borderColor: '#133a5c',
+                                    color: '#fff',
+                                    fontWeight: 'bold',
+                                    borderRadius: 8,
+                                    boxShadow: '0 2px 8px rgba(24,77,119,0.10)',
+                                    padding: '0 24px',
+                                    height: 40,
+                                    fontSize: 16,
+                                }}
+                            ></Button>
+                        </Tooltip>
                         <TextToSpeech
                             inputText={historiaClinica}
                             setInputText={setHistoriaClinica}
@@ -375,11 +412,7 @@ function Consulta() {
             label: 'Prescrição Médica',
             children: <> Prescrição Médica</>,
         },
-        {
-            key: '9',
-            label: 'Triagem',
-            children: <>Triagem</>,
-        },
+
         {
             key: '10',
             label: 'Procedimentos',
@@ -436,6 +469,10 @@ function Consulta() {
             });
     };
 
+    const visualizar = async (area) => {
+        await viewPdfGenerico(area, idInscricao);
+    };
+
     return (
         <>
             {contextHolder}
@@ -465,9 +502,9 @@ function Consulta() {
                                         }
                                         style={{
                                             marginRight: 20,
-                                            padding: 10,
+                                            padding: 15,
                                             height: 35,
-                                            borderRadius: 30,
+                                            borderRadius: 10,
                                         }}
                                         icon={
                                             <FileSearchOutlined
@@ -478,7 +515,7 @@ function Consulta() {
                                             />
                                         }
                                     >
-                                        Consultar
+                                        
                                     </Button>
                                 </Tooltip>
 
