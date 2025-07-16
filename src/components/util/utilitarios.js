@@ -473,6 +473,15 @@ export const ModalTriagem = ({
     const respiracaoRef = useRef();
     const dorRef = useRef();
 
+    const campoPressaoArterial = 'PRESSAO_ARTERIAL';
+    const campoFrequenciaCardiaca = 'FREQUENCIA_CARDIACA';
+    const campoTemperatura = 'TEMPERATURA';
+    const campoFrequenciaRespiratoria = 'FREQUENCIA_RESPIRATORIA';
+    const campoSaturacaiOxigenio = 'SATURACAO_OXIGENIO';
+    const campoNivelConsciencia = 'NIVEL_CONSCIENCIA';
+    const campoDor = 'DOR';
+    const campoPulso = 'PULSO';
+
     const salvarTriagem = async () => {
         // Validação dos campos obrigatórios e foco
         if (!pressaoArterialS) {
@@ -576,7 +585,7 @@ export const ModalTriagem = ({
             const r = await api.post('triagem/add', triagem);
             const id = r.data.id;
             const _linhasTriagem = _getLinhasTriagem(id);
-            await api.post('linha-triagem/add/all', _linhasTriagem);
+            await api.post('linhatriagem/add/all', _linhasTriagem);
             console.log('Triagem e linhas registradas com sucesso');
 
             if (exibirEncaminhamento) {
@@ -602,17 +611,19 @@ export const ModalTriagem = ({
         _linhas.push(
             getItem(
                 triagemId,
-                'Pressão Arterial',
+                campoPressaoArterial,
                 pressaoArterialS + '/' + pressaoArterialD,
                 'mmHg'
             )
         );
-        _linhas.push(getItem(triagemId, 'Peso', peso, 'Kg'));
-        _linhas.push(getItem(triagemId, 'Temperatura', temperatura, '°C'));
-        _linhas.push(getItem(triagemId, 'Pulso', pulso, 'bpm'));
-        _linhas.push(getItem(triagemId, 'Saturação de Oxigênio', so, '%'));
-        _linhas.push(getItem(triagemId, 'Respiração', respiracao, 'ipm'));
-        _linhas.push(getItem(triagemId, 'Dor', dor, 'Un.'));
+       // _linhas.push(getItem(triagemId, campoPeso, peso, 'Kg'));
+        _linhas.push(getItem(triagemId, campoTemperatura, temperatura, '°C'));
+        _linhas.push(getItem(triagemId, campoPulso, pulso, 'bpm'));
+        _linhas.push(getItem(triagemId, campoSaturacaiOxigenio, so, '%'));
+        _linhas.push(
+            getItem(triagemId, campoFrequenciaRespiratoria, respiracao, 'ipm')
+        );
+        _linhas.push(getItem(triagemId, campoDor, dor, 'Un.'));
         return _linhas;
     }
 
