@@ -585,7 +585,7 @@ export const ModalTriagem = ({
 
             onCancel();
 
-            toast.success('Paciente Traiado com sucesso!', {
+            toast.success('Paciente Triado com sucesso!', {
                 autoClose: 2000,
             });
         } catch (e) {
