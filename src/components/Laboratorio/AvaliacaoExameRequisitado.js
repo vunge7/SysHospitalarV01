@@ -1,21 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Table,
-    Button,
-    Modal,
-    Form,
-    Input,
-    Card,
-    Typography,
-    Popconfirm,
-    InputNumber,
-    Space,
-} from 'antd';
-import {
-    CheckCircleOutlined,
-    DeleteOutlined,
-    UndoOutlined,
-} from '@ant-design/icons';
+import { remove as removeDiacritics } from 'diacritics';
+import { Table, Button, Modal, Form, Input, Card, Typography, Popconfirm, InputNumber,
+    Space, } from 'antd';
+import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, } from '@ant-design/icons';
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { api } from '../../service/api';
@@ -42,14 +29,43 @@ function AvaliacaoExameRequisitado({
     const [unidades, setUnidades] = useState([]);
     const [inscricoes, setInscricoes] = useState([]);
 
-    // Normalize names for matching
+
+    // Função utilitária para normalizar nomes (remove acentos, títulos, espaços extras)
     const normalizeName = (name) => {
         if (!name) return '';
-        return name
+        return removeDiacritics(name)
             .toLowerCase()
-            .trim()
-            .replace(/^(dr\.?|dra\.?)\s+/i, '')
-            .replace(/\s+/g, ' ');
+            .replace(/^(dr\.?|dra\.?)/i, '')
+            .replace(/[^a-zA-Z0-9 ]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
+    // Busca paciente por nome aproximado
+    const findPacienteByName = (nome) => {
+        const normNome = normalizeName(nome);
+        // Busca exata
+        let paciente = pacientes.find(p => normalizeName(p.nome || p.name || '') === normNome);
+        if (paciente) return paciente;
+        // Busca por inclusão (parte do nome)
+        paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(normNome));
+        if (paciente) return paciente;
+        // Busca por primeira palavra
+        const firstWord = normNome.split(' ')[0];
+        paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(firstWord));
+        return paciente || null;
+    };
+
+    // Busca médico por nome aproximado
+    const findMedicoByName = (nome) => {
+        const normNome = normalizeName(nome);
+        let medico = medicos.find(m => normalizeName(m.nome || m.designacao || m.name || '') === normNome);
+        if (medico) return medico;
+        medico = medicos.find(m => normalizeName(m.nome || m.designacao || m.name || '').includes(normNome));
+        if (medico) return medico;
+        const firstWord = normNome.split(' ')[0];
+        medico = medicos.find(m => normalizeName(m.nome || m.designacao || m.name || '').includes(firstWord));
+        return medico || null;
     };
 
     // Reset selection when examesRequisitados changes
@@ -57,13 +73,8 @@ function AvaliacaoExameRequisitado({
         setLinhasRequisicao([]);
         setSelectedRequisicao(null);
         setCachedLinhasResultado([]); // Limpar cache quando requisições mudam
-            fetchData();
+        fetchData();
     }, [examesRequisitados]);
-
-
- useEffect(() => {
-    fetchData();
-    });
     // Fetch auxiliary data
         const fetchData = async () => {
             try {
@@ -174,8 +185,7 @@ function AvaliacaoExameRequisitado({
             toast.error('Nome do paciente está vazio na requisição.', { autoClose: 2000 });
             return null;
         }
-        const normalizedPacienteNome = normalizeName(pacienteNome);
-        const paciente = pacientes.find(p => normalizeName(p.nome || p.name || '') === normalizedPacienteNome);
+        const paciente = findPacienteByName(pacienteNome);
         if (!paciente) {
             toast.error(`Paciente "${pacienteNome}" não encontrado.`, { autoClose: 2000 });
             return null;
@@ -192,8 +202,7 @@ function AvaliacaoExameRequisitado({
             toast.error('Nome do médico está vazio na requisição.', { autoClose: 2000 });
             return null;
         }
-        const normalizedMedicoNome = normalizeName(medicoNome);
-        const medico = medicos.find(m => normalizeName(m.nome || m.designacao || m.name || '') === normalizedMedicoNome);
+        const medico = findMedicoByName(medicoNome);
         if (!medico) {
             toast.error(`Médico "${medicoNome}" não encontrado.`, { autoClose: 2000 });
             return null;
@@ -224,90 +233,47 @@ function AvaliacaoExameRequisitado({
         return unidadeId;
     };
 
+    // Adiciona/edita resultado no cache local, não envia ao backend ainda
     const handleFinishResult = async (values) => {
-        setLoading(true);
-        try {
-            if (!selectedExame || !selectedRequisicao) {
-                toast.error('Exame ou requisição não selecionados!', { autoClose: 2000 });
-                return;
-            }
-
-            if (!values.valorReferencia && values.valorReferencia !== 0) {
-                toast.error('Valor de referência é obrigatório!', { autoClose: 2000 });
-                return;
-            }
-            if (isNaN(values.valorReferencia)) {
-                toast.error('Valor de referência deve ser numérico!', { autoClose: 2000 });
-                return;
-            }
-
-            const unidadeId = getUnidadeId(selectedExame);
-            if (!unidadeId) {
-                return;
-            }
-
-            const pacienteId = getPacienteId(selectedRequisicao);
-            const usuarioId = getUsuarioId(selectedRequisicao);
-            if (!pacienteId || !usuarioId) {
-                toast.error(`Paciente ID (${pacienteId}) ou usuário ID (${usuarioId}) não encontrado.`, {
-                    autoClose: 2000,
-                });
-                return;
-            }
-
-            // Adicionar ao cache em vez de enviar diretamente
-            const linhaResultadoCache = {
-                exameId: selectedExame.id,
-                valorReferencia: Number(values.valorReferencia),
-                unidadeId: unidadeId,
-                observacao: values.observacao || '',
-                requisicaoExameId: selectedRequisicao.id, // Para associar ao resultado correto
-            };
-
-            setCachedLinhasResultado(prev => [
-                ...prev.filter(lr => lr.exameId !== selectedExame.id),
-                linhaResultadoCache,
-            ]);
-
-            // Atualizar linhaRequisicaoExame para EFECTUADO
-            const updatedLinha = {
-                id: selectedExame.id,
-                produtoId: selectedExame.produtoId,
-                exame: selectedExame.exame,
-                estado: 'EFECTUADO',
-                hora: moment(selectedExame.hora, [
-                    'YYYY-MM-DD HH:mm:ss',
-                    'YYYY/MM/DD HH:mm:ss',
-                    'YYYY-MM-DDTHH:mm:ss',
-                    'YYYY-MM-DDTHH:mm:ss.SSS',
-                    'DD/MM/YYYY HH:mm:ss',
-                    'DD-MM-YYYY HH:mm:ss',
-                    moment.ISO_8601,
-                    moment.HTML5_FMT.DATETIME_LOCAL_MS
-                ], true).isValid()
-                    ? moment(selectedExame.hora).format('YYYY-MM-DD HH:mm:ss')
-                    : moment().format('YYYY-MM-DD HH:mm:ss'),
-                requisicaoExameId: selectedExame.requisicaoExameId,
-                status: selectedExame.status,
-                finalizado: false,
-            };
-            await api.put('/linharequisicaoexame/edit', updatedLinha);
-
-            toast.success('Resultado adicionado ao cache!', { autoClose: 2000 });
-            handleCancel();
-            fetchAllData();
-            if (selectedRequisicao && selectedRequisicao.id) {
-                await fetchLinhasRequisicao(selectedRequisicao.id);
-            }
-        } catch (error) {
-            toast.error(`Erro ao processar resultado: ${error.response?.data?.message || error.message}`, {
-                autoClose: 2000,
-            });
-        } finally {
-            setLoading(false);
+        if (!selectedExame || !selectedRequisicao) {
+            toast.error('Exame ou requisição não selecionados!', { autoClose: 2000 });
+            return;
         }
+        if (!values.valorReferencia && values.valorReferencia !== 0) {
+            toast.error('Valor de referência é obrigatório!', { autoClose: 2000 });
+            return;
+        }
+        if (isNaN(values.valorReferencia)) {
+            toast.error('Valor de referência deve ser numérico!', { autoClose: 2000 });
+            return;
+        }
+        const unidadeId = getUnidadeId(selectedExame);
+        if (!unidadeId) {
+            return;
+        }
+        // Adiciona/atualiza no cache local
+        const linhaResultadoCache = {
+            exameId: selectedExame.id,
+            valorReferencia: Number(values.valorReferencia),
+            unidadeId: unidadeId,
+            observacao: values.observacao || '',
+            requisicaoExameId: selectedRequisicao.id,
+        };
+        setCachedLinhasResultado(prev => [
+            ...prev.filter(lr => lr.exameId !== selectedExame.id),
+            linhaResultadoCache,
+        ]);
+        // Atualiza estado local da linha de requisição para reflectir "efetuado" e status "Inserido"
+        setLinhasRequisicao(prev => prev.map(linha =>
+            linha.id === selectedExame.id
+                ? { ...linha, estado: 'efetuado', status: true }
+                : linha
+        ));
+        toast.success('Resultado adicionado ao cache! Clique em "Finalizar" para salvar no sistema.', { autoClose: 2500 });
+        handleCancel();
     };
 
+    // Salva todos os resultados do cache no backend e finaliza a requisição
     const handleFinalizarExame = async () => {
         if (!selectedRequisicao) {
             toast.error('Nenhuma requisição selecionada!', { autoClose: 2000 });
@@ -323,8 +289,13 @@ function AvaliacaoExameRequisitado({
                 });
                 return;
             }
-
-            // Criar resultado
+            // Filtra resultados do cache para esta requisição
+            const linhasParaSalvar = cachedLinhasResultado.filter(lr => lr.requisicaoExameId === selectedRequisicao.id);
+            if (linhasParaSalvar.length === 0) {
+                toast.error('Nenhum resultado no cache para salvar!', { autoClose: 2000 });
+                return;
+            }
+            // Cria resultado principal
             const resultadoPayload = {
                 requisicaoExameId: selectedRequisicao.id,
                 pacienteId: pacienteId,
@@ -333,39 +304,31 @@ function AvaliacaoExameRequisitado({
             };
             const resultadoResponse = await api.post('/resultado/add', resultadoPayload);
             const resultadoId = resultadoResponse.data.id;
-
-            // Enviar linhas de resultado do cache
-            const linhasResultadoPayload = cachedLinhasResultado
-                .filter(lr => lr.requisicaoExameId === selectedRequisicao.id)
-                .map(linha => ({
-                    exameId: linha.exameId,
-                    valorReferencia: linha.valorReferencia,
-                    unidadeId: linha.unidadeId,
-                    observacao: linha.observacao,
-                    resultadoId: resultadoId,
-                }));
-
-            if (linhasResultadoPayload.length === 0) {
-                toast.error('Nenhum resultado no cache para salvar!', { autoClose: 2000 });
-                return;
-            }
-
-            await api.post('/linharesultado/add/all', linhasResultadoPayload);
-
-            // Atualizar linhas de requisição
+            // Cria todas as linhas de resultado individualmente
+            const linhasResultadoPayload = linhasParaSalvar.map(linha => ({
+                exameId: linha.exameId,
+                valorReferencia: linha.valorReferencia,
+                unidadeId: linha.unidadeId,
+                observacao: linha.observacao,
+                resultadoId: resultadoId,
+            }));
+            await Promise.all(
+                linhasResultadoPayload.map(payload =>
+                    api.post('/linharesultado/add', payload)
+                )
+            );
+            // Atualiza todas as linhas de requisição para "efetuado" (enum backend)
             const updateLinhaRequisicaoPromises = linhasRequisicao.map((linha) => {
                 const updatedLinha = {
                     ...linha,
-                    estado: 'EFECTUADO',
-                    hora: moment().format('YYYY-MM-DD HH:mm:ss'),
-                    finalizado: true,
+                    estado: 'efetuado', // enum backend
+                    hora: moment().toISOString(), // formato ISO
+                    finalizado: true, // booleano
                 };
                 return api.put('/linharequisicaoexame/edit', updatedLinha);
             });
-
             await Promise.all(updateLinhaRequisicaoPromises);
-
-            toast.success('Exame finalizado com sucesso!', { autoClose: 2000 });
+            toast.success('Exame finalizado e resultados salvos com sucesso!', { autoClose: 2000 });
             setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
             setSelectedRequisicao(null);
             setLinhasRequisicao([]);
@@ -436,6 +399,7 @@ function AvaliacaoExameRequisitado({
     };
 
     const isLinhaInserida = (linha) =>
+        (linha.estado === 'EFECTUADO' || linha.status === true) ||
         cachedLinhasResultado.some(lr => lr.exameId === linha.id) ||
         linhasResultado.some(lr => lr.exameId === linha.id);
 
@@ -445,14 +409,6 @@ function AvaliacaoExameRequisitado({
             return 'Paciente Desconhecido';
         }
         return pacienteNome;
-    };
-
-    const getUsuarioNome = (record) => {
-        const medicoNome = record.medico || record.medicoNome;
-        if (!medicoNome) {
-            return 'Médico Desconhecido';
-        }
-        return medicoNome;
     };
 
     const parseDate = (dateValue, fieldName, record) => {
@@ -476,6 +432,15 @@ function AvaliacaoExameRequisitado({
         }
         return moment().format('DD/MM/YYYY HH:mm');
     };
+
+    // Função para exibir nome do médico
+    function getUsuarioNome(record) {
+        const medicoNome = record.medico || record.medicoNome;
+        if (!medicoNome) {
+            return 'Médico Desconhecido';
+        }
+        return medicoNome;
+    }
 
     const requisicoesColumns = [
         { title: 'ID', dataIndex: 'id', key: 'id' },
