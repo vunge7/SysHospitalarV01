@@ -1,24 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Table,
-    Button,
-    Modal,
-    Form,
-    Input,
-    Card,
-    notification,
-    Typography,
-    Popconfirm,
-    InputNumber,
-    Space,
-} from 'antd';
-import {
-    CheckCircleOutlined,
-    EditOutlined,
-    DeleteOutlined,
-    UndoOutlined,
-} from '@ant-design/icons';
+import { remove as removeDiacritics } from 'diacritics';
+import { Table, Button, Modal, Form, Input, Card, Typography, Popconfirm, InputNumber,
+    Space, } from 'antd';
+import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, } from '@ant-design/icons';
 import moment from 'moment';
+import { toast } from 'react-toastify';
 import { api } from '../../service/api';
 
 const { Title, Text } = Typography;
@@ -26,9 +12,6 @@ const { Title, Text } = Typography;
 function AvaliacaoExameRequisitado({
     examesRequisitados,
     setExamesRequisitados,
-    setExames,
-    updateExame,
-    deleteExame,
     fetchAllData,
 }) {
     const [form] = Form.useForm();
@@ -36,53 +19,126 @@ function AvaliacaoExameRequisitado({
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [loading, setLoading] = useState(false);
     const [selectedRequisicao, setSelectedRequisicao] = useState(null);
-    const [valores, setValores] = useState({});
-
     const [linhasRequisicao, setLinhasRequisicao] = useState([]);
     const [linhasResultado, setLinhasResultado] = useState([]);
+    const [cachedLinhasResultado, setCachedLinhasResultado] = useState([]); // Cache para linhas de resultado
     const [produtos, setProdutos] = useState([]);
     const [pacientes, setPacientes] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
     const [medicos, setMedicos] = useState([]);
     const [unidades, setUnidades] = useState([]);
+    const [inscricoes, setInscricoes] = useState([]);
+
+
+    // Função utilitária para normalizar nomes (remove acentos, títulos, espaços extras)
+    const normalizeName = (name) => {
+        if (!name) return '';
+        return removeDiacritics(name)
+            .toLowerCase()
+            .replace(/^(dr\.?|dra\.?)/i, '')
+            .replace(/[^a-zA-Z0-9 ]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
+    // Busca paciente por nome aproximado
+    const findPacienteByName = (nome) => {
+        const normNome = normalizeName(nome);
+        // Busca exata
+        let paciente = pacientes.find(p => normalizeName(p.nome || p.name || '') === normNome);
+        if (paciente) return paciente;
+        // Busca por inclusão (parte do nome)
+        paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(normNome));
+        if (paciente) return paciente;
+        // Busca por primeira palavra
+        const firstWord = normNome.split(' ')[0];
+        paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(firstWord));
+        return paciente || null;
+    };
+
+    // Busca médico por nome aproximado
+    const findMedicoByName = (nome) => {
+        const normNome = normalizeName(nome);
+        let medico = medicos.find(m => normalizeName(m.nome || m.designacao || m.name || '') === normNome);
+        if (medico) return medico;
+        medico = medicos.find(m => normalizeName(m.nome || m.designacao || m.name || '').includes(normNome));
+        if (medico) return medico;
+        const firstWord = normNome.split(' ')[0];
+        medico = medicos.find(m => normalizeName(m.nome || m.designacao || m.name || '').includes(firstWord));
+        return medico || null;
+    };
 
     // Reset selection when examesRequisitados changes
     useEffect(() => {
-        console.log('Exames Requisitados:', examesRequisitados);
         setLinhasRequisicao([]);
         setSelectedRequisicao(null);
+        setCachedLinhasResultado([]); // Limpar cache quando requisições mudam
+        fetchData();
     }, [examesRequisitados]);
+    // Fetch auxiliary data
+        const fetchData = async () => {
+            try {
+                const [produtoRes, pacienteRes, usuarioRes, medicoRes, unidadeRes, inscricaoRes] = await Promise.all([
+                    api.get('produto/all'),
+                    api.get('paciente/all'),
+                    api.get('usuario/all'),
+                    api.get('medicos/all'),
+                    api.get('unidade/all'),
+                    api.get('inscricao/all'),
+                ]);
+                setProdutos(produtoRes.data || []);
+                setPacientes(pacienteRes.data || []);
+                setUsuarios(usuarioRes.data || []);
+                setMedicos(medicoRes.data || []);
+                setUnidades(unidadeRes.data || []);
+                setInscricoes(inscricaoRes.data || []);
+                if (!pacienteRes.data || pacienteRes.data.length === 0) {
+                    toast.error('Nenhum paciente encontrado.', { autoClose: 2000 });
+                }
+                if (!medicoRes.data || medicoRes.data.length === 0) {
+                    toast.error('Nenhum médico encontrado.', { autoClose: 2000 });
+                }
+            } catch (error) {
+                toast.error('Erro ao buscar dados auxiliares: ' + (error.response?.data?.message || error.message), {
+                    autoClose: 2000,
+                });
+            }
+        };
+    
 
-    // Fetch linhas de requisição for the selected requisition
+    // Fetch linhas de requisição
     const fetchLinhasRequisicao = async (requisicaoExameId) => {
         try {
-            console.log('Fetching linhas for requisicaoExameId:', requisicaoExameId);
-            const response = await api.get(`linharequisicaoexame/all/requisicao/${requisicaoExameId}`);
-            console.log('Endpoint response:', response.data);
+            const response = await api.get(`/linharequisicaoexame/all/requisicao/${requisicaoExameId}`);
             const mappedData = response.data.map((item) => ({
                 id: item.id,
-                exame: item.exame || 'N/A',
-                descricao: item.exame || 'Sem descrição', // Replace with item.designacao if confirmed
-                status: item.estado || 'PENDENTE',
-                resultado: item.resultado || null,
-                referencias: item.referencias || {}, // Fallback to empty object
-                requisicaoExameId: item.requisicaoExameId || null,
-                statusBoolean: item.status, // Store boolean status for backend updates
-                finalizado: item.finalizado, // Adicionar finalizado
+                produtoId: item.produtoId || item.produto_id,
+                exame: item.exame || item.designacao || 'N/A',
+                estado: item.estado || 'NAO_EFECTUADO',
+                hora: item.hora,
+                requisicaoExameId: item.requisicaoExameId || item.requisicao_exame_id || null,
+                status: item.status !== undefined ? item.status : true,
+                finalizado: item.finalizado !== undefined ? item.finalizado : false,
             }));
             setLinhasRequisicao(mappedData);
         } catch (error) {
-            console.error('Error fetching linhas de requisição:', error);
-            notification.error({
-                message: error.response?.data || 'Erro ao buscar linhas de requisição!',
+            toast.error('Erro ao buscar linhas de requisição: ' + (error.response?.data?.message || error.message), {
+                autoClose: 2000,
             });
             setLinhasRequisicao([]);
         }
     };
 
+    // Fetch linhas de resultado
     const fetchLinhasResultado = async () => {
-        const res = await api.get('linharesultado/all');
-        setLinhasResultado(res.data || []);
+        try {
+            const res = await api.get('linharesultado/all');
+            setLinhasResultado(res.data || []);
+        } catch (error) {
+            toast.error('Erro ao buscar linhas de resultado: ' + (error.response?.data?.message || error.message), {
+                autoClose: 2000,
+            });
+        }
     };
 
     useEffect(() => {
@@ -92,32 +148,24 @@ function AvaliacaoExameRequisitado({
         }
     }, [selectedRequisicao]);
 
-    // Corrija os endpoints para bater com o backend
-    useEffect(() => {
-        api.get('produto/all').then(res => setProdutos(res.data || []));
-        api.get('/paciente/all').then(res => setPacientes(res.data || []));
-        api.get('usuario/all').then(res => setUsuarios(res.data || []));
-        api.get('unidade/all').then(res => setUnidades(res.data || []));
-        // Remova api.get('medico/all') se não existir no backend
-    }, []);
-
     const handleRowClick = (record) => {
         setSelectedRequisicao(record);
         setLinhasRequisicao([]);
+        setCachedLinhasResultado([]); // Limpar cache ao selecionar nova requisição
         fetchLinhasRequisicao(record.id);
     };
 
     const showResultModal = (exame) => {
         if (!exame) {
-            notification.error({ message: 'Dados do exame inválidos!' });
-            console.log('Invalid exame:', exame);
+            toast.error('Dados do exame inválidos!', { autoClose: 2000 });
             return;
         }
         setSelectedExame(exame);
-        setValores(exame.resultado?.valor || {});
+        const linhaResultado = cachedLinhasResultado.find(lr => lr.exameId === exame.id) || 
+                              linhasResultado.find(lr => lr.exameId === exame.id);
         form.setFieldsValue({
-            valores: exame.resultado?.valor || {},
-            observacao: exame.resultado?.observacao || '',
+            valorReferencia: linhaResultado?.valorReferencia || null,
+            observacao: linhaResultado?.observacao || '',
         });
         setIsModalVisible(true);
     };
@@ -126,43 +174,170 @@ function AvaliacaoExameRequisitado({
         setIsModalVisible(false);
         form.resetFields();
         setSelectedExame(null);
-        setValores({});
     };
 
+    const getPacienteId = (requisicao) => {
+        if (requisicao.pacienteId) {
+            return requisicao.pacienteId;
+        }
+        const pacienteNome = requisicao.paciente || requisicao.pacienteNome;
+        if (!pacienteNome) {
+            toast.error('Nome do paciente está vazio na requisição.', { autoClose: 2000 });
+            return null;
+        }
+        const paciente = findPacienteByName(pacienteNome);
+        if (!paciente) {
+            toast.error(`Paciente "${pacienteNome}" não encontrado.`, { autoClose: 2000 });
+            return null;
+        }
+        return paciente.id;
+    };
+
+    const getUsuarioId = (requisicao) => {
+        if (requisicao.usuarioId) {
+            return requisicao.usuarioId;
+        }
+        const medicoNome = requisicao.medico || requisicao.medicoNome;
+        if (!medicoNome) {
+            toast.error('Nome do médico está vazio na requisição.', { autoClose: 2000 });
+            return null;
+        }
+        const medico = findMedicoByName(medicoNome);
+        if (!medico) {
+            toast.error(`Médico "${medicoNome}" não encontrado.`, { autoClose: 2000 });
+            return null;
+        }
+        const usuarioId = medico.funcionarioId || medico.usuarioId || medico.id;
+        const usuario = usuarios.find(u => u.id === usuarioId);
+        if (!usuario) {
+            toast.error(`Usuário com ID ${usuarioId} não encontrado.`, { autoClose: 2000 });
+            return null;
+        }
+        return usuarioId;
+    };
+
+    const getUnidadeId = (linha) => {
+        if (!linha.produtoId) {
+            toast.error('Produto ID não encontrado para o exame.', { autoClose: 2000 });
+            return null;
+        }
+        const produto = produtos.find(p => p.id === linha.produtoId);
+        if (!produto) {
+            toast.error(`Produto com ID ${linha.produtoId} não encontrado.`, { autoClose: 2000 });
+            return null;
+        }
+        const unidadeId = produto.unidadeMedidaId || produto.unidade_medida_id || null;
+        if (!unidadeId) {
+            toast.error(`Unidade de medida não encontrada para o produto ID ${linha.produtoId}.`, { autoClose: 2000 });
+        }
+        return unidadeId;
+    };
+
+    // Adiciona/edita resultado no cache local, não envia ao backend ainda
     const handleFinishResult = async (values) => {
+        if (!selectedExame || !selectedRequisicao) {
+            toast.error('Exame ou requisição não selecionados!', { autoClose: 2000 });
+            return;
+        }
+        if (!values.valorReferencia && values.valorReferencia !== 0) {
+            toast.error('Valor de referência é obrigatório!', { autoClose: 2000 });
+            return;
+        }
+        if (isNaN(values.valorReferencia)) {
+            toast.error('Valor de referência deve ser numérico!', { autoClose: 2000 });
+            return;
+        }
+        const unidadeId = getUnidadeId(selectedExame);
+        if (!unidadeId) {
+            return;
+        }
+        // Adiciona/atualiza no cache local
+        const linhaResultadoCache = {
+            exameId: selectedExame.id,
+            valorReferencia: Number(values.valorReferencia),
+            unidadeId: unidadeId,
+            observacao: values.observacao || '',
+            requisicaoExameId: selectedRequisicao.id,
+        };
+        setCachedLinhasResultado(prev => [
+            ...prev.filter(lr => lr.exameId !== selectedExame.id),
+            linhaResultadoCache,
+        ]);
+        // Atualiza estado local da linha de requisição para reflectir "efetuado" e status "Inserido"
+        setLinhasRequisicao(prev => prev.map(linha =>
+            linha.id === selectedExame.id
+                ? { ...linha, estado: 'efetuado', status: true }
+                : linha
+        ));
+        toast.success('Resultado adicionado ao cache! Clique em "Finalizar" para salvar no sistema.', { autoClose: 2500 });
+        handleCancel();
+    };
+
+    // Salva todos os resultados do cache no backend e finaliza a requisição
+    const handleFinalizarExame = async () => {
+        if (!selectedRequisicao) {
+            toast.error('Nenhuma requisição selecionada!', { autoClose: 2000 });
+            return;
+        }
         setLoading(true);
         try {
-            // Extrair o valor do resultado corretamente
-            let valorReferencia = null;
-            if (values.valores && typeof values.valores === 'object') {
-                // Se houver múltiplos exames, pega o primeiro valor
-                const firstKey = Object.keys(values.valores)[0];
-                valorReferencia = Number(values.valores[firstKey]);
-            } else if (values.valorReferencia !== undefined) {
-                valorReferencia = Number(values.valorReferencia);
+            const pacienteId = getPacienteId(selectedRequisicao);
+            const usuarioId = getUsuarioId(selectedRequisicao);
+            if (!pacienteId || !usuarioId) {
+                toast.error(`Paciente ID (${pacienteId}) ou usuário ID (${usuarioId}) não encontrado.`, {
+                    autoClose: 2000,
+                });
+                return;
             }
-            const linhaResultado = {
-                exameId: selectedExame.id,
-                valorReferencia: valorReferencia,
-                unidadeId: selectedExame.unidadeId || null,
-                observacao: values.observacao || "",
-                pacienteId: selectedRequisicao.pacienteId || selectedRequisicao.paciente_id,
-                usuarioId: selectedRequisicao.medicoId || selectedRequisicao.medico_id,
-                resultadoId: selectedExame.resultado?.id || null, // Adicionar resultadoId
+            // Filtra resultados do cache para esta requisição
+            const linhasParaSalvar = cachedLinhasResultado.filter(lr => lr.requisicaoExameId === selectedRequisicao.id);
+            if (linhasParaSalvar.length === 0) {
+                toast.error('Nenhum resultado no cache para salvar!', { autoClose: 2000 });
+                return;
+            }
+            // Cria resultado principal
+            const resultadoPayload = {
+                requisicaoExameId: selectedRequisicao.id,
+                pacienteId: pacienteId,
+                usuarioId: usuarioId,
+                dataResultado: moment().format('YYYY-MM-DD HH:mm:ss'),
             };
-            await api.post('linharesultado/add', linhaResultado);
-
-            notification.success({ message: 'Resultado finalizado com sucesso!' });
-            handleCancel();
+            const resultadoResponse = await api.post('/resultado/add', resultadoPayload);
+            const resultadoId = resultadoResponse.data.id;
+            // Cria todas as linhas de resultado individualmente
+            const linhasResultadoPayload = linhasParaSalvar.map(linha => ({
+                exameId: linha.exameId,
+                valorReferencia: linha.valorReferencia,
+                unidadeId: linha.unidadeId,
+                observacao: linha.observacao,
+                resultadoId: resultadoId,
+            }));
+            await Promise.all(
+                linhasResultadoPayload.map(payload =>
+                    api.post('/linharesultado/add', payload)
+                )
+            );
+            // Atualiza todas as linhas de requisição para "efetuado" (enum backend)
+            const updateLinhaRequisicaoPromises = linhasRequisicao.map((linha) => {
+                const updatedLinha = {
+                    ...linha,
+                    estado: 'efetuado', // enum backend
+                    hora: moment().toISOString(), // formato ISO
+                    finalizado: true, // booleano
+                };
+                return api.put('/linharequisicaoexame/edit', updatedLinha);
+            });
+            await Promise.all(updateLinhaRequisicaoPromises);
+            toast.success('Exame finalizado e resultados salvos com sucesso!', { autoClose: 2000 });
+            setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
+            setSelectedRequisicao(null);
+            setLinhasRequisicao([]);
+            setLinhasResultado([]);
+            setCachedLinhasResultado([]); // Limpar cache após salvar
             fetchAllData();
-            if (selectedRequisicao && selectedRequisicao.id) {
-                await fetchLinhasRequisicao(selectedRequisicao.id);
-                await fetchLinhasResultado();
-            }
         } catch (error) {
-            notification.error({
-                message: 'Erro ao finalizar resultado!',
-                description: error.response?.data?.message || error.message || JSON.stringify(error.response?.data) || 'Erro desconhecido'
+            toast.error(`Erro ao finalizar exame: ${error.response?.data?.message || error.message}`, {
+                autoClose: 2000,
             });
         } finally {
             setLoading(false);
@@ -171,109 +346,124 @@ function AvaliacaoExameRequisitado({
 
     const handleDeleteExame = async (id) => {
         try {
-            console.log('Deleting exame ID:', id);
-            const response = await deleteExame(id);
-            console.log('Delete response:', response.data);
-            notification.success({ message: 'Exame excluído com sucesso!' });
+            await api.delete(`/linharequisicaoexame/${id}`);
+            setCachedLinhasResultado(prev => prev.filter(lr => lr.exameId !== id));
+            toast.success('Exame excluído com sucesso!', { autoClose: 2000 });
             fetchLinhasRequisicao(selectedRequisicao.id);
             fetchAllData();
         } catch (error) {
-            console.error('Error deleting exame:', error);
-            notification.error({
-                message: error.response?.data || 'Erro ao excluir exame!',
+            toast.error('Erro ao excluir exame: ' + (error.response?.data?.message || error.message), {
+                autoClose: 2000,
             });
         }
     };
 
     const handleReopenExame = async (exame) => {
         try {
-            console.log('Reopening exame ID:', exame.id);
             const updatedExame = {
-                ...exame,
-                resultado: null,
-                finalizado: false, // Boolean for backend
+                id: exame.id,
+                produtoId: exame.produtoId,
+                exame: exame.exame,
+                estado: 'NAO_EFECTUADO',
+                hora: moment(exame.hora, [
+                    'YYYY-MM-DD HH:mm:ss',
+                    'YYYY/MM/DD HH:mm:ss',
+                    'YYYY-MM-DDTHH:mm:ss',
+                    'YYYY-MM-DDTHH:mm:ss.SSS',
+                    'DD/MM/YYYY HH:mm:ss',
+                    'DD-MM-YYYY HH:mm:ss',
+                    moment.ISO_8601,
+                    moment.HTML5_FMT.DATETIME_LOCAL_MS
+                ], true).isValid()
+                    ? moment(exame.hora).format('YYYY-MM-DD HH:mm:ss')
+                    : moment().format('YYYY-MM-DD HH:mm:ss'),
+                requisicaoExameId: exame.requisicaoExameId,
+                status: exame.status,
+                finalizado: false,
             };
-            const response = await updateExame(exame.id, updatedExame);
-            console.log('Reopen response:', response.data);
-            notification.success({ message: 'Exame reaberto com sucesso!' });
+            await api.put('/linharequisicaoexame/edit', updatedExame);
+            const linhaResultado = linhasResultado.find(lr => lr.exameId === exame.id);
+            if (linhaResultado) {
+                await api.delete(`/linharesultado/${linhaResultado.id}`);
+            }
+            setCachedLinhasResultado(prev => prev.filter(lr => lr.exameId !== exame.id));
+            toast.success('Exame reaberto com sucesso!', { autoClose: 2000 });
             fetchAllData();
             fetchLinhasRequisicao(selectedRequisicao.id);
+            fetchLinhasResultado();
         } catch (error) {
-            console.error('Error reopening exame:', error);
-            notification.error({
-                message: error.response?.data || 'Erro ao reabrir exame!',
+            toast.error('Erro ao reabrir exame: ' + (error.response?.data?.message || error.message), {
+                autoClose: 2000,
             });
         }
     };
 
-    const getValueStatus = (value, intervalo) => {
-        if (!value || !intervalo) return 'normal';
-        const [min, max] = intervalo.split('-').map(Number);
-        const numValue = Number(value);
-        if (isNaN(numValue)) return 'normal';
-        if (numValue < min) return 'baixo';
-        if (numValue > max) return 'alto';
-        return 'normal';
+    const isLinhaInserida = (linha) =>
+        (linha.estado === 'EFECTUADO' || linha.status === true) ||
+        cachedLinhasResultado.some(lr => lr.exameId === linha.id) ||
+        linhasResultado.some(lr => lr.exameId === linha.id);
+
+    const getPacienteNome = (record) => {
+        const pacienteNome = record.paciente || record.pacienteNome;
+        if (!pacienteNome) {
+            return 'Paciente Desconhecido';
+        }
+        return pacienteNome;
     };
+
+    const parseDate = (dateValue, fieldName, record) => {
+        if (!dateValue) {
+            return moment().format('DD/MM/YYYY HH:mm');
+        }
+        const parsedDate = moment(dateValue, [
+            'YYYY-MM-DD HH:mm:ss',
+            'YYYY/MM/DD HH:mm:ss',
+            'YYYY-MM-DDTHH:mm:ss',
+            'YYYY-MM-DDTHH:mm:ss.SSS',
+            'DD/MM/YYYY HH:mm:ss',
+            'DD-MM-YYYY HH:mm:ss',
+            moment.ISO_8601,
+            moment.HTML5_FMT.DATETIME_LOCAL_MS,
+            'DD/MM/YYYY HH:mm',
+            'YYYY-MM-DD'
+        ], true);
+        if (parsedDate.isValid()) {
+            return parsedDate.format('DD/MM/YYYY HH:mm');
+        }
+        return moment().format('DD/MM/YYYY HH:mm');
+    };
+
+    // Função para exibir nome do médico
+    function getUsuarioNome(record) {
+        const medicoNome = record.medico || record.medicoNome;
+        if (!medicoNome) {
+            return 'Médico Desconhecido';
+        }
+        return medicoNome;
+    }
 
     const requisicoesColumns = [
         { title: 'ID', dataIndex: 'id', key: 'id' },
         {
             title: 'Paciente',
-            dataIndex: 'paciente',
             key: 'paciente',
-            render: (paciente) => paciente || 'N/A',
+            render: (_, record) => getPacienteNome(record),
         },
         {
             title: 'Médico',
-            dataIndex: 'medico',
             key: 'medico',
-            render: (medico) => medico || 'N/A',
+            render: (_, record) => getUsuarioNome(record),
         },
         {
             title: 'Data da Requisição',
             dataIndex: 'data',
-            key: 'data',
-            render: (data) => (data ? moment(data).format('DD/MM/YYYY HH:mm') : 'N/A'),
+            key: 'dataRequisicao',
+            render: (data, record) => parseDate(data, 'Data da Requisição', record),
         },
     ];
 
-    const isLinhaInserida = (linha) =>
-        linhasResultado.some(lr => lr.exameId === linha.id);
-
-    const getUnidadeId = (linha) => {
-        const produto = produtos.find(p => p.id === linha.produtoId);
-        return produto ? produto.unidadeMedidaId : '';
-    };
-    const getUnidadeNome = (linha) => {
-        const unidadeId = getUnidadeId(linha);
-        const unidade = unidades.find(u => u.id === unidadeId);
-        return unidade ? `${unidade.descricao} (${unidade.abrevicao})` : unidadeId || '';
-    };
-    const getLinhaResultado = (linha) => linhasResultado.find(lr => lr.exameId === linha.id) || {};
-    const getPacienteNome = (linha) => {
-        const lr = getLinhaResultado(linha);
-        const pacienteId = lr.pacienteId || selectedRequisicao?.pacienteId || selectedRequisicao?.paciente_id;
-        const paciente = pacientes.find(p => p.id === pacienteId);
-        return paciente ? paciente.nome : pacienteId || '';
-    };
-    const getUsuarioNome = (linha) => {
-        const lr = getLinhaResultado(linha);
-        const usuarioId = lr.usuarioId || selectedRequisicao?.usuarioId || selectedRequisicao?.medicoId || selectedRequisicao?.medico_id;
-        const usuario = usuarios.find(u => u.id === usuarioId);
-        return usuario ? usuario.userName : usuarioId || '';
-    };
-    const getMedicoNome = (linha) => {
-        const lr = getLinhaResultado(linha);
-        const usuarioId = lr.usuarioId || selectedRequisicao?.usuarioId || selectedRequisicao?.medicoId || selectedRequisicao?.medico_id;
-        const medico = medicos.find(m => m.usuarioId === usuarioId);
-        return medico ? medico.nome : '';
-    };
-
-    // Corrija a tabela para não duplicar IDs e mostrar corretamente o resultadoId
     const examesColumns = [
-        // Remova a duplicidade: mantenha apenas uma coluna de ID
-        // { title: 'ID', dataIndex: 'id', key: 'id' },
+        { title: 'ID', dataIndex: 'id', key: 'id' },
         {
             title: 'Exame',
             dataIndex: 'exame',
@@ -281,39 +471,25 @@ function AvaliacaoExameRequisitado({
             render: (text) => text || 'N/A',
         },
         {
-            title: 'Descrição',
-            dataIndex: 'descricao',
-            key: 'descricao',
-            render: (text) => text || 'Sem descrição',
+            title: 'Estado',
+            dataIndex: 'estado',
+            key: 'estado',
+            render: (text) => text || 'NAO_EFECTUADO',
         },
         {
-            title: 'Paciente',
-            key: 'paciente',
-            render: (_, record) => getPacienteNome(record)
-        },
-        {
-            title: 'Usuário',
-            key: 'usuario',
-            render: (_, record) => getUsuarioNome(record)
-        },
-        {
-            title: 'Médico',
-            key: 'medico',
-            render: (_, record) => getMedicoNome(record)
-        },
-        {
-            title: 'Resultado ID',
-            key: 'resultadoId',
-            render: (_, record) => {
-                // Mostre o mesmo resultadoId para todas as linhas relacionadas
-                const lr = getLinhaResultado(record);
-                return lr.resultadoId || '';
-            }
+            title: 'Hora',
+            dataIndex: 'hora',
+            key: 'hora',
+            render: (hora, record) => parseDate(hora, 'Hora', record),
         },
         {
             title: 'Unidade',
             key: 'unidade',
-            render: (_, record) => getUnidadeNome(record)
+            render: (_, record) => {
+                const unidadeId = getUnidadeId(record);
+                const unidade = unidades.find(u => u.id === unidadeId);
+                return unidade ? `${unidade.descricao} (${unidade.abrevicao})` : (unidadeId || 'Sem unidade');
+            },
         },
         {
             title: 'Status',
@@ -337,62 +513,36 @@ function AvaliacaoExameRequisitado({
                     >
                         {isLinhaInserida(record) ? 'Inserido' : 'Inserir Resultado'}
                     </Button>
+                    <Popconfirm
+                        title="Excluir exame?"
+                        onConfirm={() => handleDeleteExame(record.id)}
+                        okText="Sim"
+                        cancelText="Não"
+                    >
+                        <Button icon={<DeleteOutlined />} danger />
+                    </Popconfirm>
+                    {isLinhaInserida(record) && (
+                        <Popconfirm
+                            title="Reabrir exame?"
+                            onConfirm={() => handleReopenExame(record)}
+                            okText="Sim"
+                            cancelText="Não"
+                        >
+                            <Button icon={<UndoOutlined />} />
+                        </Popconfirm>
+                    )}
                 </Space>
             ),
         },
     ];
 
-    const allLinhasInseridas = linhasRequisicao.length > 0 && linhasRequisicao.every(linha => isLinhaInserida(linha));
-
-    const handleFinalizarExame = async () => {
-        try {
-            // 1. Cria o resultado principal
-            const payload = {
-                pacienteId: selectedRequisicao.pacienteId || selectedRequisicao.paciente_id,
-                usuarioId: selectedRequisicao.medicoId || selectedRequisicao.medico_id,
-                dataResultado: moment().format('YYYY-MM-DD HH:mm:ss'),
-            };
-            const res = await api.post('resultado/add', payload);
-            const resultadoId = res.data.id;
-
-            // 2. Para cada linha, cria LinhaResultado com o mesmo resultadoId e todos os campos obrigatórios
-            for (const linha of linhasRequisicao) {
-                const produto = produtos.find(p => p.id === linha.produtoId);
-                const unidadeId = produto ? produto.unidadeMedidaId : null;
-                let valorReferencia = null;
-                if (linha.resultado && typeof linha.resultado === 'object') {
-                    const firstKey = Object.keys(linha.resultado)[0];
-                    valorReferencia = Number(linha.resultado[firstKey]);
-                } else if (linha.valorReferencia !== undefined) {
-                    valorReferencia = Number(linha.valorReferencia);
-                }
-                const linhaResultado = {
-                    exameId: linha.id,
-                    valorReferencia: valorReferencia,
-                    unidadeId: unidadeId,
-                    pacienteId: payload.pacienteId,
-                    usuarioId: payload.usuarioId,
-                    resultadoId: resultadoId,
-                    observacao: linha.observacao || ''
-                };
-                await api.post('linharesultado/add', linhaResultado);
-            }
-
-            notification.success({ message: 'Exame finalizado com sucesso!' });
-            setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
-            setSelectedRequisicao(null);
-            setLinhasRequisicao([]);
-            setLinhasResultado([]);
-            fetchAllData();
-        } catch (error) {
-            notification.error({ message: 'Erro ao finalizar exame!' });
-        }
-    };
+    const allLinhasInseridas = linhasRequisicao.length > 0 && 
+        linhasRequisicao.every(linha => isLinhaInserida(linha));
 
     return (
-        <div>
+        <div style={{ padding: '24px' }}>
             <Title level={2}>Avaliação de Exames Requisitados</Title>
-            <Card title="Requisições de Exames">
+            <Card title="Requisições de Exames" style={{ marginBottom: '24px' }}>
                 {examesRequisitados.length === 0 ? (
                     <Text>Nenhuma requisição disponível.</Text>
                 ) : (
@@ -417,7 +567,15 @@ function AvaliacaoExameRequisitado({
                         dataSource={linhasRequisicao}
                         rowKey="id"
                     />
-                    <Button type="primary" style={{ marginTop: 16 }} onClick={handleFinalizarExame} disabled={!allLinhasInseridas}>Finalizar</Button>
+                    <Button
+                        type="primary"
+                        style={{ marginTop: 16 }}
+                        onClick={handleFinalizarExame}
+                        disabled={!allLinhasInseridas}
+                        loading={loading}
+                    >
+                        Finalizar
+                    </Button>
                 </Card>
             ) : (
                 <Card>
@@ -437,98 +595,35 @@ function AvaliacaoExameRequisitado({
                         layout="vertical"
                         onFinish={handleFinishResult}
                     >
-                        {selectedExame.referencias && Object.keys(selectedExame.referencias).length > 0 ? (
-                            <Table
-                                dataSource={Object.entries(selectedExame.referencias).map(([key, ref]) => ({
-                                    key,
-                                    exame: key,
-                                    unidade: ref?.unidade || 'N/A',
-                                    intervalo: ref?.valor || 'N/A',
-                                }))}
-                                columns={[
-                                    { title: 'Exame', dataIndex: 'exame' },
-                                    { title: 'Unidade', dataIndex: 'unidade' },
-                                    { title: 'Intervalo de Referência', dataIndex: 'intervalo' },
-                                    {
-                                        title: 'Valor',
-                                        render: (_, record) => (
-                                            <Form.Item
-                                                name={['valores', record.exame]}
-                                                rules={[
-                                                    {
-                                                        required: true,
-                                                        message: `Insira valor para ${record.exame}`,
-                                                    },
-                                                    {
-                                                        validator: (_, value) =>
-                                                            !value || !isNaN(value)
-                                                                ? Promise.resolve()
-                                                                : Promise.reject('Valor deve ser numérico'),
-                                                    },
-                                                ]}
-                                                noStyle
-                                            >
-                                                <InputNumber
-                                                    style={{
-                                                        width: '100%',
-                                                        borderColor:
-                                                            getValueStatus(valores[record.exame], record.intervalo) === 'alto'
-                                                                ? '#ff4d4f'
-                                                                : getValueStatus(valores[record.exame], record.intervalo) === 'baixo'
-                                                                ? '#fadb14'
-                                                                : '#1890ff',
-                                                    }}
-                                                    onChange={(value) =>
-                                                        setValores({
-                                                            ...valores,
-                                                            [record.exame]: value,
-                                                        })
-                                                    }
-                                                />
-                                            </Form.Item>
-                                        ),
-                                    },
-                                ]}
-                                pagination={false}
-                                size="small"
-                            />
-                        ) : (
-                            <>
-                                <Form.Item
-                                    name={['valores', selectedExame.exame || 'valor']}
-                                    label="Valor"
-                                    rules={[
-                                        { required: true, message: 'Insira o valor' },
-                                        {
-                                            validator: (_, value) =>
-                                                !value || !isNaN(value) ? Promise.resolve() : Promise.reject('Valor inválido'),
-                                        },
-                                    ]}
-                                >
-                                    <InputNumber
-                                        style={{ width: '100%' }}
-                                        onChange={(value) =>
-                                            setValores({
-                                                ...valores,
-                                                [selectedExame.exame || 'valor']: value,
-                                            })
-                                        }
-                                    />
-                                </Form.Item>
-                            </>
-                        )}
+                        <Form.Item
+                            name="valorReferencia"
+                            label="Valor de Referência"
+                            rules={[
+                                { required: true, message: 'Insira o valor de referência' },
+                                {
+                                    validator: (_, value) =>
+                                        !value || !isNaN(value)
+                                            ? Promise.resolve()
+                                            : Promise.reject('Valor deve ser numérico'),
+                                },
+                            ]}
+                        >
+                            <InputNumber style={{ width: '100%' }} />
+                        </Form.Item>
                         <Form.Item name="observacao" label="Observação">
                             <Input.TextArea rows={4} placeholder="Observações sobre o exame" />
                         </Form.Item>
                         <Form.Item>
                             <Popconfirm
-                                title="Finalizar resultado?"
+                                title="Adicionar resultado ao cache?"
                                 onConfirm={() => form.submit()}
                                 okText="Sim"
                                 cancelText="Não"
+
+                                
                             >
                                 <Button type="primary" loading={loading}>
-                                    Finalizar
+                                    Adicionar Resultado
                                 </Button>
                             </Popconfirm>
                             <Button onClick={handleCancel} style={{ marginLeft: 8 }}>
