@@ -385,10 +385,6 @@ const NovaAgenda = () => {
           >
             Adicionar Novo Agendamento
           </Button> 
-
-          <Button onClick={() => viewPdfGenerico('agendamento', 55)}>
-            Gerar PDF
-          </Button>
           <Modal
             title="Novo Agendamento"
             open={isModalVisible}

@@ -33,7 +33,7 @@ export default function Gasto(props) {
             const r = await api.get('gasto/all');
             setGastos([...r.data]);
         } catch {
-            message.error('Falha ao carregar os gastos');
+            message.error('Falha ao carregar os gastos ');
         }
         setLoadingGastos(false);
     };
@@ -45,7 +45,7 @@ export default function Gasto(props) {
             const r = await api.get('linhagasto/gasto/' + gastoId);
             setLinhasGasto([...r.data]);
         } catch {
-            message.error('Falha ao buscar as linhas do gasto');
+            message.error('Falha ao buscar as linhas do gasto ');
         }
         setLoadingLinhas(false);
     };

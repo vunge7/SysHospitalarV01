@@ -31,9 +31,11 @@ function AuthProvider({ children }) {
 
         setUser(user);
         storedUser(data);
-        if (data.tipo === 'master') navigate('/admin');
-        else if (data.tipo === 'enfermeiro') navigate('/enf');
-        else if (data.tipo === 'medico') navigate('/medico/home');
+        const tipo = (data.tipo || '').toLowerCase();
+        if (tipo === 'administrativo') navigate('/admin');
+        else if (tipo === 'enfermeiro') navigate('/enf');
+        else if (tipo === 'medico') navigate('/medico/home');
+        else navigate('/'); // Redirecionamento padrão
     }
 
     //Criar usuariário

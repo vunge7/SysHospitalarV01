@@ -72,7 +72,7 @@ function Usuario() {
   // Funções de busca de dados
   const fetchUsuarios = async () => {
     try {
-      const response = await api.get('usuario/all');
+      const response = await api.get('api/usuarios/listar');
       setUsuarios(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
@@ -320,7 +320,7 @@ function Usuario() {
         ip,
       };
       console.log('Payload enviado para cadastro de usuário:', usuarioData);
-      const response = await api.post('usuario/add', usuarioData);
+      const response = await api.post('api/auth/usuarios/cadastrar', usuarioData);
       setUsuarios((prev) => [...prev, response.data]);
       alert('Usuário cadastrado com sucesso!');
       // Limpar campos do formulário
@@ -372,7 +372,7 @@ function Usuario() {
           {activeTab === 'dashboard' && <h2 className="section-title">Dashboard</h2>}
           {activeTab === 'novo-usuario' && (
             <div className="novo-usuario-container">
-              <h2>Cadastrar Usuário</h2>
+              <h2>Cadastrar Usuário Teste Novo</h2>
               <div className="tipo-usuario-container">
                 <h3>Tipo de Usuário</h3>
                 <Radio.Group
