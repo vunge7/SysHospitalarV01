@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { StockContext } from '../../../context/StockContext'; // Ajustado para o caminho correto
+import { StockContext } from '../../../contexts/StockContext';
 import { Table, Button, Modal, Form, Input, Select, Spin, notification, Popconfirm, Space, Tooltip, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';

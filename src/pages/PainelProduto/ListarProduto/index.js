@@ -8,6 +8,7 @@ import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import UnidadeMedidaForm from '../UnidadeMedidaForm';
 import DynamicTable from '../DynamicTable';
+import { toast } from 'react-toastify';
 
 // Esquema de validação com Zod
 const schema = z.object({
@@ -193,12 +194,7 @@ const ListarProduto = () => {
       await api.put('produto/edit', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      notification.success({
-        message: 'Sucesso',
-        description: 'Produto editado com sucesso!',
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.success('Produto editado com sucesso!', { autoClose: 2000 });
 
       reset();
       setModalIsOpen(false);
@@ -212,12 +208,7 @@ const ListarProduto = () => {
       const errorMessage = error.response?.data?.message || error.response?.data || error.message;
       console.log('Detalhes do erro:', error.response); // Depuração
       setErrosNoFront(prev => [...prev, errorMessage]);
-      notification.error({
-        message: 'Erro',
-        description: errorMessage,
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.error(errorMessage, { autoClose: 2000 });
     } finally {
       setCarregar(false);
     }
@@ -269,24 +260,14 @@ const ListarProduto = () => {
     setCarregar(true);
     try {
       await api.put('produto/del', { id: produtoRemover.id, status: false });
-      notification.success({
-        message: 'Sucesso',
-        description: 'Produto removido com sucesso!',
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.success('Produto removido com sucesso!', { autoClose: 2000 });
       fetchData();
       setModalIsOpenRemove(false);
     } catch (error) {
       console.error('Erro ao remover:', error);
       const errorMessage = error.response?.data?.message || 'Erro ao remover produto';
       setErrosNoFront([...errosNoFront, errorMessage]);
-      notification.error({
-        message: 'Erro',
-        description: errorMessage,
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.error(errorMessage, { autoClose: 2000 });
     } finally {
       setCarregar(false);
     }
@@ -335,21 +316,11 @@ const ListarProduto = () => {
       const isImage = ['image/jpeg', 'image/png'].includes(file.type);
       const isLt2M = file.size / 1024 / 1024 < 2;
       if (!isImage) {
-        notification.error({
-          message: 'Erro',
-          description: 'Apenas imagens JPEG ou PNG.',
-          placement: 'topRight',
-          className: 'custom-message',
-        });
+        toast.error('Apenas imagens JPEG ou PNG.', { autoClose: 2000 });
         return Upload.LIST_IGNORE;
       }
       if (!isLt2M) {
-        notification.error({
-          message: 'Erro',
-          description: 'A imagem deve ter no máximo 2MB!',
-          placement: 'topRight',
-          className: 'custom-message',
-        });
+        toast.error('A imagem deve ter no máximo 2MB!', { autoClose: 2000 });
         return Upload.LIST_IGNORE;
       }
       setPreview(URL.createObjectURL(file));

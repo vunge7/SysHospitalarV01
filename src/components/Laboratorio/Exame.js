@@ -11,7 +11,7 @@ import { toast } from 'react-toastify';
 const { Option } = Select;
 const { Text } = Typography;
 
-function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateExame, deleteExame, fetchExamesProdutos }) {
+function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateExame, deleteExame }) {
     const [form] = Form.useForm();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
@@ -87,7 +87,8 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     const fetchProdutosExame = async () => {
         try {
             const res = await api.get('produto/all');
-            // Filtro flexível: inclui todos os produtos cujo tipo contenha 'exame' (case-insensitive), sem filtrar por status
+            console.log('Produtos retornados da API:', res.data); // Log para debug
+            // Filtro flexível: inclui todos os produtos cujo tipo contenha 'exame' (case-insensitive)
             const produtos = Array.isArray(res.data)
                 ? res.data.filter(p => {
                     const tipo = (p.productType || p.tipo || '').toString().toLowerCase();
@@ -217,7 +218,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             notification.success({ message: isEditMode ? 'Exame atualizado com sucesso!' : 'Exame criado com sucesso!' });
             handleCancel();
             fetchAllData(); // Trigger parent state update
-            if (fetchExamesProdutos) await fetchExamesProdutos(); // Atualiza a tabela de exames
         } catch (error) {
             console.error('Error saving exame:', error);
             notification.error({
@@ -327,7 +327,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                     modalTitle={isEditMode ? "Editar Exame" : "Novo Exame"}
                     submitButtonText={isEditMode ? "Salvar Alterações" : "Adicionar Exame"}
                     produtoParaEditar={produtoParaEditar}
-                    onSuccess={fetchExamesProdutos}
+                    onSuccess={fetchProdutosExame}
                 />
                 <Table
                     columns={[

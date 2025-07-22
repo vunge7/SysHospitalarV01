@@ -30,7 +30,6 @@ function AvaliacaoExameRequisitado({
     const [inscricoes, setInscricoes] = useState([]);
     const [requisicoesPendentes, setRequisicoesPendentes] = useState([]);
 
-
     // Função utilitária para normalizar nomes (remove acentos, títulos, espaços extras)
     const normalizeName = (name) => {
         if (!name) return '';
@@ -45,16 +44,10 @@ function AvaliacaoExameRequisitado({
     // Busca paciente por nome aproximado
     const findPacienteByName = (nome) => {
         const normNome = normalizeName(nome);
-
-        // Busca exata
         let paciente = pacientes.find(p => normalizeName(p.nome || p.name || '') === normNome);
         if (paciente) return paciente;
-
-        // Busca por inclusão (parte do nome)
         paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(normNome));
         if (paciente) return paciente;
-
-        // Busca por primeira palavra
         const firstWord = normNome.split(' ')[0];
         paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(firstWord));
         return paciente || null;
@@ -72,7 +65,6 @@ function AvaliacaoExameRequisitado({
         return medico || null;
     };
 
-    // Reset selection when examesRequisitados changes
     useEffect(() => {
         setLinhasRequisicao([]);
         setSelectedRequisicao(null);
@@ -80,38 +72,35 @@ function AvaliacaoExameRequisitado({
         fetchData();
     }, [examesRequisitados]);
 
-    // Fetch auxiliary data
-        const fetchData = async () => {
-            try {
-                const [produtoRes, pacienteRes, usuarioRes, medicoRes, unidadeRes, inscricaoRes] = await Promise.all([
-                    api.get('produto/all'),
-                    api.get('paciente/all'),
-                    api.get('usuario/all'),
-                    api.get('medicos/all'),
-                    api.get('unidade/all'),
-                    api.get('inscricao/all'),
-                ]);
-                setProdutos(produtoRes.data || []);
-                setPacientes(pacienteRes.data || []);
-                setUsuarios(usuarioRes.data || []);
-                setMedicos(medicoRes.data || []);
-                setUnidades(unidadeRes.data || []);
-                setInscricoes(inscricaoRes.data || []);
-                if (!pacienteRes.data || pacienteRes.data.length === 0) {
-                    toast.error('Nenhum paciente encontrado.', { autoClose: 2000 });
-                }
-                if (!medicoRes.data || medicoRes.data.length === 0) {
-                    toast.error('Nenhum médico encontrado.', { autoClose: 2000 });
-                }
-            } catch (error) {
-                toast.error('Erro ao buscar dados auxiliares: ' + (error.response?.data?.message || error.message), {
-                    autoClose: 2000,
-                });
+    const fetchData = async () => {
+        try {
+            const [produtoRes, pacienteRes, usuarioRes, medicoRes, unidadeRes, inscricaoRes] = await Promise.all([
+                api.get('produto/all'),
+                api.get('paciente/all'),
+                api.get('usuario/all'),
+                api.get('medicos/all'),
+                api.get('unidade/all'),
+                api.get('inscricao/all'),
+            ]);
+            setProdutos(produtoRes.data || []);
+            setPacientes(pacienteRes.data || []);
+            setUsuarios(usuarioRes.data || []);
+            setMedicos(medicoRes.data || []);
+            setUnidades(unidadeRes.data || []);
+            setInscricoes(inscricaoRes.data || []);
+            if (!pacienteRes.data || pacienteRes.data.length === 0) {
+                toast.error('Nenhum paciente encontrado.', { autoClose: 2000 });
             }
-        };
-    
+            if (!medicoRes.data || medicoRes.data.length === 0) {
+                toast.error('Nenhum médico encontrado.', { autoClose: 2000 });
+            }
+        } catch (error) {
+            toast.error('Erro ao buscar dados auxiliares: ' + (error.response?.data?.message || error.message), {
+                autoClose: 2000,
+            });
+        }
+    };
 
-    // Fetch linhas de requisição
     const fetchLinhasRequisicao = async (requisicaoExameId) => {
         try {
             const response = await api.get(`/linharequisicaoexame/all/requisicao/${requisicaoExameId}`);
@@ -134,7 +123,6 @@ function AvaliacaoExameRequisitado({
         }
     };
 
-    // Fetch linhas de resultado
     const fetchLinhasResultado = async () => {
         try {
             const res = await api.get('linharesultado/all');
@@ -340,8 +328,12 @@ function AvaliacaoExameRequisitado({
             });
             await Promise.all(updateLinhaRequisicaoPromises);
             toast.success('Exame finalizado e resultados salvos com sucesso!', { autoClose: 2000 });
-            setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
-            setSelectedRequisicao(null);
+            // NOVA LÓGICA: só remover requisição se todas as linhas tiverem resultado inserido
+            const linhasRestantes = linhasRequisicao.filter(linha => !isLinhaInserida(linha));
+            if (linhasRestantes.length === 0) {
+                setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
+                setSelectedRequisicao(null);
+            }
             setLinhasRequisicao([]);
             setLinhasResultado([]);
             setCachedLinhasResultado([]); // Limpar cache após salvar
@@ -442,7 +434,6 @@ function AvaliacaoExameRequisitado({
         return moment().format('DD/MM/YYYY HH:mm');
     };
 
-    // Função para exibir nome do médico
     function getUsuarioNome(record) {
         const medicoNome = record.medico || record.medicoNome;
         if (!medicoNome) {
@@ -548,25 +539,22 @@ function AvaliacaoExameRequisitado({
     const allLinhasInseridas = linhasRequisicao.length > 0 && 
         linhasRequisicao.every(linha => isLinhaInserida(linha));
 
-    // Função para verificar se uma requisição tem pelo menos uma linha não finalizada
-    const verificaRequisicaoPendente = async (requisicao) => {
-        try {
-            const response = await api.get(`/linharequisicaoexame/all/requisicao/${requisicao.id}`);
-            // Considera "finalizado" se todas as linhas estão finalizadas/efetuadas
-            return response.data.some(
-                (linha) =>
-                    !linha.finalizado &&
-                    linha.estado !== 'efetuado' &&
-                    linha.estado !== 'EFECTUADO' &&
-                    linha.status !== true
-            );
-        } catch (error) {
-            // Se der erro, considera como não pendente
-            return false;
-        }
+    // Nova variável: pelo menos uma linha inserida
+    const hasAnyLinhaInserida = linhasRequisicao.some(linha => isLinhaInserida(linha));
+
+    // Nova função: verifica localmente se há pelo menos uma linha não inserida
+    const isRequisicaoPendenteLocal = (requisicao) => {
+        // Busca todas as linhas da requisição
+        const linhas = linhasRequisicao.filter(l => l.requisicaoExameId === requisicao.id);
+        if (linhas.length === 0) return false; // Se não há linhas, não mostrar
+        const todasLinhasInseridas = linhas.every(linha => isLinhaInserida(linha));
+        // Só some se todas as linhas inseridas E finalizado === true
+        if (todasLinhasInseridas && (requisicao.finalizado === true || requisicao.finalizado === 1)) return false;
+        // Caso contrário, permanece na lista
+        return true;
     };
 
-    // Filtra requisições pendentes ao montar ou quando examesRequisitados mudar
+    // Filtra requisições pendentes ao montar ou quando examesRequisitados ou linhasRequisicao mudar
     useEffect(() => {
         let isMounted = true;
         const filtrarPendentes = async () => {
@@ -576,8 +564,18 @@ function AvaliacaoExameRequisitado({
             }
             const results = await Promise.all(
                 examesRequisitados.map(async (req) => {
-                    const pendente = await verificaRequisicaoPendente(req);
-                    return pendente ? req : null;
+                    try {
+                        const response = await api.get(`/linharequisicaoexame/all/requisicao/${req.id}`);
+                        const linhas = response.data || [];
+                        // Só some se todas as linhas estão finalizadas E estado do exame também está finalizado
+                        const todasFinalizadas = linhas.length > 0 && linhas.every(
+                            linha => (linha.finalizado === true || linha.finalizado === 1) &&
+                                     (linha.estado === 'EFECTUADO' || linha.estado === 'efetuado')
+                        );
+                        return todasFinalizadas ? null : req;
+                    } catch {
+                        return req; // Se erro, mantém na lista
+                    }
                 })
             );
             if (isMounted) {
@@ -623,7 +621,7 @@ function AvaliacaoExameRequisitado({
                         type="primary"
                         style={{ marginTop: 16 }}
                         onClick={handleFinalizarExame}
-                        disabled={!allLinhasInseridas}
+                        disabled={!hasAnyLinhaInserida}
                         loading={loading}
                     >
                         Finalizar
@@ -671,8 +669,6 @@ function AvaliacaoExameRequisitado({
                                 onConfirm={() => form.submit()}
                                 okText="Sim"
                                 cancelText="Não"
-
-                                
                             >
                                 <Button type="primary" loading={loading}>
                                     Adicionar Resultado

@@ -7,13 +7,12 @@ import Procedimento from '../../Procedimento';
 import ExameRequisitado from '../../ExameRequisitado';
 import { formatDate } from 'date-fns';
 import Cid10 from '../../Cid10';
-
+import BancoUrgencia from '../BancoUrgencia';
+import Internamento from '../Internamento';
 import { ConfigProvider } from 'antd';
 import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
-
 import { viewPdfGenerico, ModalTriagem } from '../../util/utilitarios';
-
 import {
     List,
     Flex,
@@ -27,7 +26,6 @@ import {
     AutoComplete,
     Tooltip,
 } from 'antd';
-
 import {
     MedicineBoxOutlined,
     CloseCircleOutlined,
@@ -422,6 +420,16 @@ function Consulta() {
                     <Procedimento idInscricao={idInscricao} />
                 </ConfigProvider>
             ),
+        },
+        {
+            key: '11',
+            label: 'Internamento',
+            children: <Internamento />,
+        },
+        {
+            key: '12',
+            label: 'Banco de Urgência',
+            children: <BancoUrgencia />,
         },
     ];
 

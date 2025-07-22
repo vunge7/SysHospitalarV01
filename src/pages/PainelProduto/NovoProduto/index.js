@@ -272,21 +272,11 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
       const isImage = ['image/jpeg', 'image/png'].includes(file.type);
       const isLt2M = file.size / 1024 / 1024 < 2;
       if (!isImage) {
-        notification.error({
-          message: 'Erro',
-          description: 'Apenas imagens JPEG ou PNG são permitidas!',
-          placement: 'topRight',
-          className: 'custom-message',
-        });
+        toast.error('Apenas imagens JPEG ou PNG são permitidas!', { autoClose: 2000 });
         return Upload.LIST_IGNORE;
       }
       if (!isLt2M) {
-        notification.error({
-          message: 'Erro',
-          description: 'A imagem deve ter no máximo 2MB!',
-          placement: 'topRight',
-          className: 'custom-message',
-        });
+        toast.error('A imagem deve ter no máximo 2MB!', { autoClose: 2000 });
         return Upload.LIST_IGNORE;
       }
       setPreview(URL.createObjectURL(file));
