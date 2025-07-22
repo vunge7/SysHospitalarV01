@@ -1,20 +1,56 @@
+
 import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import { Table, Input, Button, Modal, Form, Select, Popconfirm, Space,
-   DatePicker, InputNumber, Tag, Tabs, message, Alert, Spin, Typography, Switch } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, SearchOutlined }
-   from '@ant-design/icons';
-import moment from 'moment';
-import 'moment-timezone';
+import { Form, Input, InputNumber, Button, Select, Table, Modal, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs, message } from 'antd';
+import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import moment from 'moment-timezone';
+import debounce from 'lodash/debounce';
 import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
 import './Farmacia.css';
-import '../Monitoramento/Monitoramento.css';
-import { debounce } from 'lodash';
 
+
+
+// Ant Design destructurings (deve ser antes da importação)
 const { Option } = Select;
 const { TabPane } = Tabs;
 const { RangePicker } = DatePicker;
 const { Title } = Typography;
+
+
+
+// Responsividade: classes utilitárias
+const responsiveStyle = {
+  farmaciaContainer: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '16px',
+    width: '100%',
+  },
+  sectionContent: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '8px',
+  },
+  formGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '16px',
+  },
+  formItem: {
+    flex: '1 1 220px',
+    minWidth: '180px',
+    maxWidth: '100%',
+  },
+  table: {
+    overflowX: 'auto',
+    width: '100%',
+  },
+};
+
+
+
+
+
 
 const Farmacia = () => {
   const {
@@ -165,8 +201,10 @@ const Farmacia = () => {
     setFilteredFornecedores(fornecedores);
   };
 
+  // Mostra produtos do lote selecionado, e destaca se não houver produtos
   const getProdutosByLote = (loteId) => {
-    return linhasLotes
+    if (!loteId) return [];
+    const produtosLote = linhasLotes
       .filter((linha) => linha.lotes_id === loteId)
       .map((linha) => {
         const produto = produtos.find((p) => p.id === linha.produto_id);
@@ -177,6 +215,10 @@ const Farmacia = () => {
           quantidade: Number(linha.quantidade),
         };
       });
+    if (produtosLote.length === 0) {
+      message.info('Nenhum produto encontrado para o lote selecionado.');
+    }
+    return produtosLote;
   };
 
   const handleAddItem = async () => {
@@ -249,27 +291,87 @@ const Farmacia = () => {
   };
 
   const handleSaveOperacao = async () => {
+    if (loading) return;
     if (tempItens.length === 0) {
-      message.error('Adicione pelo menos um item à operação');
+      message.warning('Adicione pelo menos um item à operação antes de salvar.');
       return;
     }
+    let tipoOperacao = form.getFieldValue('tipoOperacao');
+    let validateFieldsArr = ['tipoOperacao', 'armazemId', 'descricao'];
+    if (!tipoOperacao) {
+      message.warning('Selecione o tipo de operação antes de iniciar.');
+      return;
+    }
+    if (tipoOperacao === 'TRANSFERENCIA') {
+      validateFieldsArr.push('armazemDestinoId');
+    }
     try {
-      const values = await form.validateFields(['tipoOperacao', 'armazemId', 'descricao']);
+      message.info('Validando dados da operação...');
+      const values = await form.validateFields(validateFieldsArr);
       const armazem = armazens.find((a) => a.id === values.armazemId);
       if (!armazem) {
         message.error(`Armazém inválido: ID ${values.armazemId}`);
         return;
       }
-      if (values.tipoOperacao === 'TRANSFERENCIA' && !values.armazemDestinoId) {
-        message.error('Armazém de destino é obrigatório para TRANSFERENCIA');
-        return;
-      }
-      const armazemDestino = values.tipoOperacao === 'TRANSFERENCIA' ? armazens.find((a) => a.id === values.armazemDestinoId) : null;
-      if (values.tipoOperacao === 'TRANSFERENCIA' && !armazemDestino) {
-        message.error(`Armazém de destino inválido: ID ${values.armazemDestinoId}`);
-        return;
+      if (tipoOperacao === 'TRANSFERENCIA') {
+        if (!values.armazemDestinoId) {
+          message.error('Armazém de destino é obrigatório para TRANSFERENCIA');
+          return;
+        }
+        const armazemDestino = armazens.find((a) => a.id === values.armazemDestinoId);
+        if (!armazemDestino) {
+          message.error(`Armazém de destino inválido: ID ${values.armazemDestinoId}`);
+          return;
+        }
+        if (values.armazemId === values.armazemDestinoId) {
+          message.error('O armazém de origem e o de destino não podem ser iguais na transferência.');
+          return;
+        }
       }
       setLoading(true);
+      message.loading({ content: 'Salvando operação, aguarde...', key: 'salvandoOperacao', duration: 0 });
+      
+      // Corrige DTO para ANULACAO: backend pode exigir campos específicos
+      const linhasOperacao = tempItens.map((item) => {
+        const produto = produtos.find((p) => p.id === item.produtoId);
+        const lote = lotes.find((l) => l.id === item.loteId);
+        const existingLinha = linhasLotes.find(
+          (linha) => linha.lotes_id === item.loteId && linha.produto_id === produto.id
+        );
+        const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
+        let qtdActual = qtdAnterior;
+        const qtdOperacao = Number(item.quantidade);
+
+        if (tipoOperacao === 'ENTRADA') {
+          qtdActual = qtdAnterior + qtdOperacao;
+        } else if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(tipoOperacao)) {
+          if (qtdAnterior < qtdOperacao) {
+            throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote?.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
+          }
+          qtdActual = qtdAnterior - qtdOperacao;
+        }
+
+        // Para ANULACAO, garantir que armazemDestinoId/loteIdDestino não sejam enviados
+        // Para TRANSFERENCIA, garantir que armazemIdOrigem != armazemIdDestino
+        // Corrigir tipos para BigDecimal (string ou número)
+        const linha = {
+          id: item.id && !isNaN(item.id) ? item.id : null,
+          armazemIdOrigem: values.armazemId,
+          loteIdOrigem: item.loteId,
+          produtoId: produto.id,
+          qtdAnterior: qtdAnterior.toString(),
+          qtdOperacao: qtdOperacao.toString(),
+          qtdActual: qtdActual.toString(),
+          armazemIdDestino: tipoOperacao === 'TRANSFERENCIA' ? values.armazemDestinoId : null,
+          loteIdDestino: tipoOperacao === 'TRANSFERENCIA' ? item.loteId : null,
+          operacaoStockId: null, // será preenchido no backend
+        };
+        if (tipoOperacao === 'ANULACAO') {
+          delete linha.armazemIdDestino;
+          delete linha.loteIdDestino;
+        }
+        return linha;
+      });
       const OperacaoStockDTO = {
         id: editOperacaoId || null,
         dataOperacao: moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm:ss'),
@@ -277,58 +379,59 @@ const Farmacia = () => {
         usuarioId: 1,
         armazemId: values.armazemId,
         descricao: values.descricao || `Operação ${values.tipoOperacao}`,
-        linhas: tempItens.map((item) => {
-          const produto = produtos.find((p) => p.id === item.produtoId);
-          const lote = lotes.find((l) => l.id === item.loteId);
-          const existingLinha = linhasLotes.find(
-            (linha) => linha.lotes_id === item.loteId && linha.produto_id === produto.id
-          );
-          const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
-          let qtdActual = qtdAnterior;
-          const qtdOperacao = Number(item.quantidade);
-
-          if (values.tipoOperacao === 'ENTRADA') {
-            qtdActual = qtdAnterior + qtdOperacao;
-          } else if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(values.tipoOperacao)) {
-            if (qtdAnterior < qtdOperacao) {
-              throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote?.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
-            }
-            qtdActual = qtdAnterior - qtdOperacao;
-          }
-
-          return {
-            id: item.id && !isNaN(item.id) ? item.id : null,
-            armazemIdOrigem: values.armazemId,
-            loteIdOrigem: item.loteId,
-            produtoId: produto.id,
-            qtdAnterior: qtdAnterior.toString(),
-            qtdOperacao: qtdOperacao.toString(),
-            qtdActual: qtdActual.toString(),
-            armazemIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? values.armazemDestinoId : null,
-            loteIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? item.loteId : null,
-            operacaoStockId: null,
-          };
-        }),
+        linhas: linhasOperacao,
       };
       const endpoint = editOperacaoId ? `/operacao-stock/edit-with-linhas/${editOperacaoId}` : '/operacao-stock/add-with-linhas';
       const method = editOperacaoId ? api.put : api.post;
       await method(endpoint, OperacaoStockDTO);
-      message.success('Operação salva com sucesso');
-      const [linhasLotesRes, operacoesRes] = await Promise.all([
-        api.get('/linhaslotes/all'),
-        api.get('/operacao-stock/all'),
-      ]);
-      setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
+      message.success({ content: 'Operação salva com sucesso!', key: 'salvandoOperacao', duration: 2 });
+      
+      // Atualiza localmente as quantidades dos produtos em lote
+      setLinhasLotes((prev) => {
+        let updated = [...prev];
+        OperacaoStockDTO.linhas.forEach((linha) => {
+          const idx = updated.findIndex(
+            (l) => l.lotes_id === linha.loteIdOrigem && l.produto_id === linha.produtoId
+          );
+          if (idx !== -1) {
+
+            // Atualiza quantidade existente
+            updated[idx] = {
+              ...updated[idx],
+              quantidade: linha.qtdActual,
+            };
+          } else if (OperacaoStockDTO.tipoOperacao === 'ENTRADA') {
+
+            // Adiciona nova linha para entrada
+            updated.push({
+              id: Date.now() + Math.random(),
+              lotes_id: linha.loteIdOrigem,
+              produto_id: linha.produtoId,
+              quantidade: linha.qtdActual,
+            });
+          }
+        });
+        return updated;
+      });
+
+      // Atualiza lista de operações
+      const operacoesRes = await api.get('/operacao-stock/all');
       setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
       setTempItens([]);
       setEditOperacaoId(null);
       setEditItemId(null);
       setSelectedLoteId(null);
       form.resetFields();
+
+      // Foca no tipo de operação para nova acção
+      setTimeout(() => {
+        form.setFieldsValue({ tipoOperacao: undefined });
+      }, 300);
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || 'Erro ao salvar operação';
-      console.error('Erro ao salvar operação:', errorMsg);
-      message.error(errorMsg);
+      let backendMsg = error.response?.data?.message || error.response?.data?.error;
+      let msg = backendMsg || error.message || 'Erro ao salvar operação';
+      message.error({ content: msg, key: 'salvandoOperacao', duration: 4 });
+      console.error('Erro ao salvar operação:', msg);
     } finally {
       setLoading(false);
     }
@@ -497,11 +600,11 @@ const Farmacia = () => {
       const linhasLotesDTO = {
         id: editLinhasLotesId || null,
         lotes_id: values.lotes_id,
-        produto_id: productGroup.id,
-        quantidade: values.quantidade.toString(),
+        produto_id: values.produtoId,
+        quantidade: Number(values.quantidade),
       };
       if (editLinhasLotesId) {
-        await api.put(`/linhaslotes/edit/${editLinhasLotesId}`, linhasLotesDTO);
+        await api.put('/linhaslotes/edit', linhasLotesDTO);
         message.success('Linha de lote atualizada com sucesso');
       } else {
         await api.post('/linhaslotes/add', linhasLotesDTO);
@@ -529,9 +632,10 @@ const Farmacia = () => {
       const linhasLotesRes = await api.get('/linhaslotes/all');
       setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
     } catch (error) {
-      const errorMsg = error.response?.data?.message || `Erro ao excluir linha de lote: ${error.message}`;
-      console.error('Erro ao excluir linha de lote:', errorMsg);
-      message.error(errorMsg);
+      let backendMsg = error.response?.data?.error || error.response?.data?.message;
+      let msg = backendMsg || error.message || 'Erro ao excluir linha de lote';
+      console.error('Erro ao excluir linha de lote:', msg);
+      message.error(msg);
     } finally {
       setLoading(false);
     }
@@ -782,10 +886,14 @@ const Farmacia = () => {
     { title: 'Alerta', dataIndex: 'threshold', key: 'threshold' },
   ];
 
+  // Todas as colunas do Fornecedor conforme entidade backend
   const fornecedorColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Nome', dataIndex: 'nome', key: 'nome' },
     { title: 'Contato', dataIndex: 'contacto', key: 'contacto', render: (c) => c || '-' },
+    { title: 'NIF', dataIndex: 'nif', key: 'nif', render: (nif) => nif || '-' },
+    { title: 'Endereço', dataIndex: 'endereco', key: 'endereco', render: (e) => e || '-' },
+    { title: 'Regime Tributário', dataIndex: 'regimeTributario', key: 'regimeTributario', render: (r) => r || '-' },
     { title: 'Estado', dataIndex: 'estadoFornecedor', key: 'estadoFornecedor', render: (estado) => <Tag color={estado === 'ATIVO' ? 'green' : 'red'}>{estado}</Tag> },
     {
       title: 'Ações',
@@ -867,19 +975,21 @@ const Farmacia = () => {
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item
-                name="armazemDestinoId"
-                label="Armazém Destino"
-                rules={[{ required: form.getFieldValue('tipoOperacao') === 'TRANSFERENCIA', message: 'Selecione o armazém de destino' }]}
-              >
-                <Select placeholder="Selecione o armazém de destino" allowClear>
-                  {armazens.map((armazem) => (
-                    <Option key={armazem.id} value={armazem.id}>
-                      {armazem.designacao}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
+              {form.getFieldValue('tipoOperacao') === 'TRANSFERENCIA' && (
+                <Form.Item
+                  name="armazemDestinoId"
+                  label="Armazém Destino"
+                  rules={[{ required: true, message: 'Selecione o armazém de destino' }]}
+                >
+                  <Select placeholder="Selecione o armazém de destino" allowClear>
+                    {armazens.map((armazem) => (
+                      <Option key={armazem.id} value={armazem.id}>
+                        {armazem.designacao}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
               <Form.Item name="descricao" label="Descrição">
                 <Input placeholder="Descrição da operação" />
               </Form.Item>
@@ -890,14 +1000,33 @@ const Farmacia = () => {
               >
                 <Select
                   placeholder="Selecione o lote"
-                  onChange={(value) => setSelectedLoteId(value)}
+                  onChange={(value) => {
+                    setSelectedLoteId(value);
+                    const produtosLote = getProdutosByLote(value);
+                    if (produtosLote.length > 0) {
+                      message.info(`Produtos disponíveis neste lote: ${produtosLote.map(p => p.productDescription + ' (Qtd: ' + p.quantidade + ')').join(', ')}`);
+                    }
+                  }}
                   disabled={['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(form.getFieldValue('tipoOperacao')) && lotes.length === 0}
                 >
-                  {lotes.filter(l => l.status).map((lote) => (
-                    <Option key={lote.id} value={lote.id}>
-                      {lote.designacao}
-                    </Option>
-                  ))}
+                  {(() => {
+
+                    // Mostra apenas lotes disponíveis no armazém selecionado
+                    const armazemId = form.getFieldValue('armazemId');
+                    let lotesDisponiveis = lotes.filter(l => l.status);
+                    if (armazemId) {
+                      
+                      // Considera lotes que possuem pelo menos um produto no armazém selecionado
+                      lotesDisponiveis = lotesDisponiveis.filter(lote =>
+                        linhasLotes.some(linha => linha.lotes_id === lote.id && linha.armazem_id === armazemId)
+                      );
+                    }
+                    return lotesDisponiveis.map((lote) => (
+                      <Option key={lote.id} value={lote.id}>
+                        {lote.designacao}
+                      </Option>
+                    ));
+                  })()}
                 </Select>
               </Form.Item>
               <Form.Item
@@ -906,8 +1035,13 @@ const Farmacia = () => {
                 rules={[{ required: true, message: 'Selecione o produto' }]}
               >
                 <Select
-                  placeholder="Selecione o produto"
+                  placeholder={selectedLoteId ? "Selecione o produto do lote" : "Selecione o lote primeiro"}
                   disabled={selectedLoteId === null || produtos.length === 0}
+                  onDropdownVisibleChange={(open) => {
+                    if (open && selectedLoteId === null) {
+                      message.info('Selecione um lote para ver os produtos disponíveis.');
+                    }
+                  }}
                 >
                   {form.getFieldValue('tipoOperacao') === 'ENTRADA'
                     ? produtos.map((produto) => (
@@ -949,40 +1083,26 @@ const Farmacia = () => {
               </Form.Item>
             </div>
             <Space style={{ marginBottom: 16 }}>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem}>
-                {editItemId ? 'Atualizar Item' : 'Adicionar Item'}
-              </Button>
-              <Button
-                icon={<SaveOutlined />}
-                type="primary"
-                onClick={handleSaveOperacao}
-                loading={loading}
-              >
-                Salvar Operação
-              </Button>
-              <Button
-                icon={<CloseOutlined />}
-                onClick={() => {
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem} disabled={loading} />
+              <Button icon={<SaveOutlined />} type="primary" onClick={handleSaveOperacao} loading={loading} disabled={loading} />
+              <Button icon={<CloseOutlined />} onClick={() => {
                   form.resetFields();
                   setTempItens([]);
                   setEditOperacaoId(null);
                   setEditItemId(null);
                   setSelectedLoteId(null);
-                }}
-              >
-                Cancelar
-              </Button>
-            </Space>
-        
-            <Table
-              dataSource={tempItens}
-              columns={tempItemColumns}
-              rowKey={record => record.id}
-              pagination={false}
-              title={() => <Title level={4}>Itens Temporários</Title>}
-              className="stock-table"
-            />
-          </Form>
+                }} disabled={loading} />
+          </Space>
+          <Table
+            dataSource={tempItens}
+            columns={tempItemColumns}
+            rowKey={record => record.id}
+            pagination={{ pageSize: 10 }}
+            loading={loading || contextLoading}
+            className="stock-table"
+            title={() => <Title level={3}>Itens da Operação</Title>}
+          />
+        </Form>
         </div>
       )}
       {activeSection === 'lotes' && (
@@ -1012,46 +1132,14 @@ const Farmacia = () => {
               placeholder={['Data Início', 'Data Fim']}
             />
             <Button onClick={clearLoteFilters}>Limpar Filtros</Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setShowLoteModal(true);
-                setEditLoteId(null);
-                loteForm.resetFields();
-              }}
-            >
-              Adicionar Lote
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setShowLinhasLotesModal(true);
-                setEditLinhasLotesId(null);
-                linhasLotesForm.resetFields();
-              }}
-            >
-              Adicionar Linha de Lote
-            </Button>
           </Space>
           <Table
             dataSource={filteredLotes}
             columns={loteColumns}
             rowKey={record => record.id}
             pagination={{ pageSize: 10 }}
-            loading={loading || contextLoading}
             className="stock-table"
             title={() => <Title level={3}>Lotes</Title>}
-          />
-          <Table
-            dataSource={linhasLotes}
-            columns={linhasLotesColumns}
-            rowKey={record => record.id}
-            pagination={{ pageSize: 10 }}
-            loading={loading || contextLoading}
-            className="stock-table"
-            title={() => <Title level={3}>Produtos em Lotes</Title>}
           />
         </div>
       )}
@@ -1075,18 +1163,12 @@ const Farmacia = () => {
               <Option value="ATIVO">Ativo</Option>
               <Option value="INATIVO">Inativo</Option>
             </Select>
-            <Button onClick={clearFornecedorFilters}>Limpar Filtros</Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
+            <Button icon={<CloseOutlined />} onClick={clearFornecedorFilters} />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => {
                 setShowFornecedorModal(true);
                 setEditFornecedorId(null);
                 fornecedorForm.resetFields();
-              }}
-            >
-              Adicionar Fornecedor
-            </Button>
+              }} />
           </Space>
           <Table
             dataSource={filteredFornecedores}
@@ -1157,8 +1239,8 @@ const Farmacia = () => {
   );
 
   return (
-    <div className="farmacia-container">
-      <Spin spinning={loading || contextLoading}>
+    <div className="farmacia-container" style={responsiveStyle.farmaciaContainer}>
+      <Spin spinning={loading || contextLoading} tip={loading ? 'Processando...' : undefined}>
         {error || contextError ? (
           <Alert message="Erro" description={error || contextError} type="error" showIcon />
         ) : (
@@ -1167,14 +1249,14 @@ const Farmacia = () => {
               activeKey={activeSection}
               onChange={setActiveSection}
               type="card"
-              style={{ padding: '0 16px' }}
+              style={{ padding: '0 8px', maxWidth: '100vw', overflowX: 'auto' }}
             >
               <TabPane tab="Operação Stock" key="entrada-saida" />
               <TabPane tab="Lotes" key="lotes" />
               <TabPane tab="Fornecedores" key="fornecedores" />
               <TabPane tab="Monitoramento" key="monitoramento" />
             </Tabs>
-            <div className="content">{renderSection()}</div>
+            <div className="content" style={responsiveStyle.sectionContent}>{renderSection()}</div>
           </>
         )}
         <Modal
@@ -1224,20 +1306,12 @@ const Farmacia = () => {
             </Form.Item>
             <Form.Item>
               <Space>
-                <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-                  Salvar
-                </Button>
-                <Button
-                  type="default"
-                  onClick={() => {
+                <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
+                <Button type="default" onClick={() => {
                     setShowLoteModal(false);
                     setEditLoteId(null);
                     loteForm.resetFields();
-                  }}
-                  icon={<CloseOutlined />}
-                >
-                  Cancelar
-                </Button>
+                  }} icon={<CloseOutlined />} />
               </Space>
             </Form.Item>
           </Form>
@@ -1304,20 +1378,12 @@ const Farmacia = () => {
             </Form.Item>
             <Form.Item>
               <Space>
-                <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-                  Salvar
-                </Button>
-                <Button
-                  type="default"
-                  onClick={() => {
+                <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
+                <Button type="default" onClick={() => {
                     setShowFornecedorModal(false);
                     setEditFornecedorId(null);
                     fornecedorForm.resetFields();
-                  }}
-                  icon={<CloseOutlined />}
-                >
-                  Cancelar
-                </Button>
+                  }} icon={<CloseOutlined />} />
               </Space>
             </Form.Item>
           </Form>
@@ -1372,22 +1438,7 @@ const Farmacia = () => {
               <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-                  Salvar
-                </Button>
-                <Button
-                  type="default"
-                  onClick={() => {
-                    setShowLinhasLotesModal(false);
-                    setEditLinhasLotesId(null);
-                    linhasLotesForm.resetFields();
-                  }}
-                  icon={<CloseOutlined />}
-                >
-                  Cancelar
-                </Button>
-              </Space>
+              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
             </Form.Item>
           </Form>
         </Modal>

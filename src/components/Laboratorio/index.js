@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Menu, Layout, notification } from 'antd';
+import { Button, Menu, Layout, notification, Drawer } from 'antd';
 import { StockContext } from '../../contexts/StockContext';
 import Dashboard from './Dashboard';
 import Exame from './Exame';
 import Relatorio from './Relatorio';
 import AvaliacaoExameRequisitado from './AvaliacaoExameRequisitado';
 import './Laboratorio.css';
+import './responsive.css';
 import Cabecario from '../Cabecario';
 import Rodape from '../Rodape';
 import { api } from '../../service/api';
@@ -287,25 +288,92 @@ function Laboratorio() {
     const [examesRequisitados, setExamesRequisitados] = useState([]);
     const [collapsed, setCollapsed] = useState(false);
     const navigate = useNavigate();
+    const [examesProdutos, setExamesProdutos] = useState([]);
+    const [resultadosExames, setResultadosExames] = useState([]);
+    const [resultadoExames, setResultadoExames] = useState([]);
+    const [drawerVisible, setDrawerVisible] = useState(false);
+    const [requisicoesExame, setRequisicoesExame] = useState([]);
+    const [linhasRequisicaoExame, setLinhasRequisicaoExame] = useState([]);
 
     useEffect(() => {
         const fetchRequisicoes = async () => {
             await api
                 .get('requisicaoexame/all/composto')
                 .then((r) => {
-                       console.log(r.data)
                     setExamesRequisitados([...r.data]);
-                 
                 })
                 .catch((e) => console.error(e));
         };
 
         fetchRequisicoes();
     }, []);
+    
     // Persistir exames no localStorage
     useEffect(() => {
         localStorage.setItem('exames', JSON.stringify(exames));
     }, [exames]);
+
+    useEffect(() => {
+        const fetchExamesProdutos = async () => {
+            try {
+                const res = await api.get('produto/all');
+                const produtos = Array.isArray(res.data)
+                    ? res.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
+                    : [];
+                setExamesProdutos(produtos);
+            } catch {
+                setExamesProdutos([]);
+            }
+        };
+        fetchExamesProdutos();
+    }, []);
+
+    useEffect(() => {
+        const fetchResultadosExames = async () => {
+            try {
+                const res = await api.get('linharesultado/all');
+                setResultadosExames(Array.isArray(res.data) ? res.data : []);
+            } catch {
+                setResultadosExames([]);
+            }
+        };
+        fetchResultadosExames();
+    }, []);
+
+    useEffect(() => {
+        const fetchResultadoExames = async () => {
+            try {
+                const res = await api.get('resultado/all');
+                setResultadoExames(Array.isArray(res.data) ? res.data : []);
+            } catch {
+                setResultadoExames([]);
+            }
+        };
+        fetchResultadoExames();
+    }, []);
+
+    useEffect(() => {
+        const fetchRequisicoesExame = async () => {
+            try {
+                const res = await api.get('requisicaoexame/all/composto');
+                setRequisicoesExame(Array.isArray(res.data) ? res.data : []);
+            } catch {
+                setRequisicoesExame([]);
+            }
+        };
+        fetchRequisicoesExame();
+    }, []);
+    useEffect(() => {
+        const fetchLinhasRequisicaoExame = async () => {
+            try {
+                const res = await api.get('linharequisicaoexame/all');
+                setLinhasRequisicaoExame(Array.isArray(res.data) ? res.data : []);
+            } catch {
+                setLinhasRequisicaoExame([]);
+            }
+        };
+        fetchLinhasRequisicaoExame();
+    }, []);
 
     // Funções de simulação da API
     const fetchExames = async () => {
@@ -422,87 +490,89 @@ function Laboratorio() {
         }
     };
 
+    const isMobile = window.innerWidth <= 768;
+
+    // Deixar fetchExamesProdutos disponível para ser chamado após adicionar/editar exame
+    const fetchExamesProdutos = async () => {
+        try {
+            const res = await api.get('produto/all');
+            const produtos = Array.isArray(res.data)
+                ? res.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
+                : [];
+            setExamesProdutos(produtos);
+        } catch {
+            setExamesProdutos([]);
+        }
+    };
+
     return (
-        <Layout className="laboratorio-container">
+        <div className="laboratorio-container">
             <Cabecario />
-            <Layout className="inner-layout">
-                <Sider
-                    trigger={null}
-                    collapsible
-                    collapsed={collapsed}
-                    className="sider-custom"
-                    width={250}
-                    collapsedWidth={80}
-                >
-                    <Button
-                        type="primary"
-                        onClick={() => setCollapsed(!collapsed)}
-                        className="collapse-button"
-                    >
-                        {collapsed ? (
-                            <MenuUnfoldOutlined />
-                        ) : (
-                            <MenuFoldOutlined />
-                        )}
-                    </Button>
+            <div style={{ display: 'flex', flex: 1 }}>
+                <div className="sidebar">
                     <Menu
-                        mode="inline"
-                        defaultSelectedKeys={['dashboard']}
-                        items={menuItems}
                         onClick={handleTabClick}
-                        className="menu-custom"
+                        defaultSelectedKeys={['dashboard']}
+                        mode="inline"
+                        theme="light"
+                        items={menuItems}
+                        className="sidebar-menu"
                     />
-                </Sider>
-                <Layout>
-                    <Content className="content-custom">
-                        {activeTab === 'dashboard' && (
-                            <Dashboard
-                                exames={exames}
-                                tiposExame={tiposExame}
-                                artigos={artigos}
-                            />
-                        )}
-                        {activeTab === 'exame' && (
-                            <Exame
-                                exames={exames}
-                                tiposExame={tiposExame}
-                                pacientes={pacientes}
-                                medicos={medicos}
-                                setExames={setExames}
-                                fetchAllData={fetchAllData}
-                                createExame={createExame}
-                                updateExame={updateExame}
-                                deleteExame={deleteExame}
-                            />
-                        )}
-                        {activeTab === 'avaliacao' && (
-                            <AvaliacaoExameRequisitado
-                                examesRequisitados={examesRequisitados}
-                                setExamesRequisitados={setExamesRequisitados}
-                                exames={exames}
-                                pacientes={pacientes}
-                                medicos={medicos}
-                                tiposExame={tiposExame}
-                                setExames={setExames}
-                                fetchAllData={fetchAllData}
-                                updateExame={updateExame}
-                                deleteExame={deleteExame}
-                            />
-                        )}
-                        {activeTab === 'relatorio' && (
-                            <Relatorio
-                                exames={exames}
-                                pacientes={pacientes}
-                                tiposExame={tiposExame}
-                                artigos={artigos}
-                                medicos={medicos}
-                            />
-                        )}
-                    </Content>
-                </Layout>
-            </Layout>
+                </div>
+                <div className="main-content">
+                    {activeTab === 'dashboard' && (
+                        <Dashboard
+                            examesProdutos={examesProdutos}
+                            exames={exames}
+                            tiposExame={tiposExame}
+                            artigos={artigos}
+                        />
+                    )}
+                    {activeTab === 'exame' && (
+                        <Exame
+                            exames={exames}
+                            tiposExame={tiposExame}
+                            pacientes={pacientes}
+                            medicos={medicos}
+                            setExames={setExames}
+                            fetchAllData={fetchAllData}
+                            createExame={createExame}
+                            updateExame={updateExame}
+                            deleteExame={deleteExame}
+                            fetchExamesProdutos={fetchExamesProdutos}
+                        />
+                    )}
+                    {activeTab === 'avaliacao' && (
+                        <AvaliacaoExameRequisitado
+                            examesRequisitados={examesRequisitados.filter(r => !r.finalizado)}
+                            setExamesRequisitados={setExamesRequisitados}
+                            exames={exames}
+                            pacientes={pacientes}
+                            medicos={medicos}
+                            tiposExame={tiposExame}
+                            setExames={setExames}
+                            fetchAllData={fetchAllData}
+                            updateExame={updateExame}
+                            deleteExame={deleteExame}
+                        />
+                    )}
+                    {activeTab === 'relatorio' && (
+                        <Relatorio
+                            examesProdutos={examesProdutos}
+                            resultadosExames={resultadosExames}
+                            resultadoExames={resultadoExames}
+                            requisicoesExame={requisicoesExame}
+                            linhasRequisicaoExame={linhasRequisicaoExame}
+                            pacientes={pacientes}
+                            tiposExame={tiposExame}
+                            artigos={artigos}
+                            medicos={medicos}
+                        />
+                    )}
+                </div>
+            </div>
             <Rodape />
-        </Layout>
+        </div>
     );
 }
 

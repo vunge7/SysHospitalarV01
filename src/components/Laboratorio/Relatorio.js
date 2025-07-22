@@ -1,24 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { Table } from 'antd';
+import React, { useEffect, useState, useRef } from 'react';
+import { Table, Button, Card, Row, Col, Space } from 'antd';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { api } from '../../service/api';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+const COLORS = ['#36a2eb', '#ff6384', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4', '#e91e63', '#ffc107'];
 
 const Relatorio = () => {
   const [linhas, setLinhas] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [resultados, setResultados] = useState([]);
   const [pacientes, setPacientes] = useState([]);
+  const [exames, setExames] = useState([]); // Para gráficos
+  const tableRef = useRef();
+  const statusChartRef = useRef();
+  const tipoChartRef = useRef();
 
   useEffect(() => {
     api.get('linharesultado/all').then(res => setLinhas(res.data || []));
     api.get('funcionario/all').then(res => setFuncionarios(res.data || []));
     api.get('resultado/all').then(res => setResultados(res.data || []));
     api.get('paciente/all').then(res => setPacientes(res.data || []));
+    api.get('produto/all').then(res => setExames(Array.isArray(res.data) ? res.data : []));
   }, []);
 
-  // Função para obter o id do médico (funcionário) a partir do usuarioId
-  const getMedicoId = (usuarioId) => {
+  // Função para obter o nome do médico (funcionário) a partir do usuarioId
+  const getMedicoNome = (usuarioId) => {
     const funcionarioMedico = funcionarios.find(f => f.usuarioId === usuarioId && f.cargo === 'Medico');
-    return funcionarioMedico ? funcionarioMedico.id : usuarioId;
+    return funcionarioMedico ? funcionarioMedico.nome : usuarioId;
   };
 
   // Função para obter o resultadoId, aceitando tanto 'resutaldoId' quanto 'resultadoId'
@@ -40,11 +50,45 @@ const Relatorio = () => {
     return paciente ? paciente.nome : pacienteId || '';
   };
 
+  // Função para obter o nome do exame a partir do exameId (corrigido para comparar como string)
+  const getExameNome = (linha) => {
+    const exame = exames.find(e => String(e.id) === String(linha.exameId));
+    return exame ? (exame.productDescription || exame.descricao || exame.designacao || exame.nome) : linha.exameId || '';
+  };
+
+  // Função para obter a unidade de medida a partir do unidadeId (corrigido para comparar como string)
+  const getUnidadeDescricao = (linha) => {
+    const exame = exames.find(e => String(e.id) === String(linha.exameId));
+    return exame ? (exame.unidadeMedida || exame.unidade || exame.unidade_medida) : linha.unidadeId || '';
+  };
+
+  // Gráfico por status (ativo/inativo) dos exames
+  const statusData = [
+    { name: 'Ativo', value: exames.filter(e => e.status === true || e.status === '1' || e.status === 1 || e.status === 'ATIVO').length },
+    { name: 'Inativo', value: exames.filter(e => !(e.status === true || e.status === '1' || e.status === 1 || e.status === 'ATIVO')).length },
+  ];
+
+  // Gráfico por tipo de exame
+  const tipoCount = {};
+  exames.forEach(e => {
+    const tipo = e.productType || 'Outro';
+    tipoCount[tipo] = (tipoCount[tipo] || 0) + 1;
+  });
+  const tipoData = Object.keys(tipoCount).map((k, i) => ({ name: k, value: tipoCount[k], color: COLORS[i % COLORS.length] }));
+
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
-    { title: 'Exame ID', dataIndex: 'exameId', key: 'exameId' },
+    {
+      title: 'Exame',
+      key: 'exame',
+      render: (linha) => getExameNome(linha)
+    },
     { title: 'Valor Referência', dataIndex: 'valorReferencia', key: 'valorReferencia' },
-    { title: 'Unidade ID', dataIndex: 'unidadeId', key: 'unidadeId' },
+    {
+      title: 'Unidade',
+      key: 'unidade',
+      render: (linha) => getUnidadeDescricao(linha)
+    },
     {
       title: 'Resultado ID',
       key: 'resultadoId',
@@ -57,17 +101,128 @@ const Relatorio = () => {
       render: (linha) => getPacienteNome(linha)
     },
     {
-      title: 'Usuário ID',
+      title: 'Médico',
       dataIndex: 'usuarioId',
       key: 'usuarioId',
-      render: (usuarioId) => getMedicoId(usuarioId)
+      render: (usuarioId) => getMedicoNome(usuarioId)
     },
   ];
 
   // Adaptar o dataSource para passar o objeto inteiro da linha para as colunas customizadas
   const dataSource = linhas.map(linha => ({ ...linha, key: linha.id }));
 
-  return <Table dataSource={dataSource} columns={columns} rowKey="id" />;
+  // Exportação para PDF
+  const exportTableToPDF = async () => {
+    const input = tableRef.current;
+    const pdf = new jsPDF('l', 'mm', 'a4', true);
+    const canvas = await html2canvas(input, { useCORS: true, backgroundColor: '#fff', scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.setFontSize(18);
+    pdf.text('Resultado de Exames', pdfWidth / 2, 16, { align: 'center' });
+    pdf.addImage(imgData, 'PNG', 0, 20, pdfWidth, pdfHeight);
+    pdf.save('resultado_exames.pdf');
+  };
+
+  // Exportação dos gráficos para PDF
+  const exportChartToPDF = async (ref, filename) => {
+    const input = ref.current;
+    const pdf = new jsPDF('l', 'mm', 'a4', true);
+    const canvas = await html2canvas(input, { useCORS: true, backgroundColor: '#fff', scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
+    pdf.save(filename);
+  };
+
+  // Colunas da tabela de relatório de exames cadastrados
+  const columnsRelatorioExames = [
+    { title: 'Descrição', dataIndex: 'productDescription', key: 'descricao', render: (v, r) => v || r.descricao || r.designacao || r.nome || r.id || 'N/A' },
+    { title: 'Tipo', dataIndex: 'productType', key: 'productType' },
+    { title: 'Grupo', dataIndex: 'productGroup', key: 'productGroup' },
+    { title: 'Unidade', dataIndex: 'unidadeMedida', key: 'unidadeMedida' },
+    { title: 'Status', dataIndex: 'status', key: 'status', render: v => (v === true || v === '1' || v === 1 || v === 'ATIVO' ? 'Ativo' : 'Inativo') },
+  ];
+
+  // Exportação para PDF da tabela de exames cadastrados
+  const exportRelatorioExamesPDF = async () => {
+    const input = document.getElementById('tabela-relatorio-exames');
+    const pdf = new jsPDF('l', 'mm', 'a4', true);
+    const canvas = await html2canvas(input, { useCORS: true, backgroundColor: '#fff', scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.setFontSize(18);
+    pdf.text('Relatório de Exames', pdfWidth / 2, 16, { align: 'center' });
+    pdf.addImage(imgData, 'PNG', 0, 20, pdfWidth, pdfHeight);
+    pdf.save('relatorio_exames.pdf');
+  };
+
+  return (
+    <div>
+      <Row gutter={16}>
+        <Col span={12}>
+          <Card title="Exames por Status" extra={<Button onClick={() => exportChartToPDF(statusChartRef, 'grafico_status.pdf')}>Exportar PDF</Button>}>
+            <div ref={statusChartRef} style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-status-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="Exames por Tipo" extra={<Button onClick={() => exportChartToPDF(tipoChartRef, 'grafico_tipo.pdf')}>Exportar PDF</Button>}>
+            <div ref={tipoChartRef} style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={tipoData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="value">
+                    {tipoData.map((entry, index) => (
+                      <Cell key={`cell-bar-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+      <Card style={{ marginTop: 24 }}>
+        <Space style={{ marginBottom: 16 }}>
+          <Button onClick={exportRelatorioExamesPDF}>Exportar PDF</Button>
+        </Space>
+        <div id="tabela-relatorio-exames" style={{ background: '#fff', padding: 8 }}>
+          <h2 style={{ textAlign: 'center', marginBottom: 16 }}>Relatório de Exames</h2>
+          <Table columns={columnsRelatorioExames} dataSource={exames} rowKey="id" pagination={{ pageSize: 10 }} />
+        </div>
+      </Card>
+      <Card style={{ marginTop: 32 }}>
+        <h3>Resultado de exames</h3>
+        <Space style={{ marginBottom: 16 }}>
+          <Button onClick={exportTableToPDF}>Exportar PDF</Button>
+        </Space>
+        <div ref={tableRef} style={{ background: '#fff', padding: 8 }}>
+          <Table dataSource={dataSource} columns={columns} rowKey="id" pagination={{ pageSize: 10 }} />
+        </div>
+      </Card>
+    </div>
+  );
 };
 
 export default Relatorio;

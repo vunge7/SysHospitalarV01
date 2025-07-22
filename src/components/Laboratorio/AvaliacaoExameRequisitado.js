@@ -28,6 +28,7 @@ function AvaliacaoExameRequisitado({
     const [medicos, setMedicos] = useState([]);
     const [unidades, setUnidades] = useState([]);
     const [inscricoes, setInscricoes] = useState([]);
+    const [requisicoesPendentes, setRequisicoesPendentes] = useState([]);
 
 
     // Função utilitária para normalizar nomes (remove acentos, títulos, espaços extras)
@@ -44,12 +45,15 @@ function AvaliacaoExameRequisitado({
     // Busca paciente por nome aproximado
     const findPacienteByName = (nome) => {
         const normNome = normalizeName(nome);
+
         // Busca exata
         let paciente = pacientes.find(p => normalizeName(p.nome || p.name || '') === normNome);
         if (paciente) return paciente;
+
         // Busca por inclusão (parte do nome)
         paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(normNome));
         if (paciente) return paciente;
+
         // Busca por primeira palavra
         const firstWord = normNome.split(' ')[0];
         paciente = pacientes.find(p => normalizeName(p.nome || p.name || '').includes(firstWord));
@@ -75,6 +79,7 @@ function AvaliacaoExameRequisitado({
         setCachedLinhasResultado([]); // Limpar cache quando requisições mudam
         fetchData();
     }, [examesRequisitados]);
+
     // Fetch auxiliary data
         const fetchData = async () => {
             try {
@@ -251,6 +256,7 @@ function AvaliacaoExameRequisitado({
         if (!unidadeId) {
             return;
         }
+
         // Adiciona/atualiza no cache local
         const linhaResultadoCache = {
             exameId: selectedExame.id,
@@ -263,6 +269,7 @@ function AvaliacaoExameRequisitado({
             ...prev.filter(lr => lr.exameId !== selectedExame.id),
             linhaResultadoCache,
         ]);
+
         // Atualiza estado local da linha de requisição para reflectir "efetuado" e status "Inserido"
         setLinhasRequisicao(prev => prev.map(linha =>
             linha.id === selectedExame.id
@@ -289,12 +296,14 @@ function AvaliacaoExameRequisitado({
                 });
                 return;
             }
+
             // Filtra resultados do cache para esta requisição
             const linhasParaSalvar = cachedLinhasResultado.filter(lr => lr.requisicaoExameId === selectedRequisicao.id);
             if (linhasParaSalvar.length === 0) {
                 toast.error('Nenhum resultado no cache para salvar!', { autoClose: 2000 });
                 return;
             }
+
             // Cria resultado principal
             const resultadoPayload = {
                 requisicaoExameId: selectedRequisicao.id,
@@ -304,6 +313,7 @@ function AvaliacaoExameRequisitado({
             };
             const resultadoResponse = await api.post('/resultado/add', resultadoPayload);
             const resultadoId = resultadoResponse.data.id;
+
             // Cria todas as linhas de resultado individualmente
             const linhasResultadoPayload = linhasParaSalvar.map(linha => ({
                 exameId: linha.exameId,
@@ -317,6 +327,7 @@ function AvaliacaoExameRequisitado({
                     api.post('/linharesultado/add', payload)
                 )
             );
+            
             // Atualiza todas as linhas de requisição para "efetuado" (enum backend)
             const updateLinhaRequisicaoPromises = linhasRequisicao.map((linha) => {
                 const updatedLinha = {
@@ -360,27 +371,24 @@ function AvaliacaoExameRequisitado({
 
     const handleReopenExame = async (exame) => {
         try {
+            // Busca a linha de requisição mais atualizada do backend para garantir campos obrigatórios
+            const response = await api.get(`/linharequisicaoexame/${exame.id}`);
+            const linhaAtual = response.data;
+            // Monta o payload com todos os campos obrigatórios e tipos corretos
             const updatedExame = {
-                id: exame.id,
-                produtoId: exame.produtoId,
-                exame: exame.exame,
-                estado: 'NAO_EFECTUADO',
-                hora: moment(exame.hora, [
-                    'YYYY-MM-DD HH:mm:ss',
-                    'YYYY/MM/DD HH:mm:ss',
-                    'YYYY-MM-DDTHH:mm:ss',
-                    'YYYY-MM-DDTHH:mm:ss.SSS',
-                    'DD/MM/YYYY HH:mm:ss',
-                    'DD-MM-YYYY HH:mm:ss',
-                    moment.ISO_8601,
-                    moment.HTML5_FMT.DATETIME_LOCAL_MS
-                ], true).isValid()
-                    ? moment(exame.hora).format('YYYY-MM-DD HH:mm:ss')
-                    : moment().format('YYYY-MM-DD HH:mm:ss'),
-                requisicaoExameId: exame.requisicaoExameId,
-                status: exame.status,
+                id: linhaAtual.id,
+                produtoId: Number(linhaAtual.produtoId || linhaAtual.produto_id || 0),
+                exame: linhaAtual.exame || linhaAtual.designacao || 'N/A',
+                estado: 'NAO_EFECTUADO', // Enum exato do backend
+                hora: linhaAtual.hora
+                    ? moment(linhaAtual.hora).format('YYYY-MM-DDTHH:mm:ss')
+                    : moment().format('YYYY-MM-DDTHH:mm:ss'),
+                requisicaoExameId: Number(linhaAtual.requisicaoExameId || linhaAtual.requisicao_exame_id || 0),
+                status: false,
                 finalizado: false,
             };
+            // Log para debug
+            console.log('Payload para reabrir exame:', updatedExame);
             await api.put('/linharequisicaoexame/edit', updatedExame);
             const linhaResultado = linhasResultado.find(lr => lr.exameId === exame.id);
             if (linhaResultado) {
@@ -392,6 +400,7 @@ function AvaliacaoExameRequisitado({
             fetchLinhasRequisicao(selectedRequisicao.id);
             fetchLinhasResultado();
         } catch (error) {
+            console.error('Erro ao reabrir exame:', error, error.response?.data);
             toast.error('Erro ao reabrir exame: ' + (error.response?.data?.message || error.message), {
                 autoClose: 2000,
             });
@@ -539,16 +548,58 @@ function AvaliacaoExameRequisitado({
     const allLinhasInseridas = linhasRequisicao.length > 0 && 
         linhasRequisicao.every(linha => isLinhaInserida(linha));
 
+    // Função para verificar se uma requisição tem pelo menos uma linha não finalizada
+    const verificaRequisicaoPendente = async (requisicao) => {
+        try {
+            const response = await api.get(`/linharequisicaoexame/all/requisicao/${requisicao.id}`);
+            // Considera "finalizado" se todas as linhas estão finalizadas/efetuadas
+            return response.data.some(
+                (linha) =>
+                    !linha.finalizado &&
+                    linha.estado !== 'efetuado' &&
+                    linha.estado !== 'EFECTUADO' &&
+                    linha.status !== true
+            );
+        } catch (error) {
+            // Se der erro, considera como não pendente
+            return false;
+        }
+    };
+
+    // Filtra requisições pendentes ao montar ou quando examesRequisitados mudar
+    useEffect(() => {
+        let isMounted = true;
+        const filtrarPendentes = async () => {
+            if (!examesRequisitados || examesRequisitados.length === 0) {
+                setRequisicoesPendentes([]);
+                return;
+            }
+            const results = await Promise.all(
+                examesRequisitados.map(async (req) => {
+                    const pendente = await verificaRequisicaoPendente(req);
+                    return pendente ? req : null;
+                })
+            );
+            if (isMounted) {
+                setRequisicoesPendentes(results.filter(Boolean));
+            }
+        };
+        filtrarPendentes();
+        return () => {
+            isMounted = false;
+        };
+    }, [examesRequisitados]);
+
     return (
         <div style={{ padding: '24px' }}>
             <Title level={2}>Avaliação de Exames Requisitados</Title>
             <Card title="Requisições de Exames" style={{ marginBottom: '24px' }}>
-                {examesRequisitados.length === 0 ? (
+                {requisicoesPendentes.length === 0 ? (
                     <Text>Nenhuma requisição disponível.</Text>
                 ) : (
                     <Table
                         columns={requisicoesColumns}
-                        dataSource={examesRequisitados}
+                        dataSource={requisicoesPendentes}
                         rowKey="id"
                         onRow={(record) => ({
                             onClick: () => handleRowClick(record),
@@ -556,6 +607,7 @@ function AvaliacaoExameRequisitado({
                         rowSelection={{
                             type: 'radio',
                             onChange: (_, selectedRows) => handleRowClick(selectedRows[0]),
+                            selectedRowKeys: selectedRequisicao ? [selectedRequisicao.id] : [],
                         }}
                     />
                 )}

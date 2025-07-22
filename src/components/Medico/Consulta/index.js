@@ -250,6 +250,7 @@ function Consulta() {
             status: true,
             usuarioId: 1,
             inscricaoId: idInscricao,
+            finalizado: false, // Garante que a requisição não seja filtrada
         };
 
         console.log(requisicaoExame);
@@ -457,6 +458,7 @@ function Consulta() {
             produtoId: item.id,
             requisicaoExameId: requisicaoExameId,
             status: false,
+            finalizado: false, // Garante que a linha é criada como não finalizada
         };
 
         await api

@@ -311,8 +311,7 @@ const Armazem = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => {
-                    form.resetFields();
+                  onClick={() => { form.resetFields();
                     setSelectedArmazem(null);
                     setShowArmazemModal(true);
                   }}

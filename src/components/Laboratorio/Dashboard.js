@@ -5,26 +5,23 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-function Dashboard({ exames, tiposExame, artigos }) {
-  // Contagem de exames por status
-  const examesPendentes = exames.filter((e) => e.status === 'PENDENTE').length;
-  const examesConcluidos = exames.filter((e) => e.status === 'CONCLUIDO').length;
+function Dashboard({ examesProdutos }) {
+  const ativos = examesProdutos.filter(e => e.status === true || e.status === '1' || e.status === 1 || e.status === 'ATIVO').length;
+  const inativos = examesProdutos.length - ativos;
 
-  // Dados para o gráfico de exames por tipo
-  const examesPorTipo = tiposExame.map((tipo) => ({
-    label: tipo.nome,
-    value: exames.filter((e) => e.tipoExameId === tipo.id).length,
-  }));
-
-  // Quantidade total de insumos disponíveis
-  const insumosDisponiveis = artigos.reduce((sum, artigo) => sum + (artigo.quantidade || 0), 0);
+  // Exames por tipo
+  const examesPorTipo = {};
+  examesProdutos.forEach(e => {
+    const tipo = e.productType || 'Outro';
+    examesPorTipo[tipo] = (examesPorTipo[tipo] || 0) + 1;
+  });
 
   const chartData = {
-    labels: examesPorTipo.map((e) => e.label),
+    labels: Object.keys(examesPorTipo),
     datasets: [
       {
-        label: 'Exames Realizados',
-        data: examesPorTipo.map((e) => e.value),
+        label: 'Exames por Tipo',
+        data: Object.values(examesPorTipo),
         backgroundColor: 'rgba(75, 192, 192, 0.6)',
       },
     ],
@@ -36,17 +33,17 @@ function Dashboard({ exames, tiposExame, artigos }) {
       <Row gutter={16}>
         <Col span={8}>
           <Card>
-            <Statistic title="Exames Pendentes" value={examesPendentes} />
+            <Statistic title="Exames Ativos" value={ativos} />
           </Card>
         </Col>
         <Col span={8}>
           <Card>
-            <Statistic title="Exames Concluídos" value={examesConcluidos} />
+            <Statistic title="Exames Inativos" value={inativos} />
           </Card>
         </Col>
         <Col span={8}>
           <Card>
-            <Statistic title="Insumos Disponíveis" value={insumosDisponiveis} />
+            <Statistic title="Total de Exames" value={examesProdutos.length} />
           </Card>
         </Col>
       </Row>

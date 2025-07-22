@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Modal, Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification } from 'antd';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { toast } from 'react-toastify';
 
 import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
@@ -46,7 +47,7 @@ const schema = z.object({
     ),
 });
 
-const NovoProduto = () => {
+const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoParaEditar, onSuccess }) => {
   const [carregar, setCarregar] = useState(false);
   const [gruposDeProduto, setGruposDeProduto] = useState([]);
   const [tipoProduto, setTipoProduto] = useState([]);
@@ -128,6 +129,58 @@ const NovoProduto = () => {
     fetchData();
   }, []);
 
+  // Preencher formulário para edição ou novo
+  useEffect(() => {
+    if (visible) {
+      if (produtoParaEditar) {
+        // Edição: preencher com dados do produto, convertendo números para string e status/unidade para valor correto
+        // Buscar unidade pelo ID ou nome
+        let unidadeValue = '';
+        if (produtoParaEditar.unidadeMedidaId && Array.isArray(unidades)) {
+          const unidadeObj = unidades.find(u => u.id === produtoParaEditar.unidadeMedidaId);
+          unidadeValue = unidadeObj ? unidadeObj.descricao : (produtoParaEditar.unidadeMedida || '');
+        } else {
+          unidadeValue = produtoParaEditar.unidadeMedida || '';
+        }
+        // Corrigir status para booleano true apenas se for true, '1', 1, 'true', 'ATIVO'
+        const statusValue = (
+          produtoParaEditar.status === true ||
+          produtoParaEditar.status === '1' ||
+          produtoParaEditar.status === 1 ||
+          produtoParaEditar.status === 'true' ||
+          (typeof produtoParaEditar.status === 'string' && produtoParaEditar.status.toUpperCase() === 'ATIVO')
+        );
+        reset({
+          productType: produtoParaEditar.productType || '',
+          productCode: produtoParaEditar.productCode || '',
+          productGroup: produtoParaEditar.productGroup || '',
+          productDescription: produtoParaEditar.productDescription || '',
+          taxIva: produtoParaEditar.taxIva !== undefined && produtoParaEditar.taxIva !== null ? String(produtoParaEditar.taxIva) : '',
+          preco: produtoParaEditar.preco !== undefined && produtoParaEditar.preco !== null ? String(produtoParaEditar.preco) : '',
+          finalPrice: produtoParaEditar.finalPrice !== undefined && produtoParaEditar.finalPrice !== null ? String(produtoParaEditar.finalPrice) : '',
+          unidadeMedida: unidadeValue,
+          status: statusValue,
+          imagem: null,
+        });
+      } else {
+        // Novo: pré-selecionar 'Exame' se existir
+        const tipoExame = tipoProduto.find((t) => t.toLowerCase() === 'exame');
+        reset({
+          productType: tipoExame || '',
+          productCode: '',
+          productGroup: '',
+          productDescription: '',
+          taxIva: '',
+          preco: '',
+          finalPrice: '0.00',
+          unidadeMedida: '',
+          status: true,
+          imagem: null,
+        });
+      }
+    }
+  }, [visible, produtoParaEditar, tipoProduto, reset, unidades]);
+
   const onSubmit = async (data) => {
     setCarregar(true);
     try {
@@ -136,52 +189,72 @@ const NovoProduto = () => {
       const unidadeSelecionada = unidades.find(u => u.descricao === data.unidadeMedida);
       const unidadeMedidaId = unidadeSelecionada?.id;
 
-      if (!data.productType || !data.productGroup || !data.unidadeMedida || !productTypeId || !productGroupId || !unidadeMedidaId) {
-        throw new Error('Campos obrigatórios não preenchidos corretamente.');
-      }
+      // Validação reforçada
+      if (!data.productType) throw new Error('Tipo de produto é obrigatório.');
+      if (!productTypeId || isNaN(productTypeId)) throw new Error('Tipo de produto inválido.');
+      if (!data.productGroup) throw new Error('Grupo de produto é obrigatório.');
+      if (!productGroupId || isNaN(productGroupId)) throw new Error('Grupo de produto inválido.');
+      if (!data.productDescription) throw new Error('Descrição do produto é obrigatória.');
+      if (!data.productCode) throw new Error('Código do produto é obrigatório.');
+      if (!data.unidadeMedida) throw new Error('Unidade de medida é obrigatória.');
+      if (!unidadeMedidaId || isNaN(unidadeMedidaId)) throw new Error('Unidade de medida inválida.');
+      if (!data.preco || isNaN(Number(data.preco)) || Number(data.preco) < 0) throw new Error('Preço inválido.');
+      if (data.taxIva === undefined || data.taxIva === null || isNaN(Number(data.taxIva)) || Number(data.taxIva) < 0) throw new Error('Taxa de IVA inválida.');
+      if (!data.finalPrice || isNaN(Number(data.finalPrice))) throw new Error('Preço final inválido.');
 
       const formData = new FormData();
       formData.append('productType', data.productType);
-      formData.append('productTypeId', productTypeId);
+      formData.append('productTypeId', String(productTypeId));
       formData.append('productCode', data.productCode);
       formData.append('productGroup', data.productGroup);
-      formData.append('productGroupId', productGroupId);
+      formData.append('productGroupId', String(productGroupId));
       formData.append('productDescription', data.productDescription);
       formData.append('unidadeMedida', data.unidadeMedida);
-      formData.append('unidadeMedidaId', unidadeMedidaId);
-      formData.append('preco', data.preco.toString());
-      formData.append('taxIva', data.taxIva.toString());
-      formData.append('finalPrice', data.finalPrice.toString());
-      formData.append('status', data.status ? '1' : '0');
-      if (data.imagem && data.imagem.length > 0) {
+      formData.append('unidadeMedidaId', String(unidadeMedidaId));
+      formData.append('preco', String(data.preco));
+      formData.append('taxIva', String(data.taxIva));
+      formData.append('finalPrice', String(data.finalPrice));
+      formData.append('status', data.status === true ? '1' : '0'); // Sempre string correta
+
+      if (produtoParaEditar && produtoParaEditar.id) {
+        formData.append('id', produtoParaEditar.id);
+        if (data.imagem && data.imagem.length > 0) {
+          formData.append('imagem', data.imagem[0].originFileObj);
+        }
+        // Logar todos os campos do FormData antes de enviar
+        for (let [key, value] of formData.entries()) {
+          console.log(`${key}:`, value instanceof File ? value.name : value);
+        }
+        await api.put('produto/edit', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        toast.success('Produto editado com sucesso!', { autoClose: 2000 });
+      } else {
+        if (!data.imagem || data.imagem.length === 0) {
+          throw new Error('A imagem é obrigatória para cadastro de exame.');
+        }
         formData.append('imagem', data.imagem[0].originFileObj);
+        // Logar todos os campos do FormData antes de enviar
+        for (let [key, value] of formData.entries()) {
+          console.log(`${key}:`, value instanceof File ? value.name : value);
+        }
+        await api.post('produto/add', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        toast.success('Produto cadastrado com sucesso!', { autoClose: 2000 });
       }
-
-      await api.post('produto/add', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      notification.success({
-        message: 'Sucesso',
-        description: 'Produto cadastrado com sucesso!',
-        placement: 'topRight',
-        className: 'custom-message',
-      });
-
       reset();
-      setModalIsOpen(false);
+      if (onClose) onClose();
+      if (onSuccess) onSuccess();
       setErrosNoFront([]);
       setPreview(null);
     } catch (error) {
-      console.error('Erro ao processar o formulário:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Erro ao cadastrar produto';
+      let errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Erro ao cadastrar/editar produto';
+      if (typeof errorMessage === 'object') {
+        errorMessage = errorMessage.message || JSON.stringify(errorMessage);
+      }
       setErrosNoFront(prev => [...prev, errorMessage]);
-      notification.error({
-        message: 'Erro',
-        description: errorMessage,
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.error(errorMessage, { autoClose: 2000 });
     } finally {
       setCarregar(false);
     }
@@ -225,19 +298,11 @@ const NovoProduto = () => {
 
   return (
     <div className="product-container">
-      <h2>Novo Produto</h2>
-      <Button
-        type="primary"
-        icon={<PlusOutlined />}
-        onClick={() => setModalIsOpen(true)}
-        className="form-button form-button-primary"
-      >
-        Novo Produto
-      </Button>
+      {/* Remover o botão e título internos */}
       <Modal
-        title="Cadastro de Produto"
-        open={modalIsOpen}
-        onCancel={closeModal}
+        title={modalTitle || "Novo Exame"}
+        open={visible !== undefined ? visible : modalIsOpen}
+        onCancel={onClose || closeModal}
         footer={null}
         className="product-form-modal"
         width={900}
@@ -247,7 +312,7 @@ const NovoProduto = () => {
             <Alert
               message="Erros"
               description={errosNoFront.map((e, i) => (
-                <div key={i} className="error-message">{e}</div>
+                <div key={i} className="error-message">{typeof e === 'object' ? JSON.stringify(e) : e}</div>
               ))}
               type="error"
               showIcon
@@ -478,12 +543,12 @@ const NovoProduto = () => {
             <Form.Item className="product-form-buttons">
               <Space>
                 <Button type="primary" htmlType="submit" loading={carregar} className="form-button form-button-primary">
-                  Cadastrar Produto
+                  {submitButtonText || "Cadastrar Produto"}
                 </Button>
                 <Button onClick={() => reset()} disabled={carregar} className="form-button">
                   Limpar
                 </Button>
-                <Button onClick={closeModal} disabled={carregar} className="form-button">
+                <Button onClick={onClose || closeModal} disabled={carregar} className="form-button">
                   Fechar
                 </Button>
               </Space>
