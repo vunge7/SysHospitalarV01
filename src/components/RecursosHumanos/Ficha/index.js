@@ -4,6 +4,7 @@ import 'antd/dist/reset.css';
 import './Ficha.css';
 import { api } from '../../../service/api';
 import moment from 'moment';
+import { toast } from 'react-toastify';
 
 const { Option } = Select;
 
@@ -106,7 +107,7 @@ const Ficha = () => {
       setPessoas(cleanedData);
     } catch (error) {
       console.error('Erro ao carregar pessoas:', error.response?.data || error);
-      message.error(error.response?.data?.message || 'Erro ao carregar pessoas.');
+      toast.error(error.response?.data?.message || 'Erro ao carregar pessoas.');
       setPessoas([]);
     } finally {
       setIsLoading(false);
@@ -123,7 +124,7 @@ const Ficha = () => {
       setSubsidios(subsidiosData);
     } catch (error) {
       console.error('Erro ao carregar subsídios:', error.response?.data || error);
-      message.error(error.response?.data?.message || 'Erro ao carregar subsídios.');
+      toast.error(error.response?.data?.message || 'Erro ao carregar subsídios.');
       setSubsidios([]);
     } finally {
       setIsSubsidiosLoading(false);
@@ -140,7 +141,7 @@ const Ficha = () => {
       setDepartamentos(departamentosData);
     } catch (error) {
       console.error('Erro ao carregar departamentos:', error.response?.data || error);
-      message.error(error.response?.data?.message || 'Erro ao carregar departamentos.');
+      toast.error(error.response?.data?.message || 'Erro ao carregar departamentos.');
       setDepartamentos([]);
     } finally {
       setIsDepartamentosLoading(false);
@@ -166,7 +167,7 @@ const Ficha = () => {
           });
           subsidiosMap.forEach((value) => subsidiosConsolidados.push(value));
           if (subsidiosMap.size < funcionario.subsidios.length) {
-            message.warning('Subsídios duplicados encontrados. Mantendo apenas o último valor para cada tipo.');
+            toast.warning('Subsídios duplicados encontrados. Mantendo apenas o último valor para cada tipo.');
           }
         }
         console.log('Subsídios consolidados:', JSON.stringify(subsidiosConsolidados, null, 2));
@@ -185,7 +186,7 @@ const Ficha = () => {
           estadoFuncionario: funcionario.estadoFuncionario,
           subsidios: subsidiosConsolidados,
         });
-        message.info('Funcionário carregado para edição.');
+        toast.info('Funcionário carregado para edição.');
       } else {
         setEditMode(false);
         setFuncionarioId(null);
@@ -198,7 +199,7 @@ const Ficha = () => {
         setFuncionarioId(null);
         funcionarioForm.resetFields();
       } else {
-        message.error(error.response?.data?.message || 'Erro ao verificar funcionário.');
+        toast.error(error.response?.data?.message || 'Erro ao verificar funcionário.');
       }
     }
   }, [funcionarioForm, subsidios]);
@@ -240,11 +241,11 @@ const Ficha = () => {
       setIsPessoaMarked(true);
       setFiltro('');
       setSugestoes([]);
-      message.success('Pessoa selecionada com sucesso!');
+      toast.success('Pessoa selecionada com sucesso!');
       await fetchFuncionarioByPessoaId(pessoa.id);
     } catch (error) {
       console.error('Erro ao selecionar pessoa:', error.response?.data || error);
-      message.error(error.response?.data?.message || 'Erro ao selecionar pessoa.');
+      toast.error(error.response?.data?.message || 'Erro ao selecionar pessoa.');
     }
   };
 
@@ -284,25 +285,25 @@ const Ficha = () => {
       setSelectedPessoa(novaPessoa);
       setIsPessoaMarked(true);
       fecharModal();
-      message.success('Pessoa cadastrada com sucesso!');
+      toast.success('Pessoa cadastrada com sucesso!');
       await fetchPessoas();
     } catch (error) {
       console.error('Erro ao adicionar pessoa:', error.response?.data || error);
       const errorMessage = error.response?.data?.message;
       if (error.response?.status === 400 && typeof errorMessage === 'string') {
         if (errorMessage.includes('Nome')) {
-          message.error('Nome é obrigatório.');
+          toast.error('Nome é obrigatório.');
         } else if (errorMessage.includes('Gênero')) {
-          message.error('Gênero inválido. Deve ser MASCULINO, FEMININO ou OUTRO.');
+          toast.error('Gênero inválido. Deve ser MASCULINO, FEMININO ou OUTRO.');
         } else if (errorMessage.includes('Apelido')) {
-          message.error('Apelido é obrigatório.');
+          toast.error('Apelido é obrigatório.');
         } else if (errorMessage.includes('NIF')) {
-          message.error('NIF é obrigatório.');
+          toast.error('NIF é obrigatório.');
         } else {
-          message.error(errorMessage || 'Falha ao cadastrar pessoa.');
+          toast.error(errorMessage || 'Falha ao cadastrar pessoa.');
         }
       } else {
-        message.error(errorMessage || 'Falha ao cadastrar pessoa.');
+        toast.error(errorMessage || 'Falha ao cadastrar pessoa.');
       }
     }
   };
@@ -310,11 +311,11 @@ const Ficha = () => {
   const handleSubmitFuncionario = async (values) => {
     if (isSubmitting) return;
     if (!selectedPessoa || !selectedPessoa.id) {
-      message.error('Nenhuma pessoa selecionada ou ID inválido.');
+      toast.error('Nenhuma pessoa selecionada ou ID inválido.');
       return;
     }
     if (!isPessoaMarked) {
-      message.warning('Por favor, marque a pessoa selecionada!');
+      toast.warning('Por favor, marque a pessoa selecionada!');
       return;
     }
 
@@ -322,7 +323,7 @@ const Ficha = () => {
     try {
       const salario = parseFloat(values.salario);
       if (isNaN(salario) || salario < 0) {
-        message.error('O salário deve ser maior ou igual a zero.');
+        toast.error('O salário deve ser maior ou igual a zero.');
         return;
       }
 
@@ -375,24 +376,24 @@ const Ficha = () => {
       setIsPessoaMarked(false);
       setEditMode(false);
       setFuncionarioId(null);
-      message.success(editMode ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!');
+      toast.success(editMode ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar funcionário:', error.response?.data || error);
       const errorMessage = error.response?.data?.message || 'Falha ao cadastrar/atualizar funcionário.';
       if (error.response?.status === 400) {
         if (errorMessage.includes('obrigatório')) {
-          message.error('Campos obrigatórios não preenchidos: ' + errorMessage);
+          toast.error('Campos obrigatórios não preenchidos: ' + errorMessage);
         } else if (errorMessage.includes('Cannot deserialize')) {
-          message.error('Formato de dados inválido (ex.: data ou enum). Verifique os campos e tente novamente.');
+          toast.error('Formato de dados inválido (ex.: data ou enum). Verifique os campos e tente novamente.');
         } else if (errorMessage.includes('valor deve ser positivo')) {
-          message.error('O valor de algum subsídio deve ser maior que zero.');
+          toast.error('O valor de algum subsídio deve ser maior que zero.');
         } else {
-          message.error(errorMessage);
+          toast.error(errorMessage);
         }
       } else if (error.response?.status === 404) {
-        message.error('Recurso não encontrado (ex.: pessoa, subsídio ou departamento).');
+        toast.error('Recurso não encontrado (ex.: pessoa, subsídio ou departamento).');
       } else {
-        message.error(errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setIsSubmitting(false);
@@ -401,7 +402,7 @@ const Ficha = () => {
 
   const handleDeleteFuncionario = async () => {
     if (!funcionarioId) {
-      message.error('Nenhum funcionário selecionado para deleção.');
+      toast.error('Nenhum funcionário selecionado para deleção.');
       return;
     }
     try {
@@ -411,10 +412,10 @@ const Ficha = () => {
       setIsPessoaMarked(false);
       setEditMode(false);
       setFuncionarioId(null);
-      message.success('Funcionário deletado com sucesso!');
+      toast.success('Funcionário deletado com sucesso!');
     } catch (error) {
       console.error('Erro ao deletar funcionário:', error.response?.data || error);
-      message.error(error.response?.data?.message || 'Falha ao deletar funcionário.');
+      toast.error(error.response?.data?.message || 'Falha ao deletar funcionário.');
     }
   };
 
@@ -423,7 +424,7 @@ const Ficha = () => {
     funcionarioForm.setFieldsValue({
       subsidios: currentSubsidios.filter((_, i) => i !== index),
     });
-    message.success('Subsídio removido da lista!');
+    toast.success('Subsídio removido da lista!');
   };
 
   const handleAddSubsidio = () => {
@@ -439,15 +440,15 @@ const Ficha = () => {
           descricao: subsidioTemp.descricao,
           valor,
         };
-        message.info(`Subsídio ${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao} atualizado na lista!`);
+        toast.info(`Subsídio ${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao} atualizado na lista!`);
       } else {
         newSubsidios = [...currentSubsidios, { subsidioId: subsidioTemp.id, descricao: subsidioTemp.descricao, valor }];
-        message.success('Subsídio adicionado à lista!');
+        toast.success('Subsídio adicionado à lista!');
       }
       funcionarioForm.setFieldsValue({ subsidios: newSubsidios });
       setSubsidioTemp({ id: null, descricao: '', valor: '' });
     } else {
-      message.warning('Preencha todos os campos do subsídio com valores válidos e positivos!');
+      toast.warning('Preencha todos os campos do subsídio com valores válidos e positivos!');
     }
   };
 
@@ -828,7 +829,7 @@ const Ficha = () => {
               onFinish={handleSubmitPessoa}
               onFinishFailed={(errorInfo) => {
                 console.log('Erro de validação no formulário:', errorInfo);
-                message.error('Por favor, corrija os erros no formulário.');
+                toast.error('Por favor, corrija os erros no formulário.');
               }}
               layout="vertical"
             >

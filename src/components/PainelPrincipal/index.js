@@ -117,8 +117,10 @@ function PainelPrincipal() {
                             </Link>
                         </div>
                         <div className="block">
-                            <i className="fas fa-cash-register"></i>
-                            <p>Tesouraria</p>
+                            <Link to="/tesouraria">
+                                <i className="fas fa-cash-register"></i>
+                                <p>Tesouraria</p>
+                            </Link>
                         </div>
                         <div className="block">
                             <i className="fas fa-calculator"></i>

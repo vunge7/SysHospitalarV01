@@ -7,13 +7,12 @@ import Procedimento from '../../Procedimento';
 import ExameRequisitado from '../../ExameRequisitado';
 import { formatDate } from 'date-fns';
 import Cid10 from '../../Cid10';
-
+import BancoUrgencia from '../BancoUrgencia';
+import Internamento from '../Internamento';
 import { ConfigProvider } from 'antd';
 import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
-
 import { viewPdfGenerico, ModalTriagem } from '../../util/utilitarios';
-
 import {
     List,
     Flex,
@@ -27,7 +26,6 @@ import {
     AutoComplete,
     Tooltip,
 } from 'antd';
-
 import {
     MedicineBoxOutlined,
     CloseCircleOutlined,
@@ -250,6 +248,7 @@ function Consulta() {
             status: true,
             usuarioId: 1,
             inscricaoId: idInscricao,
+            finalizado: false, // Garante que a requisição não seja filtrada
         };
 
         console.log(requisicaoExame);
@@ -422,6 +421,16 @@ function Consulta() {
                 </ConfigProvider>
             ),
         },
+        {
+            key: '11',
+            label: 'Internamento',
+            children: <Internamento />,
+        },
+        {
+            key: '12',
+            label: 'Banco de Urgência',
+            children: <BancoUrgencia />,
+        },
     ];
 
     function convertToPdf() {
@@ -457,6 +466,7 @@ function Consulta() {
             produtoId: item.id,
             requisicaoExameId: requisicaoExameId,
             status: false,
+            finalizado: false, // Garante que a linha é criada como não finalizada
         };
 
         await api

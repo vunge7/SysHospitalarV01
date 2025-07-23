@@ -183,7 +183,7 @@ const Monitoramento = () => {
  ];
 
  // Colunas da tabela de lotes próximos do vencimento
- const exp iringLoteColumns = [
+ const expiringLoteColumns = [
  { title: 'ID', dataIndex: 'id', key: 'id' },
  { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
  {

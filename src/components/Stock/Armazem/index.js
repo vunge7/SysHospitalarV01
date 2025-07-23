@@ -6,6 +6,7 @@ import { StockContext } from '../../../contexts/StockContext';
 import moment from 'moment';
 import 'moment-timezone';
 import './Armazem.css';
+import { toast } from 'react-toastify';
 
 const { Title } = Typography;
 
@@ -29,11 +30,7 @@ const Armazem = () => {
         } catch (error) {
           const errorMsg = error.response?.data?.message || `Erro ao carregar armazéns: ${error.message}`;
           setErrorMessage(errorMsg);
-          notification.error({
-            message: 'Erro',
-            description: errorMsg,
-            placement: 'topRight',
-          });
+          toast.error(errorMsg, { autoClose: 2000 });
         } finally {
           setLoading(false);
         }
@@ -59,14 +56,6 @@ const Armazem = () => {
         : [],
     [enrichedArmazens, armazemSearch]
   );
-
-  const openNotification = useCallback((message, type = 'success') => {
-    notification[type]({
-      message: 'Notificação',
-      description: message,
-      placement: 'topRight',
-    });
-  }, []);
 
   const logAudit = useCallback(async (action, armazemId, armazemName) => {
     try {
@@ -106,16 +95,16 @@ const Armazem = () => {
         setShowArmazemModal(false);
         form.resetFields();
         setErrorMessage(null);
-        openNotification('Armazém cadastrado com sucesso!');
+        toast.success('Armazém cadastrado com sucesso!', { autoClose: 2000 });
       } catch (error) {
         const errorMsg = error.response?.data?.message || `Erro ao cadastrar armazém: ${error.message}`;
         setErrorMessage(errorMsg);
-        openNotification(errorMsg, 'error');
+        toast.error(errorMsg, { autoClose: 2000 });
       } finally {
         setLoading(false);
       }
     },
-    [setArmazens, logAudit, openNotification, filiais]
+    [setArmazens, logAudit, filiais]
   );
 
   const handleArmazemEditSubmit = useCallback(
@@ -148,16 +137,16 @@ const Armazem = () => {
         form.resetFields();
         setSelectedArmazem(null);
         setErrorMessage(null);
-        openNotification('Armazém atualizado com sucesso!');
+        toast.success('Armazém atualizado com sucesso!', { autoClose: 2000 });
       } catch (error) {
         const errorMsg = error.response?.data?.message || `Erro ao atualizar armazém: ${error.message}`;
         setErrorMessage(errorMsg);
-        openNotification(errorMsg, 'error');
+        toast.error(errorMsg, { autoClose: 2000 });
       } finally {
         setLoading(false);
       }
     },
-    [selectedArmazem, setArmazens, logAudit, openNotification, filiais]
+    [selectedArmazem, setArmazens, logAudit, filiais]
   );
 
   const handleDeleteArmazem = useCallback(
@@ -168,16 +157,16 @@ const Armazem = () => {
         setArmazens((prev) => prev.filter((a) => a.id !== id));
         await logAudit('DELETE', id, enrichedArmazens.find((a) => a.id === id)?.designacao || 'N/A');
         setErrorMessage(null);
-        openNotification('Armazém excluído com sucesso!');
+        toast.success('Armazém excluído com sucesso!', { autoClose: 2000 });
       } catch (error) {
         const errorMsg = error.response?.data?.message || `Erro ao excluir armazém: ${error.message}`;
         setErrorMessage(errorMsg);
-        openNotification(errorMsg, 'error');
+        toast.error(errorMsg, { autoClose: 2000 });
       } finally {
         setLoading(false);
       }
     },
-    [enrichedArmazens, setArmazens, logAudit, openNotification]
+    [enrichedArmazens, setArmazens, logAudit]
   );
 
   const handleExport = useCallback(() => {
@@ -196,11 +185,11 @@ const Armazem = () => {
       link.href = URL.createObjectURL(blob);
       link.download = `armazens_${moment().format('YYYYMMDD')}.csv`;
       link.click();
-      openNotification('Exportação de armazéns concluída!');
+      toast.success('Exportação de armazéns concluída!', { autoClose: 2000 });
     } catch (error) {
-      openNotification('Falha ao exportar armazéns', 'error');
+      toast.error('Falha ao exportar armazéns', { autoClose: 2000 });
     }
-  }, [filteredArmazens, openNotification]);
+  }, [filteredArmazens]);
 
   useEffect(() => {
     if (contextError) {
@@ -311,8 +300,7 @@ const Armazem = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => {
-                    form.resetFields();
+                  onClick={() => { form.resetFields();
                     setSelectedArmazem(null);
                     setShowArmazemModal(true);
                   }}

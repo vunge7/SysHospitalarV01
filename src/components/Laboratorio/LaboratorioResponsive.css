@@ -1,17 +1,14 @@
-body {
-    margin: 0;
-    padding: 0;
-}
+/* Responsividade para Laboratório - sem alterar cores ou layout original */
 
-/* Responsividade global - sem alterar layout ou cores */
+/* Empilhar blocos e ajustar paddings em telas pequenas */
 @media (max-width: 1024px) {
-  .container, .content, .ant-layout-content {
+  .content-custom, .inner-layout, .ant-layout-content {
     padding-left: 8px !important;
     padding-right: 8px !important;
   }
 }
 @media (max-width: 768px) {
-  .container, .content, .ant-layout-content {
+  .content-custom, .inner-layout, .ant-layout-content {
     padding-left: 2px !important;
     padding-right: 2px !important;
     padding-top: 8px !important;
@@ -21,6 +18,8 @@ body {
     margin-bottom: 12px !important;
   }
 }
+
+/* Tabelas: scroll horizontal em mobile */
 @media (max-width: 600px) {
   .ant-table-wrapper {
     overflow-x: auto !important;
@@ -30,11 +29,19 @@ body {
     min-width: 400px !important;
     font-size: 0.97rem;
   }
+}
+
+/* Gráficos responsivos */
+@media (max-width: 600px) {
   .recharts-responsive-container {
     height: 180px !important;
     min-width: 0 !important;
     width: 100% !important;
   }
+}
+
+/* Formulários: inputs e botões empilhados em mobile */
+@media (max-width: 600px) {
   .ant-form-item {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -51,6 +58,10 @@ body {
     min-width: 90px;
     min-height: 36px;
   }
+}
+
+/* Empilhar colunas em mobile */
+@media (max-width: 600px) {
   .ant-row {
     flex-direction: column !important;
     gap: 10px !important;
@@ -59,4 +70,4 @@ body {
     width: 100% !important;
     max-width: 100% !important;
   }
-}
+} 

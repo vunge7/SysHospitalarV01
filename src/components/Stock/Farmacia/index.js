@@ -1,20 +1,57 @@
+
 import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import { Table, Input, Button, Modal, Form, Select, Popconfirm, Space,
-   DatePicker, InputNumber, Tag, Tabs, message, Alert, Spin, Typography, Switch } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, SearchOutlined }
-   from '@ant-design/icons';
-import moment from 'moment';
-import 'moment-timezone';
+import { Form, Input, InputNumber, Button, Select, Table, Modal, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs } from 'antd';
+import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import moment from 'moment-timezone';
+import debounce from 'lodash/debounce';
 import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
 import './Farmacia.css';
-import '../Monitoramento/Monitoramento.css';
-import { debounce } from 'lodash';
+import { toast } from 'react-toastify';
 
+
+
+// Ant Design destructurings (deve ser antes da importação)
 const { Option } = Select;
 const { TabPane } = Tabs;
 const { RangePicker } = DatePicker;
 const { Title } = Typography;
+
+
+
+// Responsividade: classes utilitárias
+const responsiveStyle = {
+  farmaciaContainer: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '16px',
+    width: '100%',
+  },
+  sectionContent: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '8px',
+  },
+  formGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '16px',
+  },
+  formItem: {
+    flex: '1 1 220px',
+    minWidth: '180px',
+    maxWidth: '100%',
+  },
+  table: {
+    overflowX: 'auto',
+    width: '100%',
+  },
+};
+
+
+
+
+
 
 const Farmacia = () => {
   const {
@@ -50,6 +87,11 @@ const Farmacia = () => {
   const [fornecedorSearch, setFornecedorSearch] = useState('');
   const [fornecedorEstado, setFornecedorEstado] = useState(null);
   const [selectedLoteId, setSelectedLoteId] = useState(null);
+  const [produtosLoteModal, setProdutosLoteModal] = useState([]);
+  const [showProdutosLoteModal, setShowProdutosLoteModal] = useState(false);
+  const [produtosLoteModalTitle, setProdutosLoteModalTitle] = useState('');
+  // Remover o estado isLoteDisabled e restaurar o Select de lote para o comportamento inicial
+
 
   useEffect(() => {
     console.log('Produtos no Farmacia.js:', produtos);
@@ -66,7 +108,7 @@ const Farmacia = () => {
     if (produto23) {
       console.log('Produto ID 23:', produto23);
       if (!produto23.productDescription) {
-        message.warning('Produto ID 23 não possui productDescription definido.');
+        toast.warning('Produto ID 23 não possui productDescription definido.');
       }
     }
   }, [produtos, productTypes]);
@@ -78,9 +120,23 @@ const Farmacia = () => {
     console.log('Context Data - LinhasLotes:', linhasLotes);
     console.log('Context Data - ProductTypes:', productTypes);
     if (!produtos.length || !lotes.length || !armazens.length) {
-      message.warning('Dados incompletos (produtos, lotes ou armazéns). Verifique a conexão com o backend.');
+      toast.warning('Dados incompletos (produtos, lotes ou armazéns). Verifique a conexão com o backend.');
     }
   }, [produtos, lotes, armazens, linhasLotes, productTypes]);
+
+  // Atualizar estado de desabilitado do Select de lote ao trocar armazém ou tipo de operação
+  useEffect(() => {
+    const tipoOperacao = form.getFieldValue('tipoOperacao');
+    const armazemId = form.getFieldValue('armazemId');
+    if (["SAIDA", "TRANSFERENCIA", "ANULACAO"].includes(tipoOperacao) && armazemId) {
+      const lotesDisponiveis = lotes.filter(l => l.status).filter(lote =>
+        linhasLotes.some(linha => linha.lotes_id === lote.id && linha.armazem_id === armazemId)
+      );
+      // setIsLoteDisabled(lotesDisponiveis.length === 0); // Removido
+    } else {
+      // setIsLoteDisabled(lotes.length === 0); // Removido
+    }
+  }, [form, lotes, linhasLotes, form.getFieldValue('armazemId'), form.getFieldValue('tipoOperacao')]);
 
   const expirationThresholds = [
     { label: '1 Ano', days: 365 },
@@ -165,18 +221,22 @@ const Farmacia = () => {
     setFilteredFornecedores(fornecedores);
   };
 
+  // Mostra produtos do lote selecionado, e destaca se não houver produtos
   const getProdutosByLote = (loteId) => {
-    return linhasLotes
-      .filter((linha) => linha.lotes_id === loteId)
+    if (!loteId) return [];
+    // Buscar todos os produtos do lote, independentemente do armazém
+    const produtosLote = linhasLotes
+      .filter((linha) => String(linha.lotes_id) === String(loteId))
       .map((linha) => {
-        const produto = produtos.find((p) => p.id === linha.produto_id);
+        const produto = produtos.find((p) => p.id === (linha.produto_id || linha.produtoId));
         return {
           id: linha.id,
-          produtoId: linha.produto_id,
+          produtoId: linha.produto_id || linha.produtoId,
           productDescription: produto?.productDescription || 'Sem Descrição',
           quantidade: Number(linha.quantidade),
         };
       });
+    return produtosLote;
   };
 
   const handleAddItem = async () => {
@@ -189,19 +249,19 @@ const Farmacia = () => {
       console.log('Lote selecionado (handleAddItem):', lote);
       
       if (!lote) {
-        message.error(`Lote inválido: ID ${values.loteId}`);
+        toast.error(`Lote inválido: ID ${values.loteId}`);
         return;
       }
       if (!produto) {
-        message.error(`Produto não encontrado: ID ${values.produtoId}`);
+        toast.error(`Produto não encontrado: ID ${values.produtoId}`);
         return;
       }
       if (!produto.productDescription) {
-        message.error(`Produto ID ${values.produtoId} não possui descrição de produto definida.`);
+        toast.error(`Produto ID ${values.produtoId} não possui descrição de produto definida.`);
         return;
       }
       if (!values.quantidade || values.quantidade <= 0) {
-        message.error('Quantidade deve ser maior que zero');
+        toast.error('Quantidade deve ser maior que zero');
         return;
       }
       const tipoOperacao = form.getFieldValue('tipoOperacao');
@@ -211,7 +271,7 @@ const Farmacia = () => {
         );
         const qtdDisponivel = existingLinha ? Number(existingLinha.quantidade) : 0;
         if (qtdDisponivel < values.quantidade) {
-          message.error(`Quantidade insuficiente no lote ${lote.designacao} para o produto ${produto.productDescription} (Disponível: ${qtdDisponivel})`);
+          toast.error(`Quantidade insuficiente no lote ${lote.designacao} para o produto ${produto.productDescription} (Disponível: ${qtdDisponivel})`);
           return;
         }
       }
@@ -231,10 +291,10 @@ const Farmacia = () => {
       form.resetFields(['produtoId', 'quantidade', 'loteId']);
       setEditItemId(null);
       setSelectedLoteId(null);
-      message.success(editItemId ? 'Item atualizado na lista temporária' : 'Item adicionado à lista temporária');
+      toast.success(editItemId ? 'Item atualizado na lista temporária' : 'Item adicionado à lista temporária');
     } catch (error) {
       console.error('Erro ao adicionar item:', error);
-      message.error('Preencha os campos de lote, produto e quantidade corretamente');
+      toast.error('Preencha os campos de lote, produto e quantidade corretamente');
     }
   };
 
@@ -249,27 +309,104 @@ const Farmacia = () => {
   };
 
   const handleSaveOperacao = async () => {
+    if (loading) return;
     if (tempItens.length === 0) {
-      message.error('Adicione pelo menos um item à operação');
+      toast.warning('Adicione pelo menos um item à operação antes de salvar.');
       return;
     }
+    let tipoOperacao = form.getFieldValue('tipoOperacao');
+    let validateFieldsArr = ['tipoOperacao', 'armazemId', 'descricao'];
+    if (!tipoOperacao) {
+      toast.warning('Selecione o tipo de operação antes de iniciar.');
+      return;
+    }
+    if (tipoOperacao === 'TRANSFERENCIA') {
+      validateFieldsArr.push('armazemDestinoId');
+      validateFieldsArr.push('loteIdDestino');
+    }
     try {
-      const values = await form.validateFields(['tipoOperacao', 'armazemId', 'descricao']);
+      const values = await form.validateFields(validateFieldsArr);
       const armazem = armazens.find((a) => a.id === values.armazemId);
       if (!armazem) {
-        message.error(`Armazém inválido: ID ${values.armazemId}`);
+        toast.error(`Armazém inválido: ID ${values.armazemId}`);
         return;
       }
-      if (values.tipoOperacao === 'TRANSFERENCIA' && !values.armazemDestinoId) {
-        message.error('Armazém de destino é obrigatório para TRANSFERENCIA');
-        return;
-      }
-      const armazemDestino = values.tipoOperacao === 'TRANSFERENCIA' ? armazens.find((a) => a.id === values.armazemDestinoId) : null;
-      if (values.tipoOperacao === 'TRANSFERENCIA' && !armazemDestino) {
-        message.error(`Armazém de destino inválido: ID ${values.armazemDestinoId}`);
-        return;
+      if (tipoOperacao === 'TRANSFERENCIA') {
+        if (!values.armazemDestinoId) {
+          toast.error('Armazém de destino é obrigatório para TRANSFERENCIA');
+          return;
+        }
+        const armazemDestino = armazens.find((a) => a.id === values.armazemDestinoId);
+        if (!armazemDestino) {
+          toast.error(`Armazém de destino inválido: ID ${values.armazemDestinoId}`);
+          return;
+        }
+        if (values.armazemId === values.armazemDestinoId) {
+          toast.error('O armazém de origem e o de destino não podem ser iguais na transferência.');
+          return;
+        }
+        if (!values.loteIdDestino) {
+          toast.error('Lote de destino é obrigatório para TRANSFERENCIA');
+          return;
+        }
+        const loteOrigem = lotes.find((l) => l.id === values.loteId);
+        const loteDestino = lotes.find((l) => l.id === values.loteIdDestino);
+        if (loteOrigem.id === loteDestino.id) {
+          toast.error('O lote de origem e o de destino não podem ser iguais na transferência.');
+          return;
+        }
       }
       setLoading(true);
+      toast.loading({ content: 'Salvando operação, aguarde...', key: 'salvandoOperacao', duration: 0 });
+      
+      // Corrige DTO para ANULACAO: backend pode exigir campos específicos
+      const linhasOperacao = tempItens.map((item) => {
+        const produto = produtos.find((p) => p.id === item.produtoId);
+        const lote = lotes.find((l) => l.id === item.loteId);
+        const existingLinha = linhasLotes.find(
+          (linha) => linha.lotes_id === item.loteId && linha.produto_id === produto.id
+        );
+        const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
+        let qtdActual = qtdAnterior;
+        let qtdOperacao = Number(item.quantidade);
+
+        if (tipoOperacao === 'ENTRADA') {
+          qtdActual = qtdAnterior + qtdOperacao;
+        } else if (tipoOperacao === 'SAIDA' || tipoOperacao === 'TRANSFERENCIA') {
+          if (qtdAnterior < qtdOperacao) {
+            throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote?.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
+          }
+          qtdActual = qtdAnterior - qtdOperacao;
+        } else if (tipoOperacao === 'ANULACAO') {
+          qtdOperacao = 0;
+          qtdActual = qtdAnterior; // Não altera o estoque
+        }
+
+        const linha = {
+          id: item.id && !isNaN(item.id) ? item.id : null,
+          armazemIdOrigem: values.armazemId,
+          loteIdOrigem: item.loteId,
+          produtoId: produto.id,
+          qtdAnterior: qtdAnterior.toString(),
+          qtdOperacao: qtdOperacao.toString(),
+          qtdActual: qtdActual.toString(),
+          armazemIdDestino: tipoOperacao === 'TRANSFERENCIA' ? values.armazemDestinoId : null,
+          loteIdDestino: tipoOperacao === 'TRANSFERENCIA' ? values.loteIdDestino : null,
+          operacaoStockId: null, // será preenchido no backend
+        };
+        // Remover campos não usados em cada operação
+        if (tipoOperacao !== 'TRANSFERENCIA') {
+          delete linha.armazemIdDestino;
+          delete linha.loteIdDestino;
+        }
+        if (tipoOperacao === 'ANULACAO') {
+          // Para anulação, garantir que qtdOperacao seja zero e remover campos de destino
+          linha.qtdOperacao = '0';
+          delete linha.armazemIdDestino;
+          delete linha.loteIdDestino;
+        }
+        return linha;
+      });
       const OperacaoStockDTO = {
         id: editOperacaoId || null,
         dataOperacao: moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm:ss'),
@@ -277,58 +414,85 @@ const Farmacia = () => {
         usuarioId: 1,
         armazemId: values.armazemId,
         descricao: values.descricao || `Operação ${values.tipoOperacao}`,
-        linhas: tempItens.map((item) => {
-          const produto = produtos.find((p) => p.id === item.produtoId);
-          const lote = lotes.find((l) => l.id === item.loteId);
-          const existingLinha = linhasLotes.find(
-            (linha) => linha.lotes_id === item.loteId && linha.produto_id === produto.id
-          );
-          const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
-          let qtdActual = qtdAnterior;
-          const qtdOperacao = Number(item.quantidade);
-
-          if (values.tipoOperacao === 'ENTRADA') {
-            qtdActual = qtdAnterior + qtdOperacao;
-          } else if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(values.tipoOperacao)) {
-            if (qtdAnterior < qtdOperacao) {
-              throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote?.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
-            }
-            qtdActual = qtdAnterior - qtdOperacao;
-          }
-
-          return {
-            id: item.id && !isNaN(item.id) ? item.id : null,
-            armazemIdOrigem: values.armazemId,
-            loteIdOrigem: item.loteId,
-            produtoId: produto.id,
-            qtdAnterior: qtdAnterior.toString(),
-            qtdOperacao: qtdOperacao.toString(),
-            qtdActual: qtdActual.toString(),
-            armazemIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? values.armazemDestinoId : null,
-            loteIdDestino: values.tipoOperacao === 'TRANSFERENCIA' ? item.loteId : null,
-            operacaoStockId: null,
-          };
-        }),
+        linhas: linhasOperacao,
       };
+      // LOG: Payload enviado para a API
+      console.log('Payload OperacaoStockDTO:', OperacaoStockDTO);
       const endpoint = editOperacaoId ? `/operacao-stock/edit-with-linhas/${editOperacaoId}` : '/operacao-stock/add-with-linhas';
       const method = editOperacaoId ? api.put : api.post;
       await method(endpoint, OperacaoStockDTO);
-      message.success('Operação salva com sucesso');
-      const [linhasLotesRes, operacoesRes] = await Promise.all([
-        api.get('/linhaslotes/all'),
-        api.get('/operacao-stock/all'),
-      ]);
-      setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
+      let tipoMsg = '';
+      switch (values.tipoOperacao) {
+        case 'ENTRADA':
+          tipoMsg = 'Operação de entrada efectuada com sucesso!';
+          break;
+        case 'SAIDA':
+          tipoMsg = 'Operação de saída efectuada com sucesso!';
+          break;
+        case 'TRANSFERENCIA':
+          tipoMsg = 'Operação de transferência efectuada com sucesso!';
+          break;
+        case 'ANULACAO':
+          tipoMsg = 'Operação de anulação efectuada com sucesso!';
+          break;
+        default:
+          tipoMsg = 'Operação efectuada com sucesso!';
+      }
+      toast.success(tipoMsg, { autoClose: 2000 });
+      
+      // Atualiza localmente as quantidades dos produtos em lote
+      setLinhasLotes((prev) => {
+        let updated = [...prev];
+        OperacaoStockDTO.linhas.forEach((linha) => {
+          const idx = updated.findIndex(
+            (l) => l.lotes_id === linha.loteIdOrigem && l.produto_id === linha.produtoId
+          );
+          if (idx !== -1) {
+
+            // Atualiza quantidade existente
+            updated[idx] = {
+              ...updated[idx],
+              quantidade: linha.qtdActual,
+            };
+          } else if (OperacaoStockDTO.tipoOperacao === 'ENTRADA') {
+
+            // Adiciona nova linha para entrada
+            updated.push({
+              id: Date.now() + Math.random(),
+              lotes_id: linha.loteIdOrigem,
+              produto_id: linha.produtoId,
+              quantidade: linha.qtdActual,
+            });
+          }
+        });
+        return updated;
+      });
+
+      // Atualiza lista de operações
+      const operacoesRes = await api.get('/operacao-stock/all');
       setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
       setTempItens([]);
       setEditOperacaoId(null);
       setEditItemId(null);
       setSelectedLoteId(null);
       form.resetFields();
+
+      // Foca no tipo de operação para nova acção
+      setTimeout(() => {
+        form.setFieldsValue({ tipoOperacao: undefined });
+      }, 300);
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || 'Erro ao salvar operação';
-      console.error('Erro ao salvar operação:', errorMsg);
-      message.error(errorMsg);
+      let backendMsg = error.response?.data?.message || error.response?.data?.error;
+      let msg = backendMsg || error.message || 'Erro ao salvar operação';
+      // LOG: Resposta de erro detalhada
+      console.error('Erro detalhado da API:', error.response?.data);
+      // Nova lógica: se vier um array de erros de validação do backend
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        msg = error.response.data.errors.map(e => e.defaultMessage || e.message || e).join(' | ');
+      }
+      toast.error({ content: msg, key: 'salvandoOperacao', duration: 6 });
+      setError(msg);
+      console.error('Erro ao salvar operação:', msg);
     } finally {
       setLoading(false);
     }
@@ -355,14 +519,15 @@ const Farmacia = () => {
         tipoOperacao: record.tipoOperacao,
         armazemId: record.armazemId,
         armazemDestinoId: record.linhas[0]?.armazemIdDestino || null,
+        loteIdDestino: record.linhas[0]?.loteIdDestino || null,
         descricao: record.descricao,
       });
       setSelectedLoteId(record.lotes[0]?.id || null);
-      message.info('Operação carregada para edição');
+      toast.info('Operação carregada para edição');
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao carregar operação: ${error.message}`;
       console.error('Erro ao carregar operação:', errorMsg);
-      message.error(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -370,13 +535,13 @@ const Farmacia = () => {
     setLoading(true);
     try {
       await api.delete(`/operacao-stock/${id}`);
-      message.success('Operação excluída com sucesso');
+      toast.success('Operação excluída com sucesso');
       const operacoesRes = await api.get('/operacao-stock/all');
       setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao excluir operação: ${error.message}`;
       console.error('Erro ao excluir operação:', errorMsg);
-      message.error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -393,14 +558,14 @@ const Farmacia = () => {
         endereco: values.endereco,
         regimeTributario: values.regimeTributario,
         estadoFornecedor: values.estadoFornecedor || 'ATIVO',
-        dataCriacao: editFornecedorId ? undefined : new Date().toISOString(),
+        dataCriacao: editFornecedorId ? undefined : moment().tz('Africa/Luanda').toISOString(),
       };
       if (editFornecedorId) {
         await api.put('/fornecedor/edit', fornecedorDTO);
-        message.success('Fornecedor atualizado com sucesso');
+        toast.success('Fornecedor atualizado com sucesso');
       } else {
         await api.post('/fornecedor/add', fornecedorDTO);
-        message.success('Fornecedor adicionado com sucesso');
+        toast.success('Fornecedor adicionado com sucesso');
       }
       setShowFornecedorModal(false);
       setEditFornecedorId(null);
@@ -410,7 +575,7 @@ const Farmacia = () => {
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao salvar fornecedor: ${error.message}`;
       console.error('Erro ao salvar fornecedor:', errorMsg);
-      message.error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -420,13 +585,13 @@ const Farmacia = () => {
     setLoading(true);
     try {
       await api.delete(`/fornecedor/${id}`);
-      message.success('Fornecedor excluído com sucesso');
+      toast.success('Fornecedor excluído com sucesso');
       const fornecedoresRes = await api.get('/fornecedor/all');
       setFornecedores(Array.isArray(fornecedoresRes.data) ? fornecedoresRes.data : []);
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao excluir fornecedor: ${error.message}`;
       console.error('Erro ao excluir fornecedor:', errorMsg);
-      message.error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -441,15 +606,15 @@ const Farmacia = () => {
         designacao: values.designacao,
         dataCriacao: values.dataCriacao ? values.dataCriacao.toISOString() : moment().tz('Africa/Luanda').toISOString(),
         dataVencimento: values.dataVencimento ? values.dataVencimento.toISOString() : null,
-        dataEntrada: values.dataEntrada ? values.dataEntrada.toISOString() : null,
+        dataEntrada: moment().tz('Africa/Luanda').toISOString(), // Sempre automático
         status: values.status !== undefined ? values.status : true,
       };
       if (editLoteId) {
         await api.put(`/lotes/${editLoteId}`, loteDTO);
-        message.success('Lote atualizado com sucesso');
+        toast.success('Lote atualizado com sucesso');
       } else {
         await api.post('/lotes/add', loteDTO);
-        message.success('Lote adicionado com sucesso');
+        toast.success('Lote adicionado com sucesso');
       }
       setShowLoteModal(false);
       setEditLoteId(null);
@@ -459,7 +624,7 @@ const Farmacia = () => {
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao salvar lote: ${error.message}`;
       console.error('Erro ao salvar lote:', errorMsg);
-      message.error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -469,13 +634,13 @@ const Farmacia = () => {
     setLoading(true);
     try {
       await api.delete(`/lotes/${id}`);
-      message.success('Lote excluído com sucesso');
+      toast.success('Lote excluído com sucesso');
       const lotesRes = await api.get('/lotes/all');
       setLotes(Array.isArray(lotesRes.data) ? lotesRes.data : []);
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao excluir lote: ${error.message}`;
       console.error('Erro ao excluir lote:', errorMsg);
-      message.error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -487,25 +652,25 @@ const Farmacia = () => {
       const productGroup = produtos.find((p) => p.id === values.produtoId);
       const lote = lotes.find((l) => l.id === values.lotes_id);
       if (!productGroup) {
-        message.error(`Produto inválido: ID ${values.produtoId}`);
+        toast.error(`Produto inválido: ID ${values.produtoId}`);
         return;
       }
       if (!lote) {
-        message.error(`Lote inválido: ID ${values.lotes_id}`);
+        toast.error(`Lote inválido: ID ${values.lotes_id}`);
         return;
       }
       const linhasLotesDTO = {
         id: editLinhasLotesId || null,
         lotes_id: values.lotes_id,
-        produto_id: productGroup.id,
-        quantidade: values.quantidade.toString(),
+        produto_id: values.produtoId,
+        quantidade: Number(values.quantidade),
       };
       if (editLinhasLotesId) {
-        await api.put(`/linhaslotes/edit/${editLinhasLotesId}`, linhasLotesDTO);
-        message.success('Linha de lote atualizada com sucesso');
+        await api.put('/linhaslotes/edit', linhasLotesDTO);
+        toast.success('Linha de lote atualizada com sucesso');
       } else {
         await api.post('/linhaslotes/add', linhasLotesDTO);
-        message.success('Linha de lote adicionada com sucesso');
+        toast.success('Linha de lote adicionada com sucesso');
       }
       setShowLinhasLotesModal(false);
       setEditLinhasLotesId(null);
@@ -515,7 +680,7 @@ const Farmacia = () => {
     } catch (error) {
       const errorMsg = error.response?.data?.error || error.response?.data?.message || `Erro ao salvar linha de lote: ${error.message}`;
       console.error('Erro ao salvar linha de lote:', errorMsg);
-      message.error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -525,18 +690,58 @@ const Farmacia = () => {
     setLoading(true);
     try {
       await api.delete(`/linhaslotes/${id}`);
-      message.success('Linha de lote excluída com sucesso');
+      toast.success('Linha de lote excluída com sucesso');
       const linhasLotesRes = await api.get('/linhaslotes/all');
       setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
     } catch (error) {
-      const errorMsg = error.response?.data?.message || `Erro ao excluir linha de lote: ${error.message}`;
-      console.error('Erro ao excluir linha de lote:', errorMsg);
-      message.error(errorMsg);
+      let backendMsg = error.response?.data?.error || error.response?.data?.message;
+      let msg = backendMsg || error.message || 'Erro ao excluir linha de lote';
+      console.error('Erro ao excluir linha de lote:', msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleVerProdutosLote = async (lote) => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/linha-operacao-stock/lotes/${lote.id}`);
+      // Agrupar produtos iguais e somar as quantidades
+      const produtosLoteRaw = Array.isArray(res.data) ? res.data : [];
+      const produtosMap = {};
+      produtosLoteRaw.forEach((linha) => {
+        // Corrigir: garantir que o campo correto é produto_id
+        const produtoId = linha.produto_id || linha.produtoId;
+        const produto = produtos.find((p) => p.id === produtoId);
+        const key = produtoId;
+        let quantidadeAtual = linha.qtdActual;
+        if (quantidadeAtual === undefined || quantidadeAtual === null) {
+          quantidadeAtual = linha.qtdOperacao !== undefined ? linha.qtdOperacao : linha.qtdAnterior || 0;
+        }
+        if (!produtosMap[key]) {
+          produtosMap[key] = {
+            id: linha.id, // pode ser o primeiro id encontrado
+            produtoId: produtoId,
+            productDescription: produto?.productDescription || 'Sem Descrição',
+            quantidade: Number(quantidadeAtual),
+          };
+        } else {
+          produtosMap[key].quantidade += Number(quantidadeAtual);
+        }
+      });
+      const produtosLote = Object.values(produtosMap);
+      setProdutosLoteModal(produtosLote);
+      setProdutosLoteModalTitle(lote.designacao);
+      setShowProdutosLoteModal(true);
+    } catch (error) {
+      toast.error('Erro ao buscar produtos do lote');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Corrigir coluna de Armazém na tabela de lotes para garantir exibição correta
   const lotesTableColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
@@ -552,8 +757,48 @@ const Farmacia = () => {
       key: 'status',
       render: (s) => <Tag color={s ? 'green' : 'red'}>{s ? 'Ativo' : 'Inativo'}</Tag>,
     },
+    {
+      title: 'Produtos',
+      key: 'produtos',
+      render: (_, record) => (
+        <Button icon={<UnorderedListOutlined />} size="small" onClick={() => handleVerProdutosLote(record)}>
+          Ver Produtos
+        </Button>
+      ),
+    },
+    {
+      title: 'Ações',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button
+            icon={<EditOutlined />}
+            onClick={() => {
+              setEditLoteId(record.id);
+              loteForm.setFieldsValue({
+                designacao: record.designacao,
+                dataCriacao: record.dataCriacao ? moment(record.dataCriacao) : null,
+                dataVencimento: record.dataVencimento ? moment(record.dataVencimento) : null,
+                dataEntrada: record.dataEntrada ? moment(record.dataEntrada) : null,
+                status: record.status,
+              });
+              setShowLoteModal(true);
+            }}
+          />
+          <Popconfirm
+            title="Confirmar exclusão do lote?"
+            onConfirm={() => handleDeleteLote(record.id)}
+            okText="OK"
+            cancelText="Cancelar"
+          >
+            <Button icon={<DeleteOutlined />} type="text" danger />
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ];
 
+  // Remover a coluna 'Armazém' do modal de produtos do lote
   const produtosPorLoteColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Produto', dataIndex: 'productDescription', key: 'productDescription' },
@@ -607,7 +852,7 @@ const Farmacia = () => {
             title="Confirmar remoção do item?"
             onConfirm={() => {
               setTempItens((prev) => prev.filter((item) => item.id !== record.id));
-              message.success('Item removido da lista temporária');
+              toast.success('Item removido da lista temporária');
             }}
             okText="OK"
             cancelText="Cancelar"
@@ -672,6 +917,16 @@ const Farmacia = () => {
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
     {
+      title: 'Armazém',
+      key: 'armazem',
+      render: (_, record) => {
+        // Encontrar o armazém pelo primeiro produto do lote
+        const linha = linhasLotes.find(linha => linha.lotes_id === record.id);
+        const armazem = linha ? armazens.find(a => a.id === linha.armazem_id) : null;
+        return armazem ? armazem.designacao : '-';
+      }
+    },
+    {
       title: 'Data de Vencimento',
       dataIndex: 'dataVencimento',
       key: 'dataVencimento',
@@ -682,6 +937,15 @@ const Farmacia = () => {
       dataIndex: 'status',
       key: 'status',
       render: (s) => <Tag color={s ? 'green' : 'red'}>{s ? 'Ativo' : 'Inativo'}</Tag>,
+    },
+    {
+      title: 'Produtos',
+      key: 'produtos',
+      render: (_, record) => (
+        <Button icon={<UnorderedListOutlined />} size="small" onClick={() => handleVerProdutosLote(record)}>
+          Ver Produtos
+        </Button>
+      ),
     },
     {
       title: 'Ações',
@@ -782,10 +1046,14 @@ const Farmacia = () => {
     { title: 'Alerta', dataIndex: 'threshold', key: 'threshold' },
   ];
 
+  // Todas as colunas do Fornecedor conforme entidade backend
   const fornecedorColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Nome', dataIndex: 'nome', key: 'nome' },
     { title: 'Contato', dataIndex: 'contacto', key: 'contacto', render: (c) => c || '-' },
+    { title: 'NIF', dataIndex: 'nif', key: 'nif', render: (nif) => nif || '-' },
+    { title: 'Endereço', dataIndex: 'endereco', key: 'endereco', render: (e) => e || '-' },
+    { title: 'Regime Tributário', dataIndex: 'regimeTributario', key: 'regimeTributario', render: (r) => r || '-' },
     { title: 'Estado', dataIndex: 'estadoFornecedor', key: 'estadoFornecedor', render: (estado) => <Tag color={estado === 'ATIVO' ? 'green' : 'red'}>{estado}</Tag> },
     {
       title: 'Ações',
@@ -843,10 +1111,10 @@ const Farmacia = () => {
                 <Select
                   placeholder="Selecione a operação"
                   onChange={(value) => {
-                    form.setFieldsValue({ loteId: null, produtoId: null, quantidade: null, armazemDestinoId: null });
+                    form.setFieldsValue({ loteId: null, produtoId: null, quantidade: null, armazemDestinoId: null, loteIdDestino: null });
                     setSelectedLoteId(null);
                     setTempItens([]);
-                    form.resetFields(['loteId', 'produtoId', 'quantidade', 'armazemDestinoId']);
+                    form.resetFields(['loteId', 'produtoId', 'quantidade', 'armazemDestinoId', 'loteIdDestino']);
                   }}
                 >
                   {['ENTRADA', 'SAIDA', 'TRANSFERENCIA', 'ANULACAO'].map((op) => (
@@ -859,7 +1127,14 @@ const Farmacia = () => {
                 label="Armazém Origem"
                 rules={[{ required: true, message: 'Selecione o armazém de origem' }]}
               >
-                <Select placeholder="Selecione o armazém">
+                <Select placeholder="Selecione o armazém"
+                  onChange={(armazemId) => {
+                    form.setFieldsValue({ loteId: null, produtoId: null, quantidade: null });
+                    setSelectedLoteId(null);
+                    setTempItens([]);
+                    // Removida a validação e notificação de lotes/produtos no armazém
+                  }}
+                >
                   {armazens.map((armazem) => (
                     <Option key={armazem.id} value={armazem.id}>
                       {armazem.designacao}
@@ -867,19 +1142,49 @@ const Farmacia = () => {
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item
-                name="armazemDestinoId"
-                label="Armazém Destino"
-                rules={[{ required: form.getFieldValue('tipoOperacao') === 'TRANSFERENCIA', message: 'Selecione o armazém de destino' }]}
-              >
-                <Select placeholder="Selecione o armazém de destino" allowClear>
-                  {armazens.map((armazem) => (
-                    <Option key={armazem.id} value={armazem.id}>
-                      {armazem.designacao}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
+              {form.getFieldValue('tipoOperacao') === 'TRANSFERENCIA' && (
+                <>
+                  <Form.Item
+                    name="armazemDestinoId"
+                    label="Armazém Destino"
+                    rules={[{ required: true, message: 'Selecione o armazém de destino' }]}
+                  >
+                    <Select placeholder="Selecione o armazém de destino" allowClear>
+                      {armazens.map((armazem) => (
+                        <Option key={armazem.id} value={armazem.id}>
+                          {armazem.designacao}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item
+                    name="loteIdDestino"
+                    label="Lote Destino"
+                    rules={[{ required: true, message: 'Selecione o lote de destino' }]}
+                  >
+                    <Select placeholder="Selecione o lote de destino">
+                      {(() => {
+                        // Mostra apenas lotes ativos diferentes do lote de origem
+                        const armazemDestinoId = form.getFieldValue('armazemDestinoId');
+                        const loteIdOrigem = form.getFieldValue('loteId');
+                        let lotesDisponiveis = lotes.filter(l => l.status);
+                        if (armazemDestinoId) {
+                          lotesDisponiveis = lotesDisponiveis.filter(lote =>
+                            linhasLotes.some(linha => linha.lotes_id === lote.id && linha.armazem_id === armazemDestinoId)
+                          );
+                        }
+                        return lotesDisponiveis
+                          .filter(lote => lote.id !== loteIdOrigem)
+                          .map((lote) => (
+                            <Option key={lote.id} value={lote.id}>
+                              {lote.designacao}
+                            </Option>
+                          ));
+                      })()}
+                    </Select>
+                  </Form.Item>
+                </>
+              )}
               <Form.Item name="descricao" label="Descrição">
                 <Input placeholder="Descrição da operação" />
               </Form.Item>
@@ -890,8 +1195,13 @@ const Farmacia = () => {
               >
                 <Select
                   placeholder="Selecione o lote"
-                  onChange={(value) => setSelectedLoteId(value)}
-                  disabled={['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(form.getFieldValue('tipoOperacao')) && lotes.length === 0}
+                  onChange={(value, option) => {
+                    setSelectedLoteId(value);
+                    // Salvar também a designação do lote no form para exibição
+                    form.setFieldsValue({ loteDesignacao: option?.children });
+                  }}
+                  disabled={lotes.length === 0}
+                  optionLabelProp="children"
                 >
                   {lotes.filter(l => l.status).map((lote) => (
                     <Option key={lote.id} value={lote.id}>
@@ -906,8 +1216,14 @@ const Farmacia = () => {
                 rules={[{ required: true, message: 'Selecione o produto' }]}
               >
                 <Select
-                  placeholder="Selecione o produto"
+                  placeholder={selectedLoteId ? "Selecione o produto do lote" : "Selecione o lote primeiro"}
                   disabled={selectedLoteId === null || produtos.length === 0}
+                  onDropdownVisibleChange={(open) => {
+                    if (open && selectedLoteId === null) {
+                      toast.info('Selecione um lote para ver os produtos disponíveis.');
+                    }
+                  }}
+                  optionLabelProp="children"
                 >
                   {form.getFieldValue('tipoOperacao') === 'ENTRADA'
                     ? produtos.map((produto) => (
@@ -949,40 +1265,26 @@ const Farmacia = () => {
               </Form.Item>
             </div>
             <Space style={{ marginBottom: 16 }}>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem}>
-                {editItemId ? 'Atualizar Item' : 'Adicionar Item'}
-              </Button>
-              <Button
-                icon={<SaveOutlined />}
-                type="primary"
-                onClick={handleSaveOperacao}
-                loading={loading}
-              >
-                Salvar Operação
-              </Button>
-              <Button
-                icon={<CloseOutlined />}
-                onClick={() => {
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem} disabled={loading} />
+              <Button icon={<SaveOutlined />} type="primary" onClick={handleSaveOperacao} loading={loading} disabled={loading} />
+              <Button icon={<CloseOutlined />} onClick={() => {
                   form.resetFields();
                   setTempItens([]);
                   setEditOperacaoId(null);
                   setEditItemId(null);
                   setSelectedLoteId(null);
-                }}
-              >
-                Cancelar
-              </Button>
-            </Space>
-        
-            <Table
-              dataSource={tempItens}
-              columns={tempItemColumns}
-              rowKey={record => record.id}
-              pagination={false}
-              title={() => <Title level={4}>Itens Temporários</Title>}
-              className="stock-table"
-            />
-          </Form>
+                }} disabled={loading} />
+          </Space>
+          <Table
+            dataSource={tempItens}
+            columns={tempItemColumns}
+            rowKey={record => record.id}
+            pagination={{ pageSize: 10 }}
+            loading={loading || contextLoading}
+            className="stock-table"
+            title={() => <Title level={3}>Itens da Operação</Title>}
+          />
+        </Form>
         </div>
       )}
       {activeSection === 'lotes' && (
@@ -1012,47 +1314,29 @@ const Farmacia = () => {
               placeholder={['Data Início', 'Data Fim']}
             />
             <Button onClick={clearLoteFilters}>Limpar Filtros</Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setShowLoteModal(true);
-                setEditLoteId(null);
-                loteForm.resetFields();
-              }}
-            >
-              Adicionar Lote
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setShowLinhasLotesModal(true);
-                setEditLinhasLotesId(null);
-                linhasLotesForm.resetFields();
-              }}
-            >
-              Adicionar Linha de Lote
-            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setShowLoteModal(true); setEditLoteId(null); loteForm.resetFields(); /* Não setar dataCriacao aqui */ }}>Novo Lote</Button>
           </Space>
           <Table
             dataSource={filteredLotes}
-            columns={loteColumns}
+            columns={lotesTableColumns}
             rowKey={record => record.id}
             pagination={{ pageSize: 10 }}
-            loading={loading || contextLoading}
             className="stock-table"
             title={() => <Title level={3}>Lotes</Title>}
           />
-          <Table
-            dataSource={linhasLotes}
-            columns={linhasLotesColumns}
-            rowKey={record => record.id}
-            pagination={{ pageSize: 10 }}
-            loading={loading || contextLoading}
-            className="stock-table"
-            title={() => <Title level={3}>Produtos em Lotes</Title>}
-          />
+          <Modal
+            title={`Produtos do Lote: ${produtosLoteModalTitle}`}
+            open={showProdutosLoteModal}
+            onCancel={() => setShowProdutosLoteModal(false)}
+            footer={null}
+          >
+            <Table
+              dataSource={produtosLoteModal}
+              columns={produtosPorLoteColumns}
+              rowKey={record => record.id}
+              pagination={false}
+            />
+          </Modal>
         </div>
       )}
       {activeSection === 'fornecedores' && (
@@ -1075,18 +1359,13 @@ const Farmacia = () => {
               <Option value="ATIVO">Ativo</Option>
               <Option value="INATIVO">Inativo</Option>
             </Select>
-            <Button onClick={clearFornecedorFilters}>Limpar Filtros</Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
+            <Button icon={<CloseOutlined />} onClick={clearFornecedorFilters} />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => {
                 setShowFornecedorModal(true);
                 setEditFornecedorId(null);
                 fornecedorForm.resetFields();
-              }}
-            >
-              Adicionar Fornecedor
-            </Button>
+                fornecedorForm.setFieldsValue({ dataCriacao: moment().tz('Africa/Luanda') });
+              }} />
           </Space>
           <Table
             dataSource={filteredFornecedores}
@@ -1157,8 +1436,8 @@ const Farmacia = () => {
   );
 
   return (
-    <div className="farmacia-container">
-      <Spin spinning={loading || contextLoading}>
+    <div className="farmacia-container" style={responsiveStyle.farmaciaContainer}>
+      <Spin spinning={loading || contextLoading} tip={loading ? 'Processando...' : undefined}>
         {error || contextError ? (
           <Alert message="Erro" description={error || contextError} type="error" showIcon />
         ) : (
@@ -1167,14 +1446,14 @@ const Farmacia = () => {
               activeKey={activeSection}
               onChange={setActiveSection}
               type="card"
-              style={{ padding: '0 16px' }}
+              style={{ padding: '0 8px', maxWidth: '100vw', overflowX: 'auto' }}
             >
               <TabPane tab="Operação Stock" key="entrada-saida" />
               <TabPane tab="Lotes" key="lotes" />
               <TabPane tab="Fornecedores" key="fornecedores" />
               <TabPane tab="Monitoramento" key="monitoramento" />
             </Tabs>
-            <div className="content">{renderSection()}</div>
+            <div className="content" style={responsiveStyle.sectionContent}>{renderSection()}</div>
           </>
         )}
         <Modal
@@ -1187,6 +1466,10 @@ const Farmacia = () => {
           }}
           footer={null}
         >
+          {/* Data de Entrada exibida no canto superior direito, apenas leitura */}
+          <div style={{ position: 'absolute', top: 16, right: 24, color: '#888', fontSize: 13 }}>
+            Data de Entrada: {loteForm.getFieldValue('dataEntrada') ? moment(loteForm.getFieldValue('dataEntrada')).tz('Africa/Luanda').format('YYYY-MM-DD HH:mm') : moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm')}
+          </div>
           <Form form={loteForm} layout="vertical" onFinish={handleAddLote}>
             <Form.Item
               name="designacao"
@@ -1210,12 +1493,6 @@ const Farmacia = () => {
               <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item
-              name="dataEntrada"
-              label="Data de Entrada"
-            >
-              <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item
               name="status"
               label="Status"
               valuePropName="checked"
@@ -1224,20 +1501,12 @@ const Farmacia = () => {
             </Form.Item>
             <Form.Item>
               <Space>
-                <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-                  Salvar
-                </Button>
-                <Button
-                  type="default"
-                  onClick={() => {
+                <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
+                <Button type="default" onClick={() => {
                     setShowLoteModal(false);
                     setEditLoteId(null);
                     loteForm.resetFields();
-                  }}
-                  icon={<CloseOutlined />}
-                >
-                  Cancelar
-                </Button>
+                  }} icon={<CloseOutlined />} />
               </Space>
             </Form.Item>
           </Form>
@@ -1304,20 +1573,12 @@ const Farmacia = () => {
             </Form.Item>
             <Form.Item>
               <Space>
-                <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-                  Salvar
-                </Button>
-                <Button
-                  type="default"
-                  onClick={() => {
+                <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
+                <Button type="default" onClick={() => {
                     setShowFornecedorModal(false);
                     setEditFornecedorId(null);
                     fornecedorForm.resetFields();
-                  }}
-                  icon={<CloseOutlined />}
-                >
-                  Cancelar
-                </Button>
+                  }} icon={<CloseOutlined />} />
               </Space>
             </Form.Item>
           </Form>
@@ -1372,22 +1633,7 @@ const Farmacia = () => {
               <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-                  Salvar
-                </Button>
-                <Button
-                  type="default"
-                  onClick={() => {
-                    setShowLinhasLotesModal(false);
-                    setEditLinhasLotesId(null);
-                    linhasLotesForm.resetFields();
-                  }}
-                  icon={<CloseOutlined />}
-                >
-                  Cancelar
-                </Button>
-              </Space>
+              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
             </Form.Item>
           </Form>
         </Modal>

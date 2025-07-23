@@ -3,6 +3,7 @@ import { Button, message, Spin, Modal, Form, Input, Select, DatePicker, Space, R
 import { api } from '../../../service/api';
 import moment from 'moment';
 import './Listar.css';
+import { toast } from 'react-toastify';
 
 const { Option } = Select;
 
@@ -251,12 +252,12 @@ const Listar = () => {
   const handleEditFuncionario = (row) => {
     const funcionario = funcionarios.find((f) => Number(f.pessoaId) === Number(row.id));
     if (!funcionario) {
-      message.error('Funcionário não encontrado.');
+      toast.error('Funcionário não encontrado.');
       return;
     }
     const pessoaAssociada = pessoas.find((p) => Number(p.id) === Number(funcionario.pessoaId));
     if (!pessoaAssociada) {
-      message.error('Pessoa associada ao funcionário não encontrada.');
+      toast.error('Pessoa associada ao funcionário não encontrada.');
       return;
     }
     setEditandoFuncionarioId(funcionario.id);
@@ -295,7 +296,7 @@ const Listar = () => {
       estadoFuncionario: funcionario.estadoFuncionario || '',
     });
     setSubsidioTemp({ id: null, descricao: '', valor: '' });
-    message.info('Funcionário carregado para edição.');
+    toast.info('Funcionário carregado para edição.');
   };
 
   const handleFiltroBuscaChange = (e) => {
@@ -378,7 +379,7 @@ const Listar = () => {
         fechoDeContas: '',
         estadoFuncionario: '',
       });
-      message.success('Funcionário atualizado com sucesso!');
+      toast.success('Funcionário atualizado com sucesso!');
       hasLoaded.current = false;
       await fetchFuncionarios(filtros.status);
     } catch (error) {
@@ -386,26 +387,26 @@ const Listar = () => {
       const errorMessage = error.response?.data?.message || error.message;
       if (error.response?.status === 400) {
         if (errorMessage.includes('obrigatório')) {
-          message.error('Campos obrigatórios não preenchidos.');
+          toast.error('Campos obrigatórios não preenchidos.');
         } else if (errorMessage.includes('dataAdmissao')) {
-          message.error('Formato de data inválido para a data de admissão.');
+          toast.error('Formato de data inválido para a data de admissão.');
         } else if (errorMessage.includes('salario')) {
-          message.error('O salário é inválido ou menor que zero.');
+          toast.error('O salário é inválido ou menor que zero.');
         } else if (errorMessage.includes('subsídio')) {
-          message.error(errorMessage);
+          toast.error(errorMessage);
         } else if (errorMessage.includes('NIF')) {
-          message.error('O NIF já existe ou é inválido.');
+          toast.error('O NIF já existe ou é inválido.');
         } else if (errorMessage.includes('Email')) {
-          message.error('O email já existe ou é inválido.');
+          toast.error('O email já existe ou é inválido.');
         } else {
-          message.error(errorMessage || 'Dados inválidos. Verifique os campos.');
+          toast.error(errorMessage || 'Dados inválidos. Verifique os campos.');
         }
       } else if (error.response?.status === 404) {
-        message.error('Recurso não encontrado (pessoa ou funcionário).');
+        toast.error('Recurso não encontrado (pessoa ou funcionário).');
       } else if (error.response?.status === 500) {
-        message.error('Erro interno do servidor. Tente novamente mais tarde.');
+        toast.error('Erro interno do servidor. Tente novamente mais tarde.');
       } else {
-        message.error(errorMessage || 'Erro ao atualizar funcionário.');
+        toast.error(errorMessage || 'Erro ao atualizar funcionário.');
       }
     } finally {
       setIsSubmitting(false);
@@ -415,7 +416,7 @@ const Listar = () => {
   const handleDeleteFuncionario = async (row) => {
     const funcionario = funcionarios.find((f) => Number(f.pessoaId) === Number(row.id));
     if (!funcionario) {
-      message.error('Funcionário não encontrado.');
+      toast.error('Funcionário não encontrado.');
       return;
     }
     Modal.confirm({
@@ -428,18 +429,18 @@ const Listar = () => {
         try {
           await api.delete(`funcionario/${funcionario.id}`);
           setFuncionarios((prev) => prev.filter((f) => Number(f.id) !== Number(funcionario.id)));
-          message.success('Funcionário excluído com sucesso!');
+          toast.success('Funcionário excluído com sucesso!');
           hasLoaded.current = false;
           await fetchFuncionarios(filtros.status);
         } catch (error) {
           console.error('Erro ao excluir:', error);
           const errorMessage = error.response?.data?.message || 'Erro ao excluir funcionário.';
           if (error.response?.status === 404) {
-            message.error('Funcionário não encontrado.');
+            toast.error('Funcionário não encontrado.');
           } else if (error.response?.status === 500) {
-            message.error('Erro interno do servidor. Tente novamente mais tarde.');
+            toast.error('Erro interno do servidor. Tente novamente mais tarde.');
           } else {
-            message.error(errorMessage);
+            toast.error(errorMessage);
           }
         } finally {
           setIsSubmitting(false);
@@ -468,7 +469,7 @@ const Listar = () => {
   const handleSelectPessoa = (value, option) => {
     const pessoa = cleanObject(option.pessoa);
     if (!pessoa.id) {
-      message.error('Pessoa selecionada inválida.');
+      toast.error('Pessoa selecionada inválida.');
       return;
     }
     setNovaPessoa(pessoa);
@@ -477,7 +478,7 @@ const Listar = () => {
     setIsNovoFuncionarioModalOpen(true);
     novoFuncionarioForm.resetFields();
     setSubsidioTemp({ id: null, descricao: '', valor: '' });
-    message.success('Pessoa selecionada com sucesso!');
+    toast.success('Pessoa selecionada com sucesso!');
   };
 
   const handleSubmitNovaPessoa = async (values) => {
@@ -502,28 +503,28 @@ const Listar = () => {
       novaPessoaForm.resetFields();
       setFiltroPessoa('');
       setSugestoes([]);
-      message.success('Pessoa cadastrada com sucesso!');
+      toast.success('Pessoa cadastrada com sucesso!');
     } catch (error) {
       console.error('Erro ao adicionar pessoa:', error);
       const errorMessage = error.response?.data?.message || 'Erro ao cadastrar pessoa.';
       if (error.response?.status === 400) {
         if (errorMessage.includes('Nome')) {
-          message.error('O nome é obrigatório ou inválido.');
+          toast.error('O nome é obrigatório ou inválido.');
         } else if (errorMessage.includes('NIF')) {
-          message.error('O NIF já existe ou é inválido.');
+          toast.error('O NIF já existe ou é inválido.');
         } else if (errorMessage.includes('Email')) {
-          message.error('O email já existe ou é inválido.');
+          toast.error('O email já existe ou é inválido.');
         } else if (errorMessage.includes('Telefone')) {
-          message.error('O telefone é inválido.');
+          toast.error('O telefone é inválido.');
         } else if (errorMessage.includes('Gênero')) {
-          message.error('O gênero deve ser MASCULINO, FEMININO ou OUTRO.');
+          toast.error('O gênero deve ser MASCULINO, FEMININO ou OUTRO.');
         } else {
-          message.error(errorMessage);
+          toast.error(errorMessage);
         }
       } else if (error.response?.status === 500) {
-        message.error('Erro interno do servidor. Tente novamente mais tarde.');
+        toast.error('Erro interno do servidor. Tente novamente mais tarde.');
       } else {
-        message.error(errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setIsSubmitting(false);
@@ -533,7 +534,7 @@ const Listar = () => {
   const handleSubmitFuncionario = async (values) => {
     if (isSubmitting) return;
     if (!novaPessoa || !novaPessoa.id) {
-      message.error('Nenhuma pessoa selecionada ou ID inválido.');
+      toast.error('Nenhuma pessoa selecionada ou ID inválido.');
       return;
     }
     setIsSubmitting(true);
@@ -572,28 +573,28 @@ const Listar = () => {
       setSubsidioTemp({ id: null, descricao: '', valor: '' });
       hasLoaded.current = false;
       await fetchFuncionarios(filtros.status);
-      message.success('Funcionário cadastrado com sucesso!');
+      toast.success('Funcionário cadastrado com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar funcionário:', error);
       const errorMessage = error.response?.data?.message || error.message;
       if (error.response?.status === 400) {
         if (errorMessage.includes('obrigatório')) {
-          message.error('Campos obrigatórios não preenchidos.');
+          toast.error('Campos obrigatórios não preenchidos.');
         } else if (errorMessage.includes('dataAdmissao')) {
-          message.error('Formato de data inválido para a data de admissão.');
+          toast.error('Formato de data inválido para a data de admissão.');
         } else if (errorMessage.includes('salario')) {
-          message.error('O salário é inválido ou menor que zero.');
+          toast.error('O salário é inválido ou menor que zero.');
         } else if (errorMessage.includes('subsídio')) {
-          message.error(errorMessage);
+          toast.error(errorMessage);
         } else {
-          message.error(errorMessage || 'Dados inválidos. Verifique os campos.');
+          toast.error(errorMessage || 'Dados inválidos. Verifique os campos.');
         }
       } else if (error.response?.status === 404) {
-        message.error('Pessoa não encontrada.');
+        toast.error('Pessoa não encontrada.');
       } else if (error.response?.status === 500) {
-        message.error('Erro interno do servidor. Tente novamente mais tarde.');
+        toast.error('Erro interno do servidor. Tente novamente mais tarde.');
       } else {
-        message.error(errorMessage || 'Erro ao cadastrar funcionário.');
+        toast.error(errorMessage || 'Erro ao cadastrar funcionário.');
       }
     } finally {
       setIsSubmitting(false);
@@ -605,7 +606,7 @@ const Listar = () => {
     form.setFieldsValue({
       subsidios: currentSubsidios.filter((_, i) => i !== index),
     });
-    message.success('Subsídio removido da lista!');
+    toast.success('Subsídio removido da lista!');
   };
 
   const subsidiosColumns = [
@@ -853,7 +854,7 @@ const Listar = () => {
           <Form
             form={novaPessoaForm}
             onFinish={handleSubmitNovaPessoa}
-            onFinishFailed={() => message.error('Por favor, corrija os erros no formulário de pessoa.')}
+            onFinishFailed={() => toast.error('Por favor, corrija os erros no formulário de pessoa.')}
             layout="vertical"
           >
             <Row gutter={16}>
@@ -1054,7 +1055,7 @@ const Listar = () => {
             <Form
               form={novoFuncionarioForm}
               onFinish={handleSubmitFuncionario}
-              onFinishFailed={() => message.error('Por favor, corrija os erros no formulário de funcionário.')}
+              onFinishFailed={() => toast.error('Por favor, corrija os erros no formulário de funcionário.')}
               layout="vertical"
             >
               <Row gutter={16}>
@@ -1238,16 +1239,16 @@ const Listar = () => {
                         onClick={() => {
                           const valor = parseFloat(subsidioTemp.valor);
                           if (!subsidioTemp.id || !subsidioTemp.descricao) {
-                            message.error('Selecione um tipo de subsídio válido.');
+                            toast.error('Selecione um tipo de subsídio válido.');
                             return;
                           }
                           if (isNaN(valor) || valor <= 0) {
-                            message.error('O valor do subsídio deve ser um número positivo maior que zero.');
+                            toast.error('O valor do subsídio deve ser um número positivo maior que zero.');
                             return;
                           }
                           const currentSubsidios = novoFuncionarioForm.getFieldValue('subsidios') || [];
                           if (currentSubsidios.some((s) => s.descricao === subsidioTemp.descricao)) {
-                            message.error(`O subsídio "${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao}" já foi adicionado.`);
+                            toast.error(`O subsídio "${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao}" já foi adicionado.`);
                             return;
                           }
                           novoFuncionarioForm.setFieldsValue({
@@ -1257,7 +1258,7 @@ const Listar = () => {
                             ],
                           });
                           setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                          message.success('Subsídio adicionado à lista!');
+                          toast.success('Subsídio adicionado à lista!');
                         }}
                         disabled={!subsidioTemp.descricao || !subsidioTemp.valor || isSubmitting || subsidios.length === 0}
                       >
@@ -1325,7 +1326,7 @@ const Listar = () => {
             <Form
               form={editFuncionarioForm}
               onFinish={handleSaveFuncionario}
-              onFinishFailed={() => message.error('Por favor, corrija os erros no formulário de edição.')}
+              onFinishFailed={() => toast.error('Por favor, corrija os erros no formulário de edição.')}
               layout="vertical"
             >
               <h3>Dados da Pessoa</h3>
@@ -1620,16 +1621,16 @@ const Listar = () => {
                         onClick={() => {
                           const valor = parseFloat(subsidioTemp.valor);
                           if (!subsidioTemp.id || !subsidioTemp.descricao) {
-                            message.error('Selecione um tipo de subsídio válido.');
+                            toast.error('Selecione um tipo de subsídio válido.');
                             return;
                           }
                           if (isNaN(valor) || valor <= 0) {
-                            message.error('O valor do subsídio deve ser um número positivo maior que zero.');
+                            toast.error('O valor do subsídio deve ser um número positivo maior que zero.');
                             return;
                           }
                           const currentSubsidios = editFuncionarioForm.getFieldValue('subsidios') || [];
                           if (currentSubsidios.some((s) => s.descricao === subsidioTemp.descricao)) {
-                            message.error(`O subsídio "${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao}" já foi adicionado.`);
+                            toast.error(`O subsídio "${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao}" já foi adicionado.`);
                             return;
                           }
                           editFuncionarioForm.setFieldsValue({
@@ -1639,7 +1640,7 @@ const Listar = () => {
                             ],
                           });
                           setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                          message.success('Subsídio adicionado à lista!');
+                          toast.success('Subsídio adicionado à lista!');
                         }}
                         disabled={!subsidioTemp.descricao || !subsidioTemp.valor || isSubmitting || subsidios.length === 0}
                       >

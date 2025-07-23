@@ -28,6 +28,10 @@ import FormularioQRCode from '../util/FormularioQRCode';
 import Html5QrcodeScanner from '../util/Html5QrcodeScanner';
 import RotaTest from '../util/RotaTest';
 import GraficoTriagem from '../components/GraficoTriagem';
+import BancoUrgencia from '../components/Medico/BancoUrgencia';
+import Cirurgia from '../components/Medico/Cirurgia';
+import Internamento from '../components/Medico/Internamento';
+import PainelTesouraria from '../pages/PainelTesouraria';
 
 function RoutesApp() {
     return (
@@ -178,6 +182,44 @@ function RoutesApp() {
                 element={
                     <Private>
                         <PainelRecursos />
+                    </Private>
+                }
+            />
+            <Route
+                path="/medico/bancourgencia"
+                element={
+                    <Private>
+                        <PainelMedico>
+                            <BancoUrgencia />
+                        </PainelMedico>
+                    </Private>
+                }
+            />
+            <Route
+                path="/medico/cirurgia"
+                element={
+                    <Private>
+                        <PainelMedico>
+                            <Cirurgia />
+                        </PainelMedico>
+                    </Private>
+                }
+            />
+            <Route
+                path="/medico/internamento"
+                element={
+                    <Private>
+                        <PainelMedico>
+                            <Internamento />
+                        </PainelMedico>
+                    </Private>
+                }
+            />
+            <Route
+                path="/tesouraria"
+                element={
+                    <Private>
+                        <PainelTesouraria />
                     </Private>
                 }
             />
