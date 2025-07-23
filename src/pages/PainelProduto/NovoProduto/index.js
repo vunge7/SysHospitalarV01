@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Modal, Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification } from 'antd';
+import { Modal, Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification, TreeSelect, Divider, Popconfirm } from 'antd';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { toast } from 'react-toastify';
 
@@ -58,6 +58,15 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
   const [gruposMap, setGruposMap] = useState({});
   const [tiposMap, setTiposMap] = useState({});
   const [preview, setPreview] = useState(null);
+
+  // Estado para filhos (produtos filhos)
+  const [filhos, setFilhos] = useState([]); // [{id, data, isNovo, filhos: []}]
+  const [produtosExistentes, setProdutosExistentes] = useState([]); // Para busca de exames existentes
+  const [showAdicionarFilho, setShowAdicionarFilho] = useState(false);
+  const [produtoFilhoSelecionado, setProdutoFilhoSelecionado] = useState(null);
+
+  // Adicionar estado para exame composto
+  const [isComposto, setIsComposto] = useState(false);
 
   const { control, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm({
     resolver: zodResolver(schema),
@@ -162,6 +171,28 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
           status: statusValue,
           imagem: null,
         });
+        setIsComposto(!!(produtoParaEditar && produtoParaEditar.produtoPaiId === null));
+        // Buscar filhos do produto para edição
+        const fetchArvore = async () => {
+          try {
+            const res = await api.get(`produto/${produtoParaEditar.id}/arvore`);
+            // Converter árvore para estrutura [{id, data, isNovo, filhos: []}]
+            const mapArvore = (node) => ({
+              id: node.id,
+              data: produtosExistentes.find(p => p.id === node.id) || {},
+              isNovo: false,
+              filhos: (node.filhos || []).map(mapArvore),
+            });
+            if (res.data && res.data.filhos) {
+              setFilhos(res.data.filhos.map(mapArvore));
+            } else {
+              setFilhos([]);
+            }
+          } catch {
+            setFilhos([]);
+          }
+        };
+        fetchArvore();
       } else {
         // Novo: pré-selecionar 'Exame' se existir
         const tipoExame = tipoProduto.find((t) => t.toLowerCase() === 'exame');
@@ -177,79 +208,246 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
           status: true,
           imagem: null,
         });
+        setIsComposto(false);
       }
     }
-  }, [visible, produtoParaEditar, tipoProduto, reset, unidades]);
+  }, [visible, produtoParaEditar, tipoProduto, reset, unidades, produtosExistentes]);
 
+  // Buscar todos produtos do tipo exame para seleção de filhos existentes
+  useEffect(() => {
+    const fetchProdutos = async () => {
+      try {
+        const res = await api.get('produto/all');
+        setProdutosExistentes(res.data || []);
+      } catch (e) {
+        setProdutosExistentes([]);
+      }
+    };
+    fetchProdutos();
+  }, []);
+
+  // Limpar filhos ao abrir novo modal
+  useEffect(() => {
+    if (visible && !produtoParaEditar) {
+      setFilhos([]);
+    }
+    if (visible && produtoParaEditar && produtoParaEditar.id) {
+      // Buscar árvore de filhos do produto para edição
+      const fetchArvore = async () => {
+        try {
+          const res = await api.get(`produto/${produtoParaEditar.id}/arvore`);
+          // Converter árvore para estrutura [{id, data, isNovo, filhos: []}]
+          const mapArvore = (node) => ({
+            id: node.id,
+            data: produtosExistentes.find(p => p.id === node.id) || {},
+            isNovo: false,
+            filhos: (node.filhos || []).map(mapArvore),
+          });
+          if (res.data && res.data.filhos) {
+            setFilhos(res.data.filhos.map(mapArvore));
+          } else {
+            setFilhos([]);
+          }
+        } catch {
+          setFilhos([]);
+        }
+      };
+      fetchArvore();
+    }
+  }, [visible, produtoParaEditar, produtosExistentes]);
+
+  // Adicionar novo filho (produto novo)
+  const handleAdicionarFilhoNovo = () => {
+    setFilhos([...filhos, { id: null, data: {}, isNovo: true, filhos: [] }]);
+  };
+  // Adicionar filho existente
+  const handleAdicionarFilhoExistente = () => {
+    if (!produtoFilhoSelecionado) return;
+    const produto = produtosExistentes.find(p => p.id === produtoFilhoSelecionado);
+    if (!produto) return;
+    setFilhos([...filhos, { id: produto.id, data: produto, isNovo: false, filhos: [] }]);
+    setProdutoFilhoSelecionado(null);
+    setShowAdicionarFilho(false);
+  };
+  // Remover filho
+  const handleRemoverFilho = (index) => {
+    setFilhos(filhos.filter((_, i) => i !== index));
+  };
+
+  // Substituir renderFilhos por uma versão recursiva com ações em cada nó
+  const renderFilhos = (filhosArr, nivel = 1, parentArr = filhos, parentSet = setFilhos) => (
+    <div style={{ marginLeft: nivel * 16 }}>
+      {filhosArr.map((filho, idx) => (
+        <div key={idx} style={{ border: '1px solid #eee', padding: 8, marginBottom: 8, borderRadius: 4, background: '#fafafa' }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {filho.isNovo ? (
+              <Input
+                placeholder="Descrição do Exame Filho"
+                value={filho.data.productDescription || ''}
+                onChange={e => {
+                  const novos = [...parentArr];
+                  novos[idx].data.productDescription = e.target.value;
+                  parentSet(novos);
+                }}
+                style={{ width: 250 }}
+              />
+            ) : (
+              <span><b>Filho Existente:</b> {filho.data.productDescription}</span>
+            )}
+            <Space>
+              <Button size="small" icon={<PlusOutlined />} onClick={() => {
+                const novos = [...parentArr];
+                if (!novos[idx].filhos) novos[idx].filhos = [];
+                novos[idx].filhos.push({ id: null, data: {}, isNovo: true, filhos: [] });
+                parentSet(novos);
+              }}>Adicionar Filho</Button>
+              <Button size="small" onClick={() => {
+                const novos = [...parentArr];
+                novos[idx].showAdicionarFilhoExistente = true;
+                parentSet(novos);
+              }}>Adicionar Filho Existente</Button>
+              <Popconfirm
+                title="Deseja remover este filho?"
+                onConfirm={() => {
+                  const novos = [...parentArr];
+                  novos.splice(idx, 1);
+                  parentSet(novos);
+                }}
+                okText="Sim"
+                cancelText="Não"
+              >
+                <Button size="small" danger>Remover</Button>
+              </Popconfirm>
+            </Space>
+            {/* Se showAdicionarFilhoExistente estiver true, mostrar select para adicionar filho existente */}
+            {filho.showAdicionarFilhoExistente && (
+              <div style={{ marginTop: 8 }}>
+                <Select
+                  showSearch
+                  style={{ width: 300 }}
+                  placeholder="Selecione um exame existente"
+                  value={filho.produtoFilhoSelecionado}
+                  onChange={val => {
+                    const novos = [...parentArr];
+                    novos[idx].produtoFilhoSelecionado = val;
+                    parentSet(novos);
+                  }}
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                  }
+                >
+                  {produtosExistentes.map(p => (
+                    <Select.Option key={p.id} value={p.id}>{p.productDescription}</Select.Option>
+                  ))}
+                </Select>
+                <Button type="primary" size="small" onClick={() => {
+                  const novos = [...parentArr];
+                  const produto = produtosExistentes.find(p => p.id === novos[idx].produtoFilhoSelecionado);
+                  if (produto) {
+                    if (!novos[idx].filhos) novos[idx].filhos = [];
+                    novos[idx].filhos.push({ id: produto.id, data: produto, isNovo: false, filhos: [] });
+                  }
+                  novos[idx].showAdicionarFilhoExistente = false;
+                  novos[idx].produtoFilhoSelecionado = null;
+                  parentSet(novos);
+                }} style={{ marginLeft: 8 }}>Adicionar</Button>
+                <Button size="small" onClick={() => {
+                  const novos = [...parentArr];
+                  novos[idx].showAdicionarFilhoExistente = false;
+                  parentSet(novos);
+                }} style={{ marginLeft: 8 }}>Cancelar</Button>
+              </div>
+            )}
+            {/* Recursivo: filhos dos filhos */}
+            {filho.filhos && filho.filhos.length > 0 && renderFilhos(filho.filhos, nivel + 1, filho.filhos, novos => {
+              const novosPais = [...parentArr];
+              novosPais[idx].filhos = novos;
+              parentSet(novosPais);
+            })}
+          </Space>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Função recursiva para cadastrar produto e seus filhos (agora usando JSON)
+  const cadastrarProdutoComFilhos = async (produtoData, filhosArr, produtoPaiId = null) => {
+    const productTypeId = tiposMap[produtoData.productType];
+    const productGroupId = gruposMap[produtoData.productGroup];
+    const unidadeSelecionada = unidades.find(u => u.descricao === produtoData.unidadeMedida);
+    const unidadeMedidaId = unidadeSelecionada?.id;
+    // Montar o payload JSON
+    const payload = {
+      productType: produtoData.productType,
+      productCode: produtoData.productCode,
+      productGroup: produtoData.productGroup,
+      productDescription: produtoData.productDescription,
+      taxIva: produtoData.taxIva,
+      preco: produtoData.preco,
+      finalPrice: produtoData.finalPrice,
+      unidadeMedida: produtoData.unidadeMedida,
+      status: produtoData.status === true || produtoData.status === '1' || produtoData.status === 1 ? true : false,
+      productTypeId: productTypeId,
+      productGroupId: productGroupId,
+      unidadeMedidaId: unidadeMedidaId,
+      produtoPaiId: produtoPaiId,
+      imagem: null // ignorar imagem por enquanto
+    };
+    // Cadastrar produto
+    let produtoId = null;
+    try {
+      const res = await api.post('produto/add', payload); // axios envia como JSON
+      // O backend retorna mensagem, precisamos buscar o produto pelo nome para pegar o id
+      const busca = await api.get('produto/all');
+      const produtoSalvo = (busca.data || []).find(p => p.productDescription === produtoData.productDescription);
+      produtoId = produtoSalvo?.id;
+    } catch (e) {
+      toast.error('Erro ao cadastrar produto: ' + (e.response?.data?.message || e.message), { autoClose: 2000 });
+      throw e;
+    }
+    // Recursivo: cadastrar filhos
+    for (const filho of filhosArr) {
+      if (filho.isNovo) {
+        await cadastrarProdutoComFilhos(
+          {
+            ...produtoData,
+            productDescription: filho.data.productDescription,
+            productCode: filho.data.productCode || Math.random().toString(36).substring(2, 10),
+          },
+          filho.filhos,
+          produtoId
+        );
+      } else {
+        if (filho.id && produtoId) {
+          try {
+            await api.put(`produto/${filho.id}`, { ...filho.data, produtoPaiId: produtoId });
+          } catch (e) {
+            toast.error('Erro ao associar filho existente: ' + (e.response?.data?.message || e.message), { autoClose: 2000 });
+          }
+        }
+        if (filho.filhos && filho.filhos.length > 0) {
+          await cadastrarProdutoComFilhos(filho.data, filho.filhos, filho.id);
+        }
+      }
+    }
+    return produtoId;
+  };
+
+  // Substituir onSubmit para usar a lógica recursiva
   const onSubmit = async (data) => {
     setCarregar(true);
     try {
-      const productTypeId = tiposMap[data.productType];
-      const productGroupId = gruposMap[data.productGroup];
-      const unidadeSelecionada = unidades.find(u => u.descricao === data.unidadeMedida);
-      const unidadeMedidaId = unidadeSelecionada?.id;
-
-      // Validação reforçada
-      if (!data.productType) throw new Error('Tipo de produto é obrigatório.');
-      if (!productTypeId || isNaN(productTypeId)) throw new Error('Tipo de produto inválido.');
-      if (!data.productGroup) throw new Error('Grupo de produto é obrigatório.');
-      if (!productGroupId || isNaN(productGroupId)) throw new Error('Grupo de produto inválido.');
-      if (!data.productDescription) throw new Error('Descrição do produto é obrigatória.');
-      if (!data.productCode) throw new Error('Código do produto é obrigatório.');
-      if (!data.unidadeMedida) throw new Error('Unidade de medida é obrigatória.');
-      if (!unidadeMedidaId || isNaN(unidadeMedidaId)) throw new Error('Unidade de medida inválida.');
-      if (!data.preco || isNaN(Number(data.preco)) || Number(data.preco) < 0) throw new Error('Preço inválido.');
-      if (data.taxIva === undefined || data.taxIva === null || isNaN(Number(data.taxIva)) || Number(data.taxIva) < 0) throw new Error('Taxa de IVA inválida.');
-      if (!data.finalPrice || isNaN(Number(data.finalPrice))) throw new Error('Preço final inválido.');
-
-      const formData = new FormData();
-      formData.append('productType', data.productType);
-      formData.append('productTypeId', String(productTypeId));
-      formData.append('productCode', data.productCode);
-      formData.append('productGroup', data.productGroup);
-      formData.append('productGroupId', String(productGroupId));
-      formData.append('productDescription', data.productDescription);
-      formData.append('unidadeMedida', data.unidadeMedida);
-      formData.append('unidadeMedidaId', String(unidadeMedidaId));
-      formData.append('preco', String(data.preco));
-      formData.append('taxIva', String(data.taxIva));
-      formData.append('finalPrice', String(data.finalPrice));
-      formData.append('status', data.status === true ? '1' : '0'); // Sempre string correta
-
-      if (produtoParaEditar && produtoParaEditar.id) {
-        formData.append('id', produtoParaEditar.id);
-        if (data.imagem && data.imagem.length > 0) {
-          formData.append('imagem', data.imagem[0].originFileObj);
-        }
-        // Logar todos os campos do FormData antes de enviar
-        for (let [key, value] of formData.entries()) {
-          console.log(`${key}:`, value instanceof File ? value.name : value);
-        }
-        await api.put('produto/edit', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        toast.success('Produto editado com sucesso!', { autoClose: 2000 });
-      } else {
-        if (!data.imagem || data.imagem.length === 0) {
-          throw new Error('A imagem é obrigatória para cadastro de exame.');
-        }
-        formData.append('imagem', data.imagem[0].originFileObj);
-        // Logar todos os campos do FormData antes de enviar
-        for (let [key, value] of formData.entries()) {
-          console.log(`${key}:`, value instanceof File ? value.name : value);
-        }
-        await api.post('produto/add', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        toast.success('Produto cadastrado com sucesso!', { autoClose: 2000 });
-      }
+      await cadastrarProdutoComFilhos(data, isComposto ? filhos : [], null);
+      toast.success('Produto e filhos cadastrados com sucesso!', { autoClose: 2000 });
       reset();
+      setFilhos([]);
+      setIsComposto(false);
       if (onClose) onClose();
       if (onSuccess) onSuccess();
       setErrosNoFront([]);
       setPreview(null);
     } catch (error) {
-      let errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Erro ao cadastrar/editar produto';
+      let errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Erro ao cadastrar produto e filhos';
       if (typeof errorMessage === 'object') {
         errorMessage = errorMessage.message || JSON.stringify(errorMessage);
       }
@@ -530,6 +728,46 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
                 />
               </Form.Item>
             </div>
+            <Form.Item label="Exame Composto">
+              <Checkbox checked={isComposto} onChange={e => setIsComposto(e.target.checked)}>
+                Este exame é composto (possui filhos)?
+              </Checkbox>
+            </Form.Item>
+            {isComposto && (
+              <>
+                <Divider>Exames Compostos (Filhos)</Divider>
+                <div style={{ fontWeight: 'bold', color: '#555', marginBottom: 8 }}>Produto Pai</div>
+                <div style={{ marginLeft: 0, marginBottom: 8, padding: 8, background: '#f0f5ff', border: '1px solid #91d5ff', borderRadius: 4 }}>
+                  {watch('productDescription') || 'Sem descrição'}
+                </div>
+                <div style={{ fontWeight: 'bold', color: '#555', marginBottom: 8 }}>Produtos Filhos</div>
+                <Space style={{ marginBottom: 8 }}>
+                  <Button icon={<PlusOutlined />} onClick={handleAdicionarFilhoNovo}>Adicionar Novo Filho</Button>
+                  <Button onClick={() => setShowAdicionarFilho(true)}>Adicionar Filho Existente</Button>
+                </Space>
+                {showAdicionarFilho && (
+                  <div style={{ marginTop: 8 }}>
+                    <Select
+                      showSearch
+                      style={{ width: 300 }}
+                      placeholder="Selecione um exame existente"
+                      value={produtoFilhoSelecionado}
+                      onChange={setProdutoFilhoSelecionado}
+                      filterOption={(input, option) =>
+                        option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                      }
+                    >
+                      {produtosExistentes.map(p => (
+                        <Select.Option key={p.id} value={p.id}>{p.productDescription}</Select.Option>
+                      ))}
+                    </Select>
+                    <Button type="primary" onClick={handleAdicionarFilhoExistente} style={{ marginLeft: 8 }}>Adicionar</Button>
+                    <Button onClick={() => setShowAdicionarFilho(false)} style={{ marginLeft: 8 }}>Cancelar</Button>
+                  </div>
+                )}
+                <div style={{ marginLeft: 0 }}>{renderFilhos(filhos, 1, filhos, setFilhos)}</div>
+              </>
+            )}
             <Form.Item className="product-form-buttons">
               <Space>
                 <Button type="primary" htmlType="submit" loading={carregar} className="form-button form-button-primary">

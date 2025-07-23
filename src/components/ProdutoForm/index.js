@@ -8,6 +8,7 @@ import { api } from "../../service/api";
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import ProdutoGroupForm from '../ProdutoGroupForm';
 import DynamicTable from '../DynamicTable';
+import { toast } from 'react-toastify';
 
 // Definindo o esquema de validação com Zod
 const schema = z.object({
@@ -136,11 +137,13 @@ const ProdutoForm = () => {
         .then((result) => {
           buscarProdutos();
           setModalIsOpen(false);
+          toast.success('Produto Cadastrado com Sucesso', { autoClose: 2000 });
         })
         .catch((error) => {
           console.log("Erro ao salvar o produto")
           erros.push("Erro ao salvar o produto")
           setErrosNoFront(erros);
+          toast.error('Erro ao Cadastrar Produto', { autoClose: 2000 });
         })
     } else {
       const dataSubmit = { ...{}, status: true, id: id, productType: t, productGroup: g, preco: p, taxIva: i, productNumberCode: nc, productDescription: d, productCode: c };
@@ -150,12 +153,13 @@ const ProdutoForm = () => {
           buscarProdutos();
           setModalIsOpen(false);
           setStatusSendEdit(false)
-          alert("Produto Editado com Sucesso")
+          toast.success('Produto Editado com Sucesso', { autoClose: 2000 });
         })
         .catch((error) => {
           console.log("Erro ao Editar o produto", error);
           erros.push("Erro ao Editar o produto");
           setErrosNoFront(erros);
+          toast.error('Erro ao Editar Produto', { autoClose: 2000 });
         })
     }
   };
@@ -216,12 +220,13 @@ const ProdutoForm = () => {
         setModalIsOpen(false);
         setStatusSendEdit(false)
         setModalIsOpenRemove(false);
+        toast.success('Produto Removido com Sucesso', { autoClose: 2000 });
 
 
       }).catch((error) => {
         console.log("Erro ao remover o produto ")
         erros.push("Erro ao remover o produto")
-        alert("ERRO ao Deletar Produto!")
+        toast.error('Erro ao Remover Produto', { autoClose: 2000 });
 
       })
   }

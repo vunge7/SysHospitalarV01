@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Modal, Form, Input, Select, Checkbox, Card, notification, DatePicker,
     Table, Space, Popconfirm, Typography, } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined, NodeExpandOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import { api } from '../../service/api';
 import modalProduto from '../../pages/PainelProduto/NovoProduto/index';
@@ -29,6 +29,9 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     const [showProdutoDetails, setShowProdutoDetails] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
     const [produtoParaEditar, setProdutoParaEditar] = useState(null);
+    const [modalFilhosVisible, setModalFilhosVisible] = useState(false);
+    const [filhosProduto, setFilhosProduto] = useState([]);
+    const [produtoPaiSelecionado, setProdutoPaiSelecionado] = useState(null);
 
     // Log da prop exames para o  debug
     useEffect(() => {
@@ -44,7 +47,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 setPacientes(response.data);
             } catch (error) {
                 console.error('Error fetching pacientes:', error);
-                notification.error({ message: 'Erro ao buscar pacientes!' });
+                toast.error('Erro ao buscar pacientes!', { autoClose: 2000 });
                 setPacientes([]);
             }
         };
@@ -60,7 +63,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 setTiposExame(response.data);
             } catch (error) {
                 console.error('Error fetching tiposExame:', error);
-                notification.error({ message: 'Erro ao buscar tipos de exame!' });
+                toast.error('Erro ao buscar tipos de exame!', { autoClose: 2000 });
                 setTiposExame([]);
             }
         };
@@ -76,7 +79,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 setUnidades(response.data);
             } catch (error) {
                 console.error('Error fetching unidades:', error);
-                notification.error({ message: 'Erro ao buscar unidades de medida!' });
+                toast.error('Erro ao buscar unidades de medida!', { autoClose: 2000 });
                 setUnidades([]);
             }
         };
@@ -215,14 +218,12 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                     ? exames.map((e) => (e.id === editingExame.id ? exameResponse.data : e))
                     : [...exames, exameResponse.data]
             );
-            notification.success({ message: isEditMode ? 'Exame atualizado com sucesso!' : 'Exame criado com sucesso!' });
+            toast.success(isEditMode ? 'Exame atualizado com sucesso!' : 'Exame criado com sucesso!', { autoClose: 2000 });
             handleCancel();
             fetchAllData(); // Trigger parent state update
         } catch (error) {
             console.error('Error saving exame:', error);
-            notification.error({
-                message: error.response?.data || error.message || 'Erro ao salvar exame!',
-            });
+            toast.error(error.response?.data || error.message || 'Erro ao salvar exame!', { autoClose: 2000 });
         } finally {
             setLoading(false);
         }
@@ -233,13 +234,11 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             console.log('Deleting exame ID:', id);
             const response = await deleteExame(id);
             console.log('Delete response:', response.data);
-            notification.success({ message: 'Exame excluído com sucesso!' });
+            toast.success('Exame excluído com sucesso!', { autoClose: 2000 });
             fetchAllData();
         } catch (error) {
             console.error('Error deleting exame:', error);
-            notification.error({
-                message: error.response?.data || 'Erro ao excluir exame!',
-            });
+            toast.error(error.response?.data || 'Erro ao excluir exame!', { autoClose: 2000 });
         }
     };
 
@@ -309,10 +308,39 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         setProdutoParaEditar(null);
         setIsEditMode(false);
     };
-    const handleDeleteProduto = (produto) => {
-        // Aqui pode-se implementar a lógica de exclusão real
-        notification.info({ message: 'Funcionalidade de exclusão em desenvolvimento.' });
+    const handleDeleteProduto = async (produto) => {
+        try {
+            await api.patch(`produto/${produto.id}/status?status=false`);
+            toast.success('Produto excluído com sucesso!', { autoClose: 2000 });
+            fetchProdutosExame();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || error?.response?.data || error.message || 'Erro ao excluir produto!', { autoClose: 2000 });
+        }
     };
+
+    // Função para buscar filhos de um produto
+    const handleVerFilhos = async (produto) => {
+      setProdutoPaiSelecionado(produto);
+      try {
+        const res = await api.get(`produto/${produto.id}/arvore`);
+        setFilhosProduto(res.data.filhos || []);
+      } catch {
+        setFilhosProduto([]);
+      }
+      setModalFilhosVisible(true);
+    };
+
+    // Função para renderizar filhos em árvore
+    const renderFilhosArvore = (filhosArr, nivel = 1) => (
+      <ul style={{ marginLeft: nivel * 16 }}>
+        {filhosArr.map(filho => (
+          <li key={filho.id}>
+            <b>Produto Filho:</b> {filho.productDescription}
+            {filho.filhos && filho.filhos.length > 0 && renderFilhosArvore(filho.filhos, nivel + 1)}
+          </li>
+        ))}
+      </ul>
+    );
 
     return (
         <div>
@@ -372,17 +400,44 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                                 <Space>
                                     <Button icon={<EyeOutlined />} onClick={() => handleViewProduto(record)} />
                                     <Button icon={<EditOutlined />} onClick={() => handleEditProduto(record)} />
-                                    <Button icon={<DeleteOutlined />} danger onClick={() => handleDeleteProduto(record)} />
+                                    <Button icon={<NodeExpandOutlined />} onClick={() => handleVerFilhos(record)}>
+                                        Ver Filhos
+                                    </Button>
+                                    <Button icon={<DeleteOutlined />} danger
+                                        // Adicionar Popconfirm para confirmação
+                                        overlay={
+                                            <Popconfirm
+                                                title="Deseja realmente excluir este produto?"
+                                                onConfirm={() => handleDeleteProduto(record)}
+                                                okText="Sim"
+                                                cancelText="Não"
+                                            >
+                                                <span>Excluir</span>
+                                            </Popconfirm>
+                                        }
+                                    />
                                 </Space>
                             ),
                         },
                     ]}
-                    dataSource={produtosExame}
+                    dataSource={produtosExame.filter(p => !p.produtoPaiId)}
                     rowKey="id"
                     pagination={{ pageSize: 10 }}
                     style={{ marginBottom: 32 }}
                     title={() => <span>Produtos do Tipo Exame</span>}
                 />
+                <Modal
+                    title={`Filhos de ${produtoPaiSelecionado?.productDescription || ''}`}
+                    open={modalFilhosVisible}
+                    onCancel={() => setModalFilhosVisible(false)}
+                    footer={<Button onClick={() => setModalFilhosVisible(false)}>Fechar</Button>}
+                >
+                    {filhosProduto.length === 0 ? (
+                        <div>Nenhum filho cadastrado.</div>
+                    ) : (
+                        renderFilhosArvore(filhosProduto)
+                    )}
+                </Modal>
             </Card>
             <Modal
                 title="Detalhes do Produto"

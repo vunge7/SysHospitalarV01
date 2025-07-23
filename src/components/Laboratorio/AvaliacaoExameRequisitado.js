@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { remove as removeDiacritics } from 'diacritics';
 import { Table, Button, Modal, Form, Input, Card, Typography, Popconfirm, InputNumber,
-    Space, } from 'antd';
+    Space, Tree, } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, } from '@ant-design/icons';
 import moment from 'moment';
 import { toast } from 'react-toastify';
@@ -29,6 +29,10 @@ function AvaliacaoExameRequisitado({
     const [unidades, setUnidades] = useState([]);
     const [inscricoes, setInscricoes] = useState([]);
     const [requisicoesPendentes, setRequisicoesPendentes] = useState([]);
+    // Novo estado para árvore de exames da requisição selecionada
+    const [arvoreExame, setArvoreExame] = useState(null);
+    // Novo estado para inputs de resultados dos filhos
+    const [resultadosFilhos, setResultadosFilhos] = useState({}); // { [exameId]: { valorReferencia, observacao, salvo } }
 
     // Função utilitária para normalizar nomes (remove acentos, títulos, espaços extras)
     const normalizeName = (name) => {
@@ -141,11 +145,39 @@ function AvaliacaoExameRequisitado({
         }
     }, [selectedRequisicao]);
 
-    const handleRowClick = (record) => {
-        setSelectedRequisicao(record);
+    // Buscar árvore de filhos ao selecionar uma requisição de exame pai
+    useEffect(() => {
+        if (selectedRequisicao && selectedRequisicao.produtoId) {
+            const fetchArvore = async () => {
+                try {
+                    const res = await api.get(`/produto/${selectedRequisicao.produtoId}/arvore`);
+                    setArvoreExame(res.data);
+                } catch {
+                    setArvoreExame(null);
+                }
+            };
+            fetchArvore();
+        } else {
+            setArvoreExame(null);
+        }
+    }, [selectedRequisicao]);
+
+    // Atualizar resultadosFilhos ao selecionar nova requisição
+    useEffect(() => {
+        setResultadosFilhos({});
+    }, [selectedRequisicao]);
+
+    const handleRowClick = async (record) => {
+        setSelectedRequisicao(null); // Limpa antes
         setLinhasRequisicao([]);
         setCachedLinhasResultado([]); // Limpar cache ao selecionar nova requisição
-        fetchLinhasRequisicao(record.id);
+        await fetchLinhasRequisicao(record.id);
+        // Após buscar linhas, garantir produtoId
+        let produtoId = record.produtoId;
+        if (!produtoId && linhasRequisicao.length > 0) {
+            produtoId = linhasRequisicao[0].produtoId;
+        }
+        setSelectedRequisicao({ ...record, produtoId });
     };
 
     const showResultModal = (exame) => {
@@ -266,6 +298,88 @@ function AvaliacaoExameRequisitado({
         ));
         toast.success('Resultado adicionado ao cache! Clique em "Finalizar" para salvar no sistema.', { autoClose: 2500 });
         handleCancel();
+    };
+
+    // Função para renderizar inputs de resultado para cada folha da árvore
+    const renderInputsArvore = (node) => {
+        if (!node) return null;
+        if (!node.filhos || node.filhos.length === 0) {
+            // Folha: input de resultado
+            const res = resultadosFilhos[node.id] || { valorReferencia: '', observacao: '', salvo: false };
+            return (
+                <div style={{ marginLeft: 16, marginBottom: 8 }} key={node.id}>
+                    <b>{node.productDescription}</b>
+                    <InputNumber
+                        style={{ width: 120, marginRight: 8 }}
+                        placeholder="Valor de Referência"
+                        value={res.valorReferencia}
+                        disabled={res.salvo}
+                        onChange={val => setResultadosFilhos(prev => ({ ...prev, [node.id]: { ...prev[node.id], valorReferencia: val } }))}
+                    />
+                    <Input.TextArea
+                        rows={1}
+                        style={{ width: 200, marginRight: 8 }}
+                        placeholder="Observação"
+                        value={res.observacao}
+                        disabled={res.salvo}
+                        onChange={e => setResultadosFilhos(prev => ({ ...prev, [node.id]: { ...prev[node.id], observacao: e.target.value } }))}
+                    />
+                    <Button
+                        type="primary"
+                        onClick={() => handleSalvarResultadoFilho(node)}
+                        disabled={res.salvo || !res.valorReferencia || isNaN(res.valorReferencia)}
+                    >
+                        {res.salvo ? 'Salvo' : 'Salvar Resultado'}
+                    </Button>
+                </div>
+            );
+        }
+        // Recursivo para filhos
+        return (
+            <div style={{ marginLeft: 16 }} key={node.id}>
+                <b>{node.productDescription}</b>
+                {node.filhos.map(renderInputsArvore)}
+            </div>
+        );
+    };
+
+    // Função para salvar resultado de um filho
+    const handleSalvarResultadoFilho = (node) => {
+        const res = resultadosFilhos[node.id];
+        if (!res || !res.valorReferencia || isNaN(res.valorReferencia)) {
+            toast.error('Valor de referência inválido!', { autoClose: 2000 });
+            return;
+        }
+        const unidadeId = getUnidadeId({ produtoId: node.id });
+        if (!unidadeId) return;
+        const linhaResultadoCache = {
+            exameId: node.id,
+            valorReferencia: Number(res.valorReferencia),
+            unidadeId: unidadeId,
+            observacao: res.observacao || '',
+            requisicaoExameId: selectedRequisicao.id,
+        };
+        setCachedLinhasResultado(prev => [
+            ...prev.filter(lr => lr.exameId !== node.id),
+            linhaResultadoCache,
+        ]);
+        setResultadosFilhos(prev => ({ ...prev, [node.id]: { ...prev[node.id], salvo: true } }));
+        toast.success('Resultado salvo para ' + node.productDescription, { autoClose: 2000 });
+    };
+
+    // Função para verificar se todos os filhos (folhas) têm resultado
+    const allFolhasInseridas = (node) => {
+        if (!node) return true;
+        if (!node.filhos || node.filhos.length === 0) {
+            // Folha
+            return (
+                (resultadosFilhos[node.id] && resultadosFilhos[node.id].salvo) ||
+                cachedLinhasResultado.some(lr => lr.exameId === node.id) ||
+                linhasResultado.some(lr => lr.exameId === node.id)
+            );
+        }
+        // Recursivo
+        return node.filhos.every(allFolhasInseridas);
     };
 
     // Salva todos os resultados do cache no backend e finaliza a requisição
@@ -610,18 +724,17 @@ function AvaliacaoExameRequisitado({
                     />
                 )}
             </Card>
-            {selectedRequisicao ? (
+            {selectedRequisicao && arvoreExame ? (
                 <Card title={`Detalhes do Exame - Requisição ${selectedRequisicao.id}`}>
-                    <Table
-                        columns={examesColumns}
-                        dataSource={linhasRequisicao}
-                        rowKey="id"
-                    />
+                    <div style={{ marginBottom: 16 }}>
+                        <b>Exames a serem avaliados:</b>
+                        {renderInputsArvore(arvoreExame)}
+                    </div>
                     <Button
                         type="primary"
                         style={{ marginTop: 16 }}
                         onClick={handleFinalizarExame}
-                        disabled={!hasAnyLinhaInserida}
+                        disabled={!allFolhasInseridas(arvoreExame)}
                         loading={loading}
                     >
                         Finalizar

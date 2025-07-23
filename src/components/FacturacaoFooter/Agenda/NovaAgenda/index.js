@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Modal, Form, Select, Spin, message } from 'antd';
+import { Button, Modal, Form, Select, Spin } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import './style.css';
+import { toast } from 'react-toastify';
 
 const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, agendas, linhasAgenda = [], handleInputChange }) => {
   const [funcionarioFilter, setFuncionarioFilter] = useState(form.funcionarioFilter || '');
@@ -345,10 +346,15 @@ const NovaAgenda = () => {
       }
     } catch (error) {
       console.error('Erro ao carregar dados em NovaAgenda:', error);
-      message.error({
-        content: 'Erro ao carregar dados. Tente novamente.',
-        className: 'custom-message',
-        style: { top: '20px', right: '20px' }
+      toast.error('Erro ao carregar dados. Tente novamente.', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
       });
     } finally {
       setIsLoading(false);
@@ -416,36 +422,52 @@ const NovaAgenda = () => {
     try {
       const emailData = prepareEmailData(formulario, pacientes, pessoas, funcionarios, consultas);
       console.log('Enviando e-mail em segundo plano:', emailData);
-      message.loading({
-        content: 'Enviando e-mail de confirmação...',
-        key: 'emailSending',
-        className: 'custom-message',
-        style: { top: '20px', right: '20px' }
+      toast.info('Enviando e-mail de confirmação...', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
       });
       if (!emailData.pacienteEmail || !emailData.dotorEmail) {
         console.warn('E-mails do paciente ou médico não disponíveis, e-mail não enviado:', emailData);
-        message.warning({
-          content: 'E-mails do paciente ou médico não disponíveis.',
-          key: 'emailSending',
-          className: 'custom-message',
-          style: { top: '20px', right: '20px' }
+        toast.warning('E-mails do paciente ou médico não disponíveis.', {
+          position: "top-right",
+          autoClose: 2000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
         });
         return;
       }
       await api.post('enviar-email', emailData);
-      message.success({
-        content: 'E-mail de confirmação enviado com sucesso!',
-        key: 'emailSending',
-        className: 'custom-message',
-        style: { top: '20px', right: '20px' }
+      toast.success('E-mail de confirmação enviado com sucesso!', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
       });
     } catch (error) {
       console.error('Erro ao enviar e-mail:', error);
-      message.error({
-        content: 'Erro ao enviar e-mail de confirmação.',
-        key: 'emailSending',
-        className: 'custom-message',
-        style: { top: '20px', right: '20px' }
+      toast.error('Erro ao enviar e-mail de confirmação.', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
       });
     }
   };
@@ -475,10 +497,15 @@ const NovaAgenda = () => {
       setIsModalVisible(false);
       form.resetFields();
       await fetchAllData();
-      message.success({
-        content: 'Linha de agenda criada com sucesso!',
-        className: 'custom-message',
-        style: { top: '20px', right: '20px' }
+      toast.success('Linha de agenda criada com sucesso!', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
       });
 
       // Enviar e-mails em segundo plano
@@ -487,10 +514,15 @@ const NovaAgenda = () => {
       });
     } catch (error) {
       console.error('Erro ao salvar linha de agenda:', error);
-      message.error({
-        content: 'Erro ao criar linha de agenda. Verifique os dados e tente novamente.',
-        className: 'custom-message',
-        style: { top: '20px', right: '20px' }
+      toast.error('Erro ao criar linha de agenda. Verifique os dados e tente novamente.', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
       });
     } finally {
       setIsSaving(false);

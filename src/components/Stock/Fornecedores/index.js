@@ -4,6 +4,7 @@ import { Table, Button, Modal, Form, Input, Select, Spin, notification, Popconfi
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import './Fornecedores.css';
+import { toast } from 'react-toastify';
 
 const API_BASE_URL = 'http://localhost:8081';
 
@@ -46,7 +47,7 @@ const Fornecedores = () => {
         setFornecedores((prev) =>
           prev.map((f) => (f.id === editingFornecedor.id ? updatedFornecedor : f))
         );
-        notification.success({ message: 'Sucesso', description: 'Fornecedor atualizado com sucesso!' });
+        toast.success('Fornecedor atualizado com sucesso!');
       } else {
         // Cadastro de novo fornecedor
         response = await axios.post(`${API_BASE_URL}/fornecedor/add`, fornecedorData);
@@ -68,7 +69,7 @@ const Fornecedores = () => {
           console.log('Estado fornecedores atualizado:', updated);
           return updated;
         });
-        notification.success({ message: 'Sucesso', description: 'Fornecedor cadastrado com sucesso!' });
+        toast.success('Fornecedor cadastrado com sucesso!');
       }
       setIsModalOpen(false);
       form.resetFields();
@@ -88,10 +89,7 @@ const Fornecedores = () => {
         url: err.config?.url,
         headers: err.config?.headers,
       });
-      notification.error({
-        message: 'Erro',
-        description: `${errorMessage} (Código: ${err.response?.status || 'desconhecido'})`,
-      });
+      toast.error(`${errorMessage} (Código: ${err.response?.status || 'desconhecido'})`);
     } finally {
       setLoading(false);
     }
@@ -116,7 +114,7 @@ const Fornecedores = () => {
       const response = await axios.delete(`${API_BASE_URL}/fornecedor/${id}`);
       console.log('Resposta da API (exclusão):', response.data);
       setFornecedores((prev) => prev.filter((f) => f.id !== id));
-      notification.success({ message: 'Sucesso', description: 'Fornecedor excluído com sucesso!' });
+      toast.success('Fornecedor excluído com sucesso!');
     } catch (err) {
       const errorMessage =
         err.response?.status === 401
@@ -131,10 +129,7 @@ const Fornecedores = () => {
         status: err.response?.status,
         url: err.config?.url,
       });
-      notification.error({
-        message: 'Erro',
-        description: errorMessage,
-      });
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
