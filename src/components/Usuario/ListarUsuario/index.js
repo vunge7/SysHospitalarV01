@@ -106,7 +106,7 @@ const ListarUsuario = () => {
     setEmptyMessage('');
     try {
       const [usuariosRes, funcionariosRes, funcoesRes] = await Promise.all([
-        api.get('usuario/all'),
+        api.get('api/usuarios/listar'),
         api.get('funcionario/all'),
         api.get('funcao/all'),
       ]);
@@ -135,11 +135,11 @@ const ListarUsuario = () => {
     setError(null);
     setEmptyMessage('');
     try {
-      let endpoint = 'usuario/all';
+      let endpoint = 'api/usuarios/listar';
       if (filtro === 'ativos') {
-        endpoint = 'usuario/ativos';
+        endpoint = 'api/usuarios/listar/ativos';
       } else if (filtro === 'inativos') {
-        endpoint = 'usuario/inativos';
+        endpoint = 'api/usuarios/listar/inativos';
       }
 
       const response = await api.get(endpoint, { headers: { 'Cache-Control': 'no-cache' } });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { remove as removeDiacritics } from 'diacritics';
 import { Table, Button, Modal, Form, Input, Card, Typography, Popconfirm, InputNumber,
-    Space, Tree, } from 'antd';
+    Space, Tree, Tag } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, } from '@ant-design/icons';
 import moment from 'moment';
 import { toast } from 'react-toastify';
@@ -74,6 +74,10 @@ function AvaliacaoExameRequisitado({
         setSelectedRequisicao(null);
         setCachedLinhasResultado([]); // Limpar cache quando requisições mudam
         fetchData();
+        // Se você tem uma lista de requisições (examesRequisitados), filtre aqui também:
+        if (examesRequisitados && setExamesRequisitados) {
+            setExamesRequisitados(examesRequisitados.filter(r => !r.finalizado));
+        }
     }, [examesRequisitados]);
 
     const fetchData = async () => {
@@ -81,7 +85,7 @@ function AvaliacaoExameRequisitado({
             const [produtoRes, pacienteRes, usuarioRes, medicoRes, unidadeRes, inscricaoRes] = await Promise.all([
                 api.get('produto/all'),
                 api.get('paciente/all'),
-                api.get('usuario/all'),
+                api.get('api/usuarios/listar'),
                 api.get('medicos/all'),
                 api.get('unidade/all'),
                 api.get('inscricao/all'),
@@ -105,6 +109,7 @@ function AvaliacaoExameRequisitado({
         }
     };
 
+    // Após buscar linhas, filtrar apenas as não finalizadas
     const fetchLinhasRequisicao = async (requisicaoExameId) => {
         try {
             const response = await api.get(`/linharequisicaoexame/all/requisicao/${requisicaoExameId}`);
@@ -116,9 +121,10 @@ function AvaliacaoExameRequisitado({
                 hora: item.hora,
                 requisicaoExameId: item.requisicaoExameId || item.requisicao_exame_id || null,
                 status: item.status !== undefined ? item.status : true,
-                finalizado: item.finalizado !== undefined ? item.finalizado : false,
+                finalizado: item.finalizado === true || item.finalizado === 1 || item.finalizado === '1',
             }));
-            setLinhasRequisicao(mappedData);
+            // Filtrar apenas linhas não finalizadas
+            setLinhasRequisicao(mappedData.filter(linha => !linha.finalizado));
         } catch (error) {
             toast.error('Erro ao buscar linhas de requisição: ' + (error.response?.data?.message || error.message), {
                 autoClose: 2000,
@@ -138,14 +144,50 @@ function AvaliacaoExameRequisitado({
         }
     };
 
+    // Função para expandir linhas de requisição para exames compostos (folhas)
+    const expandLinhasCompostas = async (linhas) => {
+        let result = [];
+        for (const linha of linhas) {
+            // Buscar árvore se for composto
+            const produto = produtos.find(p => p.id === linha.produtoId);
+            if (produto && produto.produtoPaiId == null) {
+                // Exame pai, buscar filhos
+                try {
+                    const res = await api.get(`/produto/${produto.id}/arvore`);
+                    const folhas = getFolhasArvore(res.data);
+                    for (const folha of folhas) {
+                        result.push({
+                            ...linha,
+                            id: folha.id,
+                            produtoId: folha.id,
+                            exame: folha.productDescription,
+                            isFilhoComposto: true,
+                        });
+                    }
+                } catch {
+                    result.push(linha);
+                }
+            } else {
+                result.push(linha);
+            }
+        }
+        return result;
+    };
+
+    // Atualizar linhasRequisicao para expandir exames compostos ao selecionar requisição
     useEffect(() => {
         if (selectedRequisicao) {
-            fetchLinhasRequisicao(selectedRequisicao.id);
+            (async () => {
+                await fetchLinhasRequisicao(selectedRequisicao.id);
+                // Após buscar linhas, expandir compostos
+                const expanded = await expandLinhasCompostas(linhasRequisicao);
+                setLinhasRequisicao(expanded);
+            })();
             fetchLinhasResultado();
         }
     }, [selectedRequisicao]);
 
-    // Buscar árvore de filhos ao selecionar uma requisição de exame pai
+    // Função para buscar árvore de exames ao selecionar requisição
     useEffect(() => {
         if (selectedRequisicao && selectedRequisicao.produtoId) {
             const fetchArvore = async () => {
@@ -334,10 +376,10 @@ function AvaliacaoExameRequisitado({
                 </div>
             );
         }
-        // Recursivo para filhos
+        // Recursivo para filhos, com tag visual para compostos
         return (
             <div style={{ marginLeft: 16 }} key={node.id}>
-                <b>{node.productDescription}</b>
+                <b>{node.productDescription} <Tag color="blue">Exame Composto</Tag></b>
                 {node.filhos.map(renderInputsArvore)}
             </div>
         );
@@ -398,14 +440,14 @@ function AvaliacaoExameRequisitado({
                 });
                 return;
             }
-
+            // Apenas folhas (exames reais) devem ser persistidas
+            const folhas = getFolhasArvore(arvoreExame);
             // Filtra resultados do cache para esta requisição
             const linhasParaSalvar = cachedLinhasResultado.filter(lr => lr.requisicaoExameId === selectedRequisicao.id);
             if (linhasParaSalvar.length === 0) {
                 toast.error('Nenhum resultado no cache para salvar!', { autoClose: 2000 });
                 return;
             }
-
             // Cria resultado principal
             const resultadoPayload = {
                 requisicaoExameId: selectedRequisicao.id,
@@ -415,43 +457,40 @@ function AvaliacaoExameRequisitado({
             };
             const resultadoResponse = await api.post('/resultado/add', resultadoPayload);
             const resultadoId = resultadoResponse.data.id;
-
-            // Cria todas as linhas de resultado individualmente
-            const linhasResultadoPayload = linhasParaSalvar.map(linha => ({
-                exameId: linha.exameId,
-                valorReferencia: linha.valorReferencia,
-                unidadeId: linha.unidadeId,
-                observacao: linha.observacao,
-                resultadoId: resultadoId,
-            }));
+            // Cria linhas de resultado apenas para as folhas
+            const linhasResultadoPayload = folhas.map(folha => {
+                const cache = cachedLinhasResultado.find(lr => lr.exameId === folha.id);
+                if (!cache) return null;
+                return {
+                    produtoId: folha.id,
+                    exameId: folha.id,
+                    valorReferencia: cache.valorReferencia,
+                    unidadeId: cache.unidadeId,
+                    observacao: cache.observacao,
+                    resultadoId: resultadoId,
+                };
+            }).filter(Boolean);
             await Promise.all(
                 linhasResultadoPayload.map(payload =>
                     api.post('/linharesultado/add', payload)
                 )
             );
-            
-            // Atualiza todas as linhas de requisição para "efetuado" (enum backend)
-            const updateLinhaRequisicaoPromises = linhasRequisicao.map((linha) => {
-                const updatedLinha = {
-                    ...linha,
-                    estado: 'efetuado', // enum backend
-                    hora: moment().toISOString(), // formato ISO
-                    finalizado: true, // booleano
-                };
-                return api.put('/linharequisicaoexame/edit', updatedLinha);
-            });
-            await Promise.all(updateLinhaRequisicaoPromises);
+            // Atualiza apenas a linha de requisição original (pai)
+            const updatedLinha = {
+                ...selectedRequisicao,
+                estado: 'efetuado',
+                hora: moment().toISOString(),
+                finalizado: true,
+            };
+            await api.put('/linharequisicaoexame/edit', updatedLinha);
             toast.success('Exame finalizado e resultados salvos com sucesso!', { autoClose: 2000 });
-            // NOVA LÓGICA: só remover requisição se todas as linhas tiverem resultado inserido
-            const linhasRestantes = linhasRequisicao.filter(linha => !isLinhaInserida(linha));
-            if (linhasRestantes.length === 0) {
-                setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
-                setSelectedRequisicao(null);
-            }
+            setExamesRequisitados(prev => prev.filter(r => r.id !== selectedRequisicao.id));
+            setRequisicoesPendentes(prev => prev.filter(r => r.id !== selectedRequisicao.id));
+            setSelectedRequisicao(null);
             setLinhasRequisicao([]);
             setLinhasResultado([]);
-            setCachedLinhasResultado([]); // Limpar cache após salvar
-            fetchAllData();
+            setCachedLinhasResultado([]);
+            await fetchAllData(); // Garante atualização
         } catch (error) {
             toast.error(`Erro ao finalizar exame: ${error.response?.data?.message || error.message}`, {
                 autoClose: 2000,
@@ -702,6 +741,109 @@ function AvaliacaoExameRequisitado({
         };
     }, [examesRequisitados]);
 
+    // Função para coletar todas as folhas da árvore de exames
+    const getFolhasArvore = (node) => {
+        if (!node) return [];
+        if (isFolha(node)) return [node];
+        return node.filhos.flatMap(getFolhasArvore);
+    };
+
+    // Função para saber se um nó é folha (não tem filhos)
+    const isFolha = (node) => !node.filhos || node.filhos.length === 0;
+
+    // Função para montar dados em árvore para a tabela expandable
+    const montarArvoreTabela = (node) => {
+        if (!node) return null;
+        const produto = produtos.find(p => p.id === node.id);
+        const unidadeId = produto?.unidadeMedidaId || produto?.unidade_medida_id || null;
+        const unidade = unidades.find(u => u.id === unidadeId);
+        const isComposto = !!(node.filhos && node.filhos.length > 0);
+        return {
+            id: node.id,
+            produtoId: node.id,
+            exame: node.productDescription,
+            estado: '',
+            hora: '',
+            unidade: unidade ? `${unidade.descricao} (${unidade.abrevicao})` : (unidadeId || 'Sem unidade'),
+            isComposto,
+            children: isComposto ? node.filhos.map(montarArvoreTabela) : undefined,
+        };
+    };
+
+    // Função para saber se uma linha já tem resultado
+    const isLinhaArvoreInserida = (linha) =>
+        cachedLinhasResultado.some(lr => lr.exameId === linha.id) ||
+        linhasResultado.some(lr => lr.exameId === linha.id);
+
+    // Função para abrir modal de resultado para qualquer nó
+    const showResultModalArvore = (linha) => {
+        setSelectedExame({ ...linha, id: linha.id });
+        const linhaResultado = cachedLinhasResultado.find(lr => lr.exameId === linha.id) || 
+                          linhasResultado.find(lr => lr.exameId === linha.id);
+        form.setFieldsValue({
+            valorReferencia: linhaResultado?.valorReferencia || null,
+            observacao: linhaResultado?.observacao || '',
+        });
+        setIsModalVisible(true);
+    };
+
+    // Função para coletar todas as folhas e pais da árvore
+    const getTodosNodosArvore = (node) => {
+        if (!node) return [];
+        let result = [node];
+        if (node.filhos && node.filhos.length > 0) {
+            result = result.concat(node.filhos.flatMap(getTodosNodosArvore));
+        }
+        return result;
+    };
+
+    // Função utilitária para extrair filhos IMEDIATOS do nó, respeitando a estrutura filhos: [ { filhos: [...] } ]
+    function extrairFilhos(node) {
+        if (!node || !node.filhos) return [];
+        // Caso XML convertido: filhos: [ { filhos: [...] } ]
+        if (Array.isArray(node.filhos) && node.filhos.length === 1 && Array.isArray(node.filhos[0].filhos)) {
+            return node.filhos[0].filhos;
+        }
+        // Caso já seja um array de filhos normal
+        if (Array.isArray(node.filhos)) {
+            return node.filhos;
+        }
+        return [];
+    }
+
+    // Corrigir montagem da árvore para garantir todos os filhos/subfilhos
+    const montarArvoreComRequisicao = (produtoNode, linhasReq) => {
+        if (!produtoNode) return null;
+        // Busca unidade
+        let unidadeLabel = '';
+        if (produtoNode.unidadeMedida) {
+            unidadeLabel = produtoNode.unidadeMedida;
+        } else if (produtoNode.unidade) {
+            unidadeLabel = produtoNode.unidade;
+        } else {
+            const unidadeId = produtoNode.unidadeMedidaId || produtoNode.unidade_medida_id || produtoNode.unidade_id || null;
+            const unidade = unidades.find(u => u.id === unidadeId);
+            unidadeLabel = unidade ? `${unidade.descricao} (${unidade.abrevicao})` : (unidadeId || 'Sem unidade');
+        }
+        // Procura a linha de requisição correspondente a este produto
+        const linhaReq = linhasReq.find(l => l.produtoId === produtoNode.id);
+        // Extrai filhos corretamente
+        const filhosArray = extrairFilhos(produtoNode);
+        const isComposto = filhosArray.length > 0;
+        return {
+            id: produtoNode.id,
+            produtoId: produtoNode.id,
+            exame: produtoNode.productDescription,
+            estado: (linhaReq?.estado || 'nao_efectuado').toLowerCase(),
+            hora: linhaReq?.hora || '',
+            unidade: unidadeLabel,
+            isComposto,
+            children: isComposto ? filhosArray.map(filho => montarArvoreComRequisicao(filho, linhasReq)) : undefined,
+            // Adiciona flag para folha
+            isFolha: !isComposto,
+        };
+    };
+
     return (
         <div style={{ padding: '24px' }}>
             <Title level={2}>Avaliação de Exames Requisitados</Title>
@@ -726,15 +868,53 @@ function AvaliacaoExameRequisitado({
             </Card>
             {selectedRequisicao && arvoreExame ? (
                 <Card title={`Detalhes do Exame - Requisição ${selectedRequisicao.id}`}>
-                    <div style={{ marginBottom: 16 }}>
-                        <b>Exames a serem avaliados:</b>
-                        {renderInputsArvore(arvoreExame)}
-                    </div>
+                    <Table
+                        columns={[
+                            { title: 'ID', dataIndex: 'id', key: 'id' },
+                            { title: 'Exame', dataIndex: 'exame', key: 'exame', render: (text, record) => (
+                                <span>
+                                    {text} {record.isComposto && <Tag color="blue">Exame Composto</Tag>}
+                                </span>
+                            ) },
+                            { title: 'Estado', dataIndex: 'estado', key: 'estado', render: (text) => text || 'nao_efectuado' },
+                            { title: 'Hora', dataIndex: 'hora', key: 'hora', render: (hora) => hora ? parseDate(hora, 'Hora') : '' },
+                            { title: 'Unidade', dataIndex: 'unidade', key: 'unidade' },
+                            {
+                                title: 'Status',
+                                key: 'status',
+                                render: (_, record) =>
+                                    isLinhaArvoreInserida(record) ? (
+                                        <span style={{ color: 'green', fontWeight: 'bold' }}>Inserido</span>
+                                    ) : (
+                                        <span style={{ color: 'orange' }}>Pendente</span>
+                                    ),
+                            },
+                            {
+                                title: 'Ações',
+                                key: 'acoes',
+                                render: (_, record) => (
+                                    <Button
+                                        type={isLinhaArvoreInserida(record) ? 'default' : 'primary'}
+                                        disabled={isLinhaArvoreInserida(record) || !record.isFolha}
+                                        onClick={() => showResultModalArvore(record)}
+                                    >
+                                        {isLinhaArvoreInserida(record) ? 'Inserido' : 'Inserir Resultado'}
+                                    </Button>
+                                ),
+                            },
+                        ]}
+                        dataSource={[montarArvoreComRequisicao(arvoreExame, linhasRequisicao)]}
+                        rowKey="id"
+                        pagination={false}
+                        expandable={{
+                            defaultExpandAllRows: true,
+                        }}
+                    />
                     <Button
                         type="primary"
                         style={{ marginTop: 16 }}
                         onClick={handleFinalizarExame}
-                        disabled={!allFolhasInseridas(arvoreExame)}
+                        disabled={!getFolhasArvore(arvoreExame).every(isLinhaArvoreInserida)}
                         loading={loading}
                     >
                         Finalizar
