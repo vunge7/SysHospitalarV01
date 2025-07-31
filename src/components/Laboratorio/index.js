@@ -298,7 +298,7 @@ function Laboratorio() {
     useEffect(() => {
         const fetchRequisicoes = async () => {
             await api
-                .get('requisicaoexame/all/composto')
+                .get('/requisicaoexame/all/composto')
                 .then((r) => {
                     setExamesRequisitados([...r.data]);
                 })
@@ -316,7 +316,7 @@ function Laboratorio() {
     useEffect(() => {
         const fetchExamesProdutos = async () => {
             try {
-                const res = await api.get('produto/all');
+                const res = await api.get('/produto/all');
                 const produtos = Array.isArray(res.data)
                     ? res.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
                     : [];
@@ -331,7 +331,7 @@ function Laboratorio() {
     useEffect(() => {
         const fetchResultadosExames = async () => {
             try {
-                const res = await api.get('linharesultado/all');
+                const res = await api.get('/linharesultado/all');
                 setResultadosExames(Array.isArray(res.data) ? res.data : []);
             } catch {
                 setResultadosExames([]);
@@ -343,7 +343,7 @@ function Laboratorio() {
     useEffect(() => {
         const fetchResultadoExames = async () => {
             try {
-                const res = await api.get('resultado/all');
+                const res = await api.get('/resultado/all');
                 setResultadoExames(Array.isArray(res.data) ? res.data : []);
             } catch {
                 setResultadoExames([]);
@@ -355,7 +355,7 @@ function Laboratorio() {
     useEffect(() => {
         const fetchRequisicoesExame = async () => {
             try {
-                const res = await api.get('requisicaoexame/all/composto');
+                const res = await api.get('/requisicaoexame/all/composto');
                 setRequisicoesExame(Array.isArray(res.data) ? res.data : []);
             } catch {
                 setRequisicoesExame([]);
@@ -366,7 +366,7 @@ function Laboratorio() {
     useEffect(() => {
         const fetchLinhasRequisicaoExame = async () => {
             try {
-                const res = await api.get('linharequisicaoexame/all');
+                const res = await api.get('/linharequisicaoexame/all');
                 setLinhasRequisicaoExame(Array.isArray(res.data) ? res.data : []);
             } catch {
                 setLinhasRequisicaoExame([]);
@@ -495,7 +495,7 @@ function Laboratorio() {
     // Deixar fetchExamesProdutos disponível para ser chamado após adicionar/editar exame
     const fetchExamesProdutos = async () => {
         try {
-            const res = await api.get('produto/all');
+            const res = await api.get('/produto/all');
             const produtos = Array.isArray(res.data)
                 ? res.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
                 : [];

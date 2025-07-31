@@ -18,11 +18,11 @@ const Relatorio = () => {
   const tipoChartRef = useRef();
 
   useEffect(() => {
-    api.get('linharesultado/all').then(res => setLinhas(res.data || []));
-    api.get('funcionario/all').then(res => setFuncionarios(res.data || []));
-    api.get('resultado/all').then(res => setResultados(res.data || []));
-    api.get('paciente/all').then(res => setPacientes(res.data || []));
-    api.get('produto/all').then(res => setExames(Array.isArray(res.data) ? res.data : []));
+    api.get('/linharesultado/all').then(res => setLinhas(res.data || []));
+    api.get('/funcionario/all').then(res => setFuncionarios(res.data || []));
+    api.get('/resultado/all').then(res => setResultados(res.data || []));
+    api.get('/paciente/all').then(res => setPacientes(res.data || []));
+    api.get('/produto/all').then(res => setExames(Array.isArray(res.data) ? res.data : []));
   }, []);
 
   // Função para obter o nome do médico (funcionário) a partir do usuarioId

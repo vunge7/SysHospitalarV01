@@ -42,7 +42,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     useEffect(() => {
         const fetchPacientes = async () => {
             try {
-                const response = await api.get('paciente/all');
+                const response = await api.get('/paciente/all');
                 console.log('Fetched pacientes:', response.data);
                 setPacientes(response.data);
             } catch (error) {
@@ -58,7 +58,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     useEffect(() => {
         const fetchTiposExame = async () => {
             try {
-                const response = await api.get('tipo-exame/all');
+                const response = await api.get('/tipo-exame/all');
                 console.log('Fetched tiposExame:', response.data);
                 setTiposExame(response.data);
             } catch (error) {
@@ -74,7 +74,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     useEffect(() => {
         const fetchUnidades = async () => {
             try {
-                const response = await api.get('unidade/all');
+                const response = await api.get('/unidade/all');
                 console.log('Fetched unidades:', response.data);
                 setUnidades(response.data);
             } catch (error) {
@@ -89,7 +89,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     // Função para buscar produtos do tipo exame (usada para atualizar a tabela após add/edit)
     const fetchProdutosExame = async () => {
         try {
-            const res = await api.get('produto/all');
+            const res = await api.get('/produto/all');
             console.log('Produtos retornados da API:', res.data); // Log para debug
             // Filtro flexível: inclui todos os produtos cujo tipo contenha 'exame' (case-insensitive)
             const produtos = Array.isArray(res.data)

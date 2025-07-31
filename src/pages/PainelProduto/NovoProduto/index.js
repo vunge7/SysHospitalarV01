@@ -101,9 +101,9 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
     setCarregar(true);
     try {
       const [unidadesRes, gruposRes, tiposRes] = await Promise.all([
-        api.get('unidade/all'),
-        api.get('productgroup/all'),
-        api.get('producttype/all'),
+        api.get('/unidade/all'),
+        api.get('/productgroup/all'),
+        api.get('/producttype/all'),
       ]);
       setUnidades(unidadesRes.data);
       const newGruposMap = {};
@@ -175,7 +175,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
         // Buscar filhos do produto para edição
         const fetchArvore = async () => {
           try {
-            const res = await api.get(`produto/${produtoParaEditar.id}/arvore`);
+            const res = await api.get(`/produto/${produtoParaEditar.id}/arvore`);
             // Converter árvore para estrutura [{id, data, isNovo, filhos: []}]
             const mapArvore = (node) => ({
               id: node.id,
@@ -217,7 +217,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
   useEffect(() => {
     const fetchProdutos = async () => {
       try {
-        const res = await api.get('produto/all');
+        const res = await api.get('/produto/all');
         setProdutosExistentes(res.data || []);
       } catch (e) {
         setProdutosExistentes([]);
@@ -235,7 +235,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
       // Buscar árvore de filhos do produto para edição
       const fetchArvore = async () => {
         try {
-          const res = await api.get(`produto/${produtoParaEditar.id}/arvore`);
+          const res = await api.get(`/produto/${produtoParaEditar.id}/arvore`);
           // Converter árvore para estrutura [{id, data, isNovo, filhos: []}]
           const mapArvore = (node) => ({
             id: node.id,
@@ -396,9 +396,9 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
     // Cadastrar produto
     let produtoId = null;
     try {
-      const res = await api.post('produto/add', payload); // axios envia como JSON
+      const res = await api.post('/produto/add', payload); // axios envia como JSON
       // O backend retorna mensagem, precisamos buscar o produto pelo nome para pegar o id
-      const busca = await api.get('produto/all');
+      const busca = await api.get('/produto/all');
       const produtoSalvo = (busca.data || []).find(p => p.productDescription === produtoData.productDescription);
       produtoId = produtoSalvo?.id;
     } catch (e) {
@@ -420,7 +420,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
       } else {
         if (filho.id && produtoId) {
           try {
-            await api.put(`produto/${filho.id}`, { ...filho.data, produtoPaiId: produtoId });
+            await api.put(`/produto/${filho.id}`, { ...filho.data, produtoPaiId: produtoId });
           } catch (e) {
             toast.error('Erro ao associar filho existente: ' + (e.response?.data?.message || e.message), { autoClose: 2000 });
           }

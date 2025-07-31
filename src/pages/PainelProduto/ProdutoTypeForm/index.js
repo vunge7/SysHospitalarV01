@@ -32,10 +32,10 @@ function ProdutoTypeForm({ buscarTiposProduto }) {
     console.log('Dados a serem enviados para o backend:', dataToSubmit);
     try {
       if (statusSendEdit) {
-        await api.put('producttype/edit', dataToSubmit);
+        await api.put('/producttype/edit', dataToSubmit);
         Modal.success({ content: 'Tipo do Produto Editado com Sucesso' });
       } else {
-        await api.post('producttype/add', { designacaoTipoProduto: data.designacaoTipoProduto });
+        await api.post('/producttype/add', { designacaoTipoProduto: data.designacaoTipoProduto });
         Modal.success({ content: 'Tipo do Produto Salvo com Sucesso' });
       }
       setValue('designacaoTipoProduto', '');
@@ -66,7 +66,7 @@ function ProdutoTypeForm({ buscarTiposProduto }) {
   const buscarTiposProdutos = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('producttype/all');
+      const result = await api.get('/producttype/all');
       setProduto(result.data);
     } catch (error) {
       console.error('Erro ao buscar tipos:', error);
@@ -93,7 +93,7 @@ function ProdutoTypeForm({ buscarTiposProduto }) {
   const onConfirmar = async () => {
     setCarregar(true);
     try {
-      await api.delete(`producttype/${produtoRemover.id}`);
+      await api.delete(`/producttype/${produtoRemover.id}`);
       console.log('Tipo removido com sucesso:', produtoRemover.id);
       buscarTiposProdutos();
       setModalIsOpenRemove(false);

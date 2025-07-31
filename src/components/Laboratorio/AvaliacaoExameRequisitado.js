@@ -83,12 +83,12 @@ function AvaliacaoExameRequisitado({
     const fetchData = async () => {
         try {
             const [produtoRes, pacienteRes, usuarioRes, medicoRes, unidadeRes, inscricaoRes] = await Promise.all([
-                api.get('produto/all'),
-                api.get('paciente/all'),
-                api.get('api/usuarios/listar'),
-                api.get('medicos/all'),
-                api.get('unidade/all'),
-                api.get('inscricao/all'),
+                api.get('/produto/all'),
+                api.get('/paciente/all'),
+                api.get('/api/usuarios/listar'),
+                api.get('/medicos/all'),
+                api.get('/unidade/all'),
+                api.get('/inscricao/all'),
             ]);
             setProdutos(produtoRes.data || []);
             setPacientes(pacienteRes.data || []);

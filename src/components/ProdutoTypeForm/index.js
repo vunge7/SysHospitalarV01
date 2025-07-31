@@ -39,7 +39,7 @@ function ProdutoTypeForm({ buscarTiposProduto }) {
 
         if (statusSendEdit == true) {
             //EDITAR
-            const response = await api.put('producttype/edit', dataToSubmit)
+            const response = await api.put('/producttype/edit', dataToSubmit)
                 .then((result) => {
                     setValue("designacaoTipoProduto", "")
                     alert("Tipo do Produto Eeditado com Sucesso")
@@ -59,7 +59,7 @@ function ProdutoTypeForm({ buscarTiposProduto }) {
             //ADICIONAR
         } else {
             const dataSubmit = { ...{}, designacaoTipoProduto: v };
-            const response = await api.post('producttype/add', dataSubmit)
+            const response = await api.post('/producttype/add', { designacaoTipoProduto: data.designacaoTipoProduto })
                 .then((result) => {
                     setValue("designacaoTipoProduto", "")
                     alert("Tipo do Produto Salvo com Sucesso")
@@ -95,7 +95,7 @@ function ProdutoTypeForm({ buscarTiposProduto }) {
     const buscarTiposProdutos = async () => {
         setCarregar(true);
         try {
-            const result = await api.get('producttype/all'); // Chamada para a rota 'produto/all'
+            const result = await api.get('/producttype/all'); // Chamada para a rota 'produto/all'
             setProduto(result.data); // Armazena os produtos recebidos da API
             currentProducts = result.data;
         } catch (error) {
@@ -125,7 +125,7 @@ function ProdutoTypeForm({ buscarTiposProduto }) {
     };
 
     const onConfirmar = async () => {
-        const response = await api.delete('producttype/' + produtoRemover.id)
+        const response = await api.delete(`/producttype/${produtoRemover.id}`)
             .then((result) => {
                 console.log('O produto removido com sucesso!...', produtoRemover.id);
                 buscarTiposProdutos();
