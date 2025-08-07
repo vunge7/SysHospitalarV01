@@ -1,7 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Modal, Form, Input, Select, Checkbox, Card, notification, DatePicker,
-    Table, Space, Popconfirm, Typography, } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined, NodeExpandOutlined } from '@ant-design/icons';
+import { 
+    Button, 
+    Modal, 
+    Form, 
+    Input, 
+    Select, 
+    Checkbox, 
+    Card, 
+    notification, 
+    DatePicker,
+    Table, 
+    Space, 
+    Popconfirm, 
+    Typography, 
+    Row, 
+    Col, 
+    Tag, 
+    Tooltip, 
+    Alert,
+    Divider,
+    InputNumber,
+    Switch,
+    Upload,
+    message
+} from 'antd';
+import { 
+    PlusOutlined, 
+    EditOutlined, 
+    DeleteOutlined, 
+    EyeOutlined, 
+    CopyOutlined, 
+    NodeExpandOutlined,
+    SearchOutlined,
+    FilterOutlined,
+    DownloadOutlined,
+    UploadOutlined,
+    InfoCircleOutlined,
+    ExclamationCircleOutlined,
+    CheckCircleOutlined,
+    ClockCircleOutlined
+} from '@ant-design/icons';
 import moment from 'moment';
 import { api } from '../../service/api';
 import modalProduto from '../../pages/PainelProduto/NovoProduto/index';
@@ -9,7 +47,9 @@ import NovoProduto from '../../pages/PainelProduto/NovoProduto';
 import { toast } from 'react-toastify';
 
 const { Option } = Select;
-const { Text } = Typography;
+const { Text, Title } = Typography;
+const { TextArea } = Input;
+const { Dragger } = Upload;
 
 function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateExame, deleteExame }) {
     const [form] = Form.useForm();
@@ -32,11 +72,147 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     const [modalFilhosVisible, setModalFilhosVisible] = useState(false);
     const [filhosProduto, setFilhosProduto] = useState([]);
     const [produtoPaiSelecionado, setProdutoPaiSelecionado] = useState(null);
+    
+    // Novos estados para funcionalidades avançadas
+    const [searchText, setSearchText] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterType, setFilterType] = useState('all');
+    const [sortField, setSortField] = useState('designacao');
+    const [sortOrder, setSortOrder] = useState('ascend');
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [bulkActionLoading, setBulkActionLoading] = useState(false);
+    const [importModalVisible, setImportModalVisible] = useState(false);
+    const [exportModalVisible, setExportModalVisible] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
 
     // Log da prop exames para o  debug
     useEffect(() => {
         console.log('Exames prop:', exames);
     }, [exames]);
+
+    // Funções de validação
+    const validateExame = (values) => {
+        const errors = {};
+        
+        if (!values.designacao || values.designacao.trim().length < 3) {
+            errors.designacao = 'A designação deve ter pelo menos 3 caracteres';
+        }
+        
+        if (!values.productType) {
+            errors.productType = 'O tipo de produto é obrigatório';
+        }
+        
+        if (values.preco && values.preco < 0) {
+            errors.preco = 'O preço não pode ser negativo';
+        }
+        
+        if (values.stock && values.stock < 0) {
+            errors.stock = 'O stock não pode ser negativo';
+        }
+        
+        if (isComposto && (!referencias || referencias.length === 0)) {
+            errors.referencias = 'Exames compostos devem ter pelo menos uma referência';
+        }
+        
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    // Funções de filtro e busca
+    const getFilteredExames = () => {
+        let filtered = produtosExame || [];
+        
+        // Filtro por texto de busca
+        if (searchText) {
+            filtered = filtered.filter(exame => 
+                exame.designacao?.toLowerCase().includes(searchText.toLowerCase()) ||
+                exame.productType?.toLowerCase().includes(searchText.toLowerCase()) ||
+                exame.descricao?.toLowerCase().includes(searchText.toLowerCase())
+            );
+        }
+        
+        // Filtro por status
+        if (filterStatus !== 'all') {
+            filtered = filtered.filter(exame => {
+                if (filterStatus === 'active') return exame.status === true;
+                if (filterStatus === 'inactive') return exame.status === false;
+                return true;
+            });
+        }
+        
+        // Filtro por tipo
+        if (filterType !== 'all') {
+            filtered = filtered.filter(exame => exame.productType === filterType);
+        }
+        
+        // Ordenação
+        filtered.sort((a, b) => {
+            const aValue = a[sortField] || '';
+            const bValue = b[sortField] || '';
+            
+            if (sortOrder === 'ascend') {
+                return aValue.toString().localeCompare(bValue.toString());
+            } else {
+                return bValue.toString().localeCompare(aValue.toString());
+            }
+        });
+        
+        return filtered;
+    };
+
+    // Funções de importação/exportação
+    const handleExport = () => {
+        const data = getFilteredExames();
+        const csvContent = [
+            ['Designação', 'Tipo', 'Preço', 'Stock', 'Status', 'Data Criação'],
+            ...data.map(exame => [
+                exame.designacao || '',
+                exame.productType || '',
+                exame.preco || '',
+                exame.stock || '',
+                exame.status ? 'Ativo' : 'Inativo',
+                moment(exame.createdAt).format('DD/MM/YYYY')
+            ])
+        ].map(row => row.join(',')).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `exames_${moment().format('YYYY-MM-DD')}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('Exportação realizada com sucesso!', { autoClose: 2000 });
+    };
+
+    const handleBulkAction = async (action) => {
+        if (selectedRowKeys.length === 0) {
+            toast.warning('Selecione pelo menos um exame!', { autoClose: 2000 });
+            return;
+        }
+        
+        setBulkActionLoading(true);
+        try {
+            for (const id of selectedRowKeys) {
+                if (action === 'activate') {
+                    await updateExame(id, { status: true });
+                } else if (action === 'deactivate') {
+                    await updateExame(id, { status: false });
+                } else if (action === 'delete') {
+                    await deleteExame(id);
+                }
+            }
+            
+            setSelectedRowKeys([]);
+            toast.success(`Ação em lote realizada com sucesso!`, { autoClose: 2000 });
+            fetchProdutosExame();
+        } catch (error) {
+            toast.error('Erro ao executar ação em lote!', { autoClose: 2000 });
+        } finally {
+            setBulkActionLoading(false);
+        }
+    };
 
     // Fetch pacientes de GET /paciente/all
     useEffect(() => {
@@ -63,8 +239,16 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 setTiposExame(response.data);
             } catch (error) {
                 console.error('Error fetching tiposExame:', error);
-                toast.error('Erro ao buscar tipos de exame!', { autoClose: 2000 });
+                // Se a API de tipo-exame não existir, usar produtos como tipos
+                try {
+                    const produtosRes = await api.get('/produto/all');
+                    const produtos = Array.isArray(produtosRes.data) ? produtosRes.data : [];
+                    const tiposUnicos = [...new Set(produtos.map(p => p.productType || p.tipo).filter(Boolean))];
+                    setTiposExame(tiposUnicos.map((tipo, index) => ({ id: index + 1, nome: tipo })));
+                } catch (produtoError) {
+                    console.error('Error fetching produtos as tipos:', produtoError);
                 setTiposExame([]);
+                }
             }
         };
         fetchTiposExame();
@@ -172,6 +356,12 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     };
 
     const onFinish = async (values) => {
+        // Validação antes de submeter
+        if (!validateExame(values)) {
+            toast.error('Por favor, corrija os erros de validação!', { autoClose: 3000 });
+            return;
+        }
+
         setLoading(true);
         try {
             const referenciasObj = {};
@@ -195,12 +385,15 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 designacao: values.designacao,
                 unidade: values.unidade || 'N/A',
                 composto: values.composto || false,
-                referencias: referenciasObj, // Deve ser sempre um objecto
+                referencias: referenciasObj,
                 pacienteId: values.pacienteId,
                 medicoId: values.medicoId,
                 status: 'PENDENTE',
                 dataSolicitacao: new Date().toISOString(),
                 dataColeta: values.dataColeta ? values.dataColeta.toISOString() : null,
+                preco: values.preco ? parseFloat(values.preco) : 0,
+                stock: values.stock ? parseInt(values.stock) : 0,
+                dataCriacao: new Date().toISOString(),
             };
 
             let exameResponse;
@@ -220,7 +413,8 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             );
             toast.success(isEditMode ? 'Exame atualizado com sucesso!' : 'Exame criado com sucesso!', { autoClose: 2000 });
             handleCancel();
-            fetchAllData(); // Trigger parent state update
+            fetchAllData();
+            setValidationErrors({});
         } catch (error) {
             console.error('Error saving exame:', error);
             toast.error(error.response?.data || error.message || 'Erro ao salvar exame!', { autoClose: 2000 });

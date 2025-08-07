@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu, Layout, notification, Drawer } from 'antd';
 import { StockContext } from '../../contexts/StockContext';
@@ -295,104 +295,69 @@ function Laboratorio() {
     const [requisicoesExame, setRequisicoesExame] = useState([]);
     const [linhasRequisicaoExame, setLinhasRequisicaoExame] = useState([]);
 
+    // Consolidar todas as chamadas de API em um único useEffect
     useEffect(() => {
-        const fetchRequisicoes = async () => {
-            await api
-                .get('/requisicaoexame/all/composto')
-                .then((r) => {
-                    setExamesRequisitados([...r.data]);
-                })
-                .catch((e) => console.error(e));
-        };
-
-        fetchRequisicoes();
-    }, []);
-    
-    // Persistir exames no localStorage
-    useEffect(() => {
-        localStorage.setItem('exames', JSON.stringify(exames));
-    }, [exames]);
-
-    useEffect(() => {
-        const fetchExamesProdutos = async () => {
+        const fetchAllInitialData = async () => {
             try {
-                const res = await api.get('/produto/all');
-                const produtos = Array.isArray(res.data)
-                    ? res.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
+                // Buscar requisições de exame
+                const requisicoesRes = await api.get('/requisicaoexame/all/composto');
+                setExamesRequisitados(Array.isArray(requisicoesRes.data) ? requisicoesRes.data : []);
+                setRequisicoesExame(Array.isArray(requisicoesRes.data) ? requisicoesRes.data : []);
+
+                // Buscar produtos de exame
+                const produtosRes = await api.get('/produto/all');
+                const produtos = Array.isArray(produtosRes.data)
+                    ? produtosRes.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
                     : [];
                 setExamesProdutos(produtos);
-            } catch {
-                setExamesProdutos([]);
-            }
-        };
-        fetchExamesProdutos();
-    }, []);
 
-    useEffect(() => {
-        const fetchResultadosExames = async () => {
-            try {
-                const res = await api.get('/linharesultado/all');
-                setResultadosExames(Array.isArray(res.data) ? res.data : []);
-            } catch {
-                setResultadosExames([]);
-            }
-        };
-        fetchResultadosExames();
-    }, []);
+                // Buscar resultados de exames
+                const resultadosRes = await api.get('/linharesultado/all');
+                setResultadosExames(Array.isArray(resultadosRes.data) ? resultadosRes.data : []);
 
-    useEffect(() => {
-        const fetchResultadoExames = async () => {
-            try {
-                const res = await api.get('/resultado/all');
-                setResultadoExames(Array.isArray(res.data) ? res.data : []);
-            } catch {
-                setResultadoExames([]);
-            }
-        };
-        fetchResultadoExames();
-    }, []);
+                // Buscar resultado de exames
+                const resultadoExamesRes = await api.get('/resultado/all');
+                setResultadoExames(Array.isArray(resultadoExamesRes.data) ? resultadoExamesRes.data : []);
 
-    useEffect(() => {
-        const fetchRequisicoesExame = async () => {
-            try {
-                const res = await api.get('/requisicaoexame/all/composto');
-                setRequisicoesExame(Array.isArray(res.data) ? res.data : []);
-            } catch {
-                setRequisicoesExame([]);
+                // Buscar linhas de requisição de exame
+                const linhasRes = await api.get('/linharequisicaoexame/all');
+                setLinhasRequisicaoExame(Array.isArray(linhasRes.data) ? linhasRes.data : []);
+
+            } catch (error) {
+                console.error('Erro ao buscar dados iniciais:', error);
+                notification.error({
+                    message: 'Erro ao carregar dados iniciais',
+                    description: error.message,
+                });
             }
         };
-        fetchRequisicoesExame();
-    }, []);
+
+        fetchAllInitialData();
+    }, []); // Executar apenas uma vez na montagem do componente
+    
+    // Persistir exames no localStorage apenas quando necessário
     useEffect(() => {
-        const fetchLinhasRequisicaoExame = async () => {
-            try {
-                const res = await api.get('/linharequisicaoexame/all');
-                setLinhasRequisicaoExame(Array.isArray(res.data) ? res.data : []);
-            } catch {
-                setLinhasRequisicaoExame([]);
-            }
-        };
-        fetchLinhasRequisicaoExame();
-    }, []);
+        if (exames.length > 0) {
+            localStorage.setItem('exames', JSON.stringify(exames));
+        }
+    }, [exames]);
+
+
 
     // Funções de simulação da API
     const fetchExames = async () => {
-        console.log('Buscando exames...');
         return { data: exames };
     };
 
     const fetchPacientes = async () => {
-        console.log('Buscando pacientes...');
         return { data: pacientes };
     };
 
     const fetchTiposExame = async () => {
-        console.log('Buscando tipos de exame...');
         return { data: tiposExame };
     };
 
     const fetchMedicos = async () => {
-        console.log('Buscando médicos...');
         return { data: medicos };
     };
 
@@ -437,7 +402,6 @@ function Laboratorio() {
     };
 
     const fetchAllData = async () => {
-        console.log('Iniciando fetchAllData...');
         try {
             await Promise.all([
                 fetchExames(),
@@ -447,7 +411,6 @@ function Laboratorio() {
                 fetchArtigos(),
                 fetchArmazens(),
             ]);
-            console.log('fetchAllData concluído com sucesso');
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
             notification.error({
@@ -457,6 +420,7 @@ function Laboratorio() {
         }
     };
 
+    // Executar fetchAllData apenas uma vez na montagem
     useEffect(() => {
         fetchAllData();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -490,6 +454,11 @@ function Laboratorio() {
         }
     };
 
+    // Otimizar o filtro de exames requisitados para evitar re-renderizações desnecessárias
+    const examesRequisitadosFiltrados = useMemo(() => {
+        return examesRequisitados.filter(r => !r.finalizado);
+    }, [examesRequisitados]);
+
     const isMobile = window.innerWidth <= 768;
 
     // Deixar fetchExamesProdutos disponível para ser chamado após adicionar/editar exame
@@ -500,32 +469,24 @@ function Laboratorio() {
                 ? res.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
                 : [];
             setExamesProdutos(produtos);
-        } catch {
+        } catch (error) {
+            console.error('Erro ao buscar produtos de exame:', error);
             setExamesProdutos([]);
         }
     };
 
     return (
-        <div className="laboratorio-container">
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100vh' }}>
             <Cabecario />
-            <div style={{ display: 'flex', flex: 1 }}>
-                <div className="sidebar">
-                    <Menu
-                        onClick={handleTabClick}
-                        defaultSelectedKeys={['dashboard']}
-                        mode="inline"
-                        theme="light"
-                        items={menuItems}
-                        className="sidebar-menu"
-                    />
-                </div>
-                <div className="main-content">
+            <div style={{ width: 'auto', display: 'flex', flexDirection: 'row', flex: 1 }}>
+                <SideMenu menu={menuItems} onClick={handleTabClick} />
+                <MainContent>
                     {activeTab === 'dashboard' && (
                         <Dashboard
                             examesProdutos={examesProdutos}
-                            exames={exames}
-                            tiposExame={tiposExame}
-                            artigos={artigos}
+                            examesRequisitados={examesRequisitados}
+                            resultadosExames={resultadosExames}
+                            linhasRequisicaoExame={linhasRequisicaoExame}
                         />
                     )}
                     {activeTab === 'exame' && (
@@ -544,7 +505,7 @@ function Laboratorio() {
                     )}
                     {activeTab === 'avaliacao' && (
                         <AvaliacaoExameRequisitado
-                            examesRequisitados={examesRequisitados.filter(r => !r.finalizado)}
+                            examesRequisitados={examesRequisitadosFiltrados}
                             setExamesRequisitados={setExamesRequisitados}
                             exames={exames}
                             pacientes={pacientes}
@@ -569,11 +530,55 @@ function Laboratorio() {
                             medicos={medicos}
                         />
                     )}
-                </div>
+                </MainContent>
             </div>
             <Rodape />
         </div>
     );
+}
+
+function SideMenu({ menu, onClick }) {
+    const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setCollapsed(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const toggleCollapsed = () => {
+        setCollapsed(!collapsed);
+    };
+
+    return (
+        <div style={{ width: collapsed ? 80 : 250, transition: 'width 0.3s ease-in-out', padding: 10, height: 'auto', overflow: 'hidden' }}>
+            <Button
+                type="primary"
+                onClick={toggleCollapsed}
+                style={{
+                    marginBottom: 16,
+                }}
+            >
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </Button>
+
+            <Menu
+                onClick={onClick}
+                defaultSelectedKeys={['dashboard']}
+                defaultOpenKeys={['sub1']}
+                mode="inline"
+                theme="light"
+                inlineCollapsed={collapsed}
+                items={menu}
+            />
+        </div>
+    );
+}
+
+function MainContent({ children }) {
+    return <div style={{ marginTop: 10, marginLeft: 50, width: '100%' }}>{children}</div>;
 }
 
 export default Laboratorio;

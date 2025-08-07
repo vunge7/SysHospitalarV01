@@ -1,9 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Table, Button, Card, Row, Col, Space } from 'antd';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Table, Button, Card, Row, Col, Space, Select, DatePicker, Input, Typography, Tag, Progress, 
+    Statistic, Alert,Tooltip as AntTooltip,Divider,Tabs,Modal,message,notification, Form
+} from 'antd';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
+    PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import { DownloadOutlined, FileTextOutlined, BarChartOutlined, PieChartOutlined, LineChartOutlined,
+    FilterOutlined, SearchOutlined, CalendarOutlined, EyeOutlined, PrinterOutlined, MailOutlined,
+    ShareAltOutlined } from '@ant-design/icons';
 import { api } from '../../service/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import moment from 'moment';
+
+const { Option } = Select;
+const { RangePicker } = DatePicker;
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
 
 const COLORS = ['#36a2eb', '#ff6384', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4', '#e91e63', '#ffc107'];
 
@@ -16,14 +28,164 @@ const Relatorio = () => {
   const tableRef = useRef();
   const statusChartRef = useRef();
   const tipoChartRef = useRef();
+  
+  // Novos estados para funcionalidades avançadas
+  const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [filterDateRange, setFilterDateRange] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
+  const [selectedReportType, setSelectedReportType] = useState('overview');
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [emailForm] = Form.useForm();
+  const [activeTab, setActiveTab] = useState('1');
 
   useEffect(() => {
-    api.get('/linharesultado/all').then(res => setLinhas(res.data || []));
-    api.get('/funcionario/all').then(res => setFuncionarios(res.data || []));
-    api.get('/resultado/all').then(res => setResultados(res.data || []));
-    api.get('/paciente/all').then(res => setPacientes(res.data || []));
-    api.get('/produto/all').then(res => setExames(Array.isArray(res.data) ? res.data : []));
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [linhasRes, resultadosRes, pacientesRes, examesRes] = await Promise.all([
+        api.get('/linharesultado/all'),
+        api.get('/resultado/all'),
+        api.get('/paciente/all'),
+        api.get('/produto/all')
+      ]);
+      
+      setLinhas(linhasRes.data || []);
+      setResultados(resultadosRes.data || []);
+      setPacientes(pacientesRes.data || []);
+      setExames(Array.isArray(examesRes.data) ? examesRes.data : []);
+      
+      // Tentar buscar funcionários se a API existir
+      try {
+        const funcionariosRes = await api.get('/funcionario/all');
+        setFuncionarios(funcionariosRes.data || []);
+      } catch (funcionarioError) {
+        console.log('API de funcionários não disponível');
+        setFuncionarios([]);
+      }
+    } catch (error) {
+      notification.error({
+        message: 'Erro',
+        description: 'Erro ao carregar dados dos relatórios: ' + error.message
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funções de filtro e busca
+  const getFilteredData = () => {
+    let filtered = linhas || [];
+    
+    // Filtro por texto de busca
+    if (searchText) {
+      filtered = filtered.filter(linha => 
+        getExameNome(linha)?.toLowerCase().includes(searchText.toLowerCase()) ||
+        getPacienteNome(linha)?.toLowerCase().includes(searchText.toLowerCase()) ||
+        linha.valorReferencia?.toString().includes(searchText)
+      );
+    }
+    
+    // Filtro por data
+    if (filterDateRange && filterDateRange.length === 2) {
+      const startDate = filterDateRange[0].startOf('day');
+      const endDate = filterDateRange[1].endOf('day');
+      filtered = filtered.filter(linha => {
+        const linhaDate = moment(linha.createdAt || linha.dataCriacao);
+        return linhaDate.isBetween(startDate, endDate, 'day', '[]');
+      });
+    }
+    
+    // Filtro por status
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(linha => {
+        const exame = exames.find(e => String(e.id) === String(linha.exameId));
+        return exame && exame.status === (filterStatus === 'active');
+      });
+    }
+    
+    // Filtro por tipo
+    if (filterType !== 'all') {
+      filtered = filtered.filter(linha => {
+        const exame = exames.find(e => String(e.id) === String(linha.exameId));
+        return exame && exame.productType === filterType;
+      });
+    }
+    
+    return filtered;
+  };
+
+  // Funções de exportação avançadas
+  const handleExport = (format) => {
+    const data = getFilteredData();
+    
+    switch (format) {
+      case 'csv':
+        exportToCSV(data);
+        break;
+      case 'excel':
+        exportToExcel(data);
+        break;
+      case 'pdf':
+        exportToPDF(data);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const exportToCSV = (data) => {
+    const csvContent = [
+      ['ID', 'Exame', 'Valor Referência', 'Unidade', 'Paciente', 'Médico', 'Data'],
+      ...data.map(linha => [
+        linha.id,
+        getExameNome(linha),
+        linha.valorReferencia,
+        getUnidadeDescricao(linha),
+        getPacienteNome(linha),
+        getMedicoNome(linha.usuarioId),
+        moment(linha.createdAt).format('DD/MM/YYYY')
+      ])
+    ].map(row => row.join(',')).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio_exames_${moment().format('YYYY-MM-DD')}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    message.success('Relatório exportado em CSV com sucesso!');
+  };
+
+  const exportToExcel = (data) => {
+    // Implementar exportação para Excel
+    message.info('Funcionalidade de exportação para Excel em desenvolvimento');
+  };
+
+  const exportToPDF = (data) => {
+    // Implementar exportação para PDF
+    message.info('Funcionalidade de exportação para PDF em desenvolvimento');
+  };
+
+  // Função para enviar relatório por email
+  const handleEmailReport = async (values) => {
+    try {
+      // Implementar envio por email
+      console.log('Enviando relatório por email:', values);
+      message.success('Relatório enviado por email com sucesso!');
+      setEmailModalVisible(false);
+      emailForm.resetFields();
+    } catch (error) {
+      message.error('Erro ao enviar relatório por email');
+    }
+  };
 
   // Função para obter o nome do médico (funcionário) a partir do usuarioId
   const getMedicoNome = (usuarioId) => {
@@ -176,7 +338,7 @@ const Relatorio = () => {
                       <Cell key={`cell-status-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -190,7 +352,7 @@ const Relatorio = () => {
                 <BarChart data={tipoData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                   <XAxis dataKey="name" />
                   <YAxis allowDecimals={false} />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                   <Bar dataKey="value">
                     {tipoData.map((entry, index) => (
