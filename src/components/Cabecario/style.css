@@ -11,7 +11,8 @@
 
 /* Logotipo */
 .navbar-logo img {
-    height: 40px;
+    width: 60%;
+    height: 60%;
 }
 
 /* Links */
