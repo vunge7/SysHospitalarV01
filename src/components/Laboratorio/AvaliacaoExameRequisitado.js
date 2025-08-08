@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { remove as removeDiacritics } from 'diacritics';
-import { Table, Button, Modal, Form, Input, Card, Typography, Popconfirm, InputNumber, Space } from 'antd';
-import { CheckCircleOutlined, DeleteOutlined, UndoOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Card, Typography, InputNumber, Space, Popconfirm } from 'antd';
+import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, PlusCircleOutlined, MedicineBoxOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { api } from '../../service/api';
@@ -14,14 +14,18 @@ function AvaliacaoExameRequisitado({
   fetchAllData,
 }) {
   const [form] = Form.useForm();
+  const [reopenForm] = Form.useForm();
   const [selectedExame, setSelectedExame] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isReopenModalVisible, setIsReopenModalVisible] = useState(false);
+  const [exameToReopen, setExameToReopen] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedRequisicao, setSelectedRequisicao] = useState(null);
   const [linhasRequisicao, setLinhasRequisicao] = useState([]);
   const [linhasResultado, setLinhasResultado] = useState([]);
   const [cachedLinhasResultado, setCachedLinhasResultado] = useState([]);
   const [produtos, setProdutos] = useState([]);
+  const [produtosHierarquia, setProdutosHierarquia] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [medicos, setMedicos] = useState([]);
@@ -61,6 +65,41 @@ function AvaliacaoExameRequisitado({
     return medico || null;
   };
 
+  const buildProdutoHierarchy = (produtos) => {
+    const produtoMap = new Map();
+    produtos.forEach((produto) => {
+      produto.filhos = [];
+      produtoMap.set(produto.id, produto);
+    });
+
+    const hierarquia = [];
+    produtos.forEach((produto) => {
+      if (produto.produtoPaiId) {
+        const pai = produtoMap.get(produto.produtoPaiId);
+        if (pai) {
+          pai.filhos.push(produto);
+        }
+      } else {
+        hierarquia.push(produto);
+      }
+    });
+
+    return hierarquia;
+  };
+
+  const isLeafNode = (produtoId) => {
+    return !produtos.some((p) => p.produtoPaiId === produtoId);
+  };
+
+  const getBaseId = (id) => {
+    if (id == null || id === '') {
+      console.warn('getBaseId received invalid id:', id);
+      return id;
+    }
+    const idStr = String(id);
+    return idStr.includes('-') ? idStr.split('-')[0] : idStr;
+  };
+
   useEffect(() => {
     setLinhasRequisicao([]);
     setSelectedRequisicao(null);
@@ -78,7 +117,9 @@ function AvaliacaoExameRequisitado({
         api.get('unidade/all'),
         api.get('inscricao/all'),
       ]);
-      setProdutos(produtoRes.data || []);
+      const produtos = produtoRes.data || [];
+      setProdutos(produtos);
+      setProdutosHierarquia(buildProdutoHierarchy(produtos));
       setPacientes(pacienteRes.data || []);
       setUsuarios(usuarioRes.data || []);
       setMedicos(medicoRes.data || []);
@@ -98,10 +139,10 @@ function AvaliacaoExameRequisitado({
           try {
             const response = await api.get(`/linharequisicaoexame/all/requisicao/${req.id}`);
             const linhas = response.data.map((item) => ({
-              id: item.id,
+              id: String(item.id),
               produtoId: item.produtoId || item.produto_id,
               exame: item.exame || item.designacao || 'N/A',
-              estado: item.estado || 'NAO_EFECTUADO',
+              estado: item.estado || 'nao_efetuado',
               hora: item.hora,
               requisicaoExameId: item.requisicaoExameId || item.requisicao_exame_id || null,
               status: item.status !== undefined ? item.status : true,
@@ -125,16 +166,48 @@ function AvaliacaoExameRequisitado({
   const fetchLinhasRequisicao = async (requisicaoExameId) => {
     try {
       const response = await api.get(`/linharequisicaoexame/all/requisicao/${requisicaoExameId}`);
-      const mappedData = response.data.map((item) => ({
-        id: item.id,
-        produtoId: item.produtoId || item.produto_id,
-        exame: item.exame || item.designacao || 'N/A',
-        estado: item.estado || 'NAO_EFECTUADO',
-        hora: item.hora,
-        requisicaoExameId: item.requisicaoExameId || item.requisicao_exame_id || null,
-        status: item.status !== undefined ? item.status : true,
-        finalizado: item.finalizado !== undefined ? item.finalizado : false,
-      }));
+      const mappedData = response.data.flatMap((item) => {
+        const produto = produtos.find((p) => p.id === (item.produtoId || item.produto_id));
+        if (!produto) {
+          return [{
+            id: String(item.id),
+            produtoId: item.produtoId || item.produto_id,
+            exame: item.exame || item.designacao || 'N/A',
+            estado: item.estado || 'nao_efetuado',
+            hora: item.hora,
+            requisicaoExameId: item.requisicaoExameId || item.requisicao_exame_id || null,
+            status: item.status !== undefined ? item.status : true,
+            finalizado: item.finalizado !== undefined ? item.finalizado : false,
+            isComposto: false,
+            level: 0,
+          }];
+        }
+
+        const isComposto = produtos.some((p) => p.produtoPaiId === produto.id);
+        const buildHierarchy = (prod, parentId = null, level = 0) => {
+          const linhaBase = {
+            id: parentId ? `${String(item.id)}-${prod.id}` : String(item.id),
+            produtoId: prod.id,
+            exame: prod.productDescription || item.exame || 'N/A',
+            estado: item.estado || 'nao_efetuado',
+            hora: item.hora,
+            requisicaoExameId: item.requisicaoExameId || item.requisicao_exame_id || null,
+            status: item.status !== undefined ? item.status : true,
+            finalizado: item.finalizado !== undefined ? item.finalizado : false,
+            isComposto: produtos.some((p) => p.produtoPaiId === prod.id),
+            parentId: parentId,
+            level: level,
+          };
+
+          const filhos = produtos
+            .filter((p) => p.produtoPaiId === prod.id)
+            .map((filho) => buildHierarchy(filho, item.id, level + 1));
+
+          return [linhaBase, ...filhos.flat()];
+        };
+
+        return buildHierarchy(produto);
+      });
       setLinhasRequisicao(mappedData);
     } catch (error) {
       toast.error('Erro ao buscar linhas de requisição: ' + (error.response?.data?.message || error.message), {
@@ -147,8 +220,14 @@ function AvaliacaoExameRequisitado({
   const fetchLinhasResultado = async () => {
     try {
       const res = await api.get('linharesultado/all');
-      setLinhasResultado(res.data || []);
+      console.log('Linhas resultado carregadas:', res.data);
+      setLinhasResultado(res.data.map((item) => ({
+        ...item,
+        exameId: String(item.exameId),
+        produtoId: item.produtoId ? String(item.produtoId) : null,
+      })) || []);
     } catch (error) {
+      console.error('Erro ao buscar linhas de resultado:', error);
       toast.error('Erro ao buscar linhas de resultado: ' + (error.response?.data?.message || error.message), {
         autoClose: 2000,
       });
@@ -169,6 +248,12 @@ function AvaliacaoExameRequisitado({
     fetchLinhasRequisicao(record.id);
   };
 
+  const handleCancel = () => {
+    setIsModalVisible(false);
+    form.resetFields();
+    setSelectedExame(null);
+  };
+
   const showResultModal = (exame) => {
     if (!exame) {
       toast.error('Dados do exame inválidos!', { autoClose: 2000 });
@@ -176,19 +261,138 @@ function AvaliacaoExameRequisitado({
     }
     setSelectedExame(exame);
     const linhaResultado =
-      cachedLinhasResultado.find((lr) => lr.exameId === exame.id) ||
-      linhasResultado.find((lr) => lr.exameId === exame.id);
+      cachedLinhasResultado.find((lr) => lr.exameId === getBaseId(exame.id) && lr.produtoId === exame.produtoId) ||
+      linhasResultado.find((lr) => lr.exameId === getBaseId(exame.id) && lr.produtoId === exame.produtoId);
     form.setFieldsValue({
-      valorReferencia: linhaResultado?.valorReferencia || null,
+      valorReferencia: linhaResultado?.valorReferencia ?? null,
       observacao: linhaResultado?.observacao || '',
     });
     setIsModalVisible(true);
   };
 
-  const handleCancel = () => {
-    setIsModalVisible(false);
-    form.resetFields();
-    setSelectedExame(null);
+  const showReopenModal = (exame) => {
+    if (!exame) {
+      toast.error('Dados do exame inválidos!', { autoClose: 2000 });
+      return;
+    }
+    setExameToReopen(exame);
+    const linhaResultado =
+      cachedLinhasResultado.find((lr) => lr.exameId === getBaseId(exame.id) && lr.produtoId === exame.produtoId) ||
+      linhasResultado.find((lr) => lr.exameId === getBaseId(exame.id) && lr.produtoId === exame.produtoId);
+
+    console.log('Exame selecionado para reabrir:', exame);
+    console.log('Linha resultado encontrada:', linhaResultado);
+
+    reopenForm.setFieldsValue({
+      exame: exame.exame || exame.productDescription || 'N/A',
+      hora: moment().format('DD/MM/YYYY HH:mm:ss'),
+      valorReferencia: linhaResultado?.valorReferencia ?? null,
+      observacao: linhaResultado?.observacao || '',
+    });
+    console.log('Valores aplicados ao reopenForm:', reopenForm.getFieldsValue());
+    setIsReopenModalVisible(true);
+  };
+
+  const handleConfirmReopen = async (values) => {
+    if (!exameToReopen) {
+      toast.error('Nenhum exame selecionado!', { autoClose: 2000 });
+      return;
+    }
+    try {
+      setLoading(true);
+      const estadoRequisicao = 'nao_efetuado';
+      const horaMoment = moment();
+      const horaString = horaMoment.format('YYYY-MM-DDTHH:mm:ss');
+
+      const updatedExame = {
+        id: getBaseId(exameToReopen.id),
+        produtoId: exameToReopen.produtoId ?? null,
+        exame: exameToReopen.exame || 'N/A',
+        designacao: exameToReopen.exame || 'N/A',
+        estado: estadoRequisicao,
+        hora: horaString,
+        requisicaoExameId: exameToReopen.requisicaoExameId ?? selectedRequisicao.id ?? null,
+        status: exameToReopen.status !== undefined ? exameToReopen.status : true,
+        finalizado: false,
+      };
+
+      if (!updatedExame.id) {
+        throw new Error('ID do exame é obrigatório');
+      }
+      if (!updatedExame.produtoId) {
+        throw new Error('Produto ID é obrigatório');
+      }
+      if (!updatedExame.requisicaoExameId) {
+        throw new Error('Requisição Exame ID é obrigatório');
+      }
+
+      console.log('Enviando payload para /linharequisicaoexame/edit:', updatedExame);
+
+      const response = await api.put('/linharequisicaoexame/edit', updatedExame);
+      console.log('Resposta da atualização:', response.data);
+
+      const linhaResultado = linhasResultado.find(
+        (lr) => lr.exameId === getBaseId(exameToReopen.id) && lr.produtoId === exameToReopen.produtoId
+      );
+      if (linhaResultado) {
+        console.log('Excluindo linha resultado:', linhaResultado);
+        await api.delete(`/linharesultado/${linhaResultado.id}`);
+      }
+
+      if (isLeafNode(exameToReopen.produtoId) && values.valorReferencia !== null && values.valorReferencia !== undefined) {
+        const unidadeId = getUnidadeId(exameToReopen);
+        if (!unidadeId) {
+          throw new Error('Unidade ID não encontrada');
+        }
+        const linhaResultadoCache = {
+          exameId: getBaseId(exameToReopen.id),
+          valorReferencia: Number(values.valorReferencia),
+          unidadeId: unidadeId,
+          observacao: values.observacao || '',
+          requisicaoExameId: exameToReopen.requisicaoExameId ?? selectedRequisicao.id,
+          parentId: exameToReopen.parentId || null,
+          produtoId: exameToReopen.produtoId,
+        };
+        console.log('Adicionando ao cache:', linhaResultadoCache);
+        setCachedLinhasResultado((prev) => [
+          ...prev.filter((lr) => lr.exameId !== getBaseId(exameToReopen.id) || lr.produtoId !== exameToReopen.produtoId),
+          linhaResultadoCache,
+        ]);
+      } else {
+        console.log('Removendo do cache:', getBaseId(exameToReopen.id));
+        setCachedLinhasResultado((prev) => prev.filter((lr) => lr.exameId !== getBaseId(exameToReopen.id) || lr.produtoId !== exameToReopen.produtoId));
+      }
+
+      setLinhasRequisicao((prev) =>
+        prev.map((linha) =>
+          linha.id === exameToReopen.id
+            ? {
+                ...linha,
+                exame: exameToReopen.exame,
+                estado: estadoRequisicao,
+                hora: horaString,
+                finalizado: false,
+              }
+            : linha
+        )
+      );
+
+      toast.success('Exame reaberto e editado com sucesso!', { autoClose: 2000 });
+      fetchAllData();
+      fetchLinhasRequisicao(selectedRequisicao.id);
+      fetchLinhasResultado();
+      setRequisicoesStatus((prev) => ({ ...prev, [selectedRequisicao.id]: true }));
+
+      setIsReopenModalVisible(false);
+      setExameToReopen(null);
+      reopenForm.resetFields();
+    } catch (error) {
+      console.error('Erro em handleConfirmReopen:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
+      toast.error(`Erro ao reabrir exame: ${errorMessage}`, { autoClose: 3000 });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getPacienteId = (requisicao) => {
@@ -266,21 +470,18 @@ function AvaliacaoExameRequisitado({
       return;
     }
     const linhaResultadoCache = {
-      exameId: selectedExame.id,
+      exameId: getBaseId(selectedExame.id),
       valorReferencia: Number(values.valorReferencia),
       unidadeId: unidadeId,
       observacao: values.observacao || '',
       requisicaoExameId: selectedRequisicao.id,
+      parentId: selectedExame.parentId || null,
+      produtoId: selectedExame.produtoId,
     };
     setCachedLinhasResultado((prev) => [
-      ...prev.filter((lr) => lr.exameId !== selectedExame.id),
+      ...prev.filter((lr) => lr.exameId !== getBaseId(selectedExame.id) || lr.produtoId !== selectedExame.produtoId),
       linhaResultadoCache,
     ]);
-    setLinhasRequisicao((prev) =>
-      prev.map((linha) =>
-        linha.id === selectedExame.id ? { ...linha, estado: 'efetuado', status: true } : linha
-      )
-    );
     toast.success('Resultado adicionado ao cache! Clique em "Finalizar" para salvar no sistema.', {
       autoClose: 2500,
     });
@@ -321,17 +522,24 @@ function AvaliacaoExameRequisitado({
         unidadeId: linha.unidadeId,
         observacao: linha.observacao,
         resultadoId: resultadoId,
+        parentId: linha.parentId || null,
+        produtoId: linha.produtoId,
       }));
+      console.log('Enviando linhasResultadoPayload:', linhasResultadoPayload);
       await Promise.all(linhasResultadoPayload.map((payload) => api.post('/linharesultado/add', payload)));
-      const updateLinhaRequisicaoPromises = linhasRequisicao.map((linha) => {
-        const updatedLinha = {
-          ...linha,
-          estado: 'efetuado',
-          hora: moment().toISOString(),
-          finalizado: true,
-        };
-        return api.put('/linharequisicaoexame/edit', updatedLinha);
-      });
+      const updateLinhaRequisicaoPromises = linhasRequisicao
+        .filter((linha) => isLeafNode(linha.produtoId) && cachedLinhasResultado.some((lr) => lr.exameId === getBaseId(linha.id) && lr.produtoId === linha.produtoId))
+        .map((linha) => {
+          const updatedLinha = {
+            ...linha,
+            id: getBaseId(linha.id),
+            estado: 'efetuado',
+            hora: moment().toISOString(),
+            finalizado: true,
+          };
+          return api.put('/linharequisicaoexame/edit', updatedLinha);
+        });
+      console.log('Atualizando linhas de requisição:', updateLinhaRequisicaoPromises);
       await Promise.all(updateLinhaRequisicaoPromises);
       toast.success('Exame finalizado e resultados salvos com sucesso!', { autoClose: 2000 });
       setExamesRequisitados((prev) => prev.filter((r) => r.id !== selectedRequisicao.id));
@@ -342,6 +550,7 @@ function AvaliacaoExameRequisitado({
       setRequisicoesStatus((prev) => ({ ...prev, [selectedRequisicao.id]: false }));
       fetchAllData();
     } catch (error) {
+      console.error('Erro em handleFinalizarExame:', error.response?.data || error.message);
       toast.error(`Erro ao finalizar exame: ${error.response?.data?.message || error.message}`, {
         autoClose: 2000,
       });
@@ -352,8 +561,8 @@ function AvaliacaoExameRequisitado({
 
   const handleDeleteExame = async (id) => {
     try {
-      await api.delete(`/linharequisicaoexame/${id}`);
-      setCachedLinhasResultado((prev) => prev.filter((lr) => lr.exameId !== id));
+      await api.delete(`/linharequisicaoexame/${getBaseId(id)}`);
+      setCachedLinhasResultado((prev) => prev.filter((lr) => lr.exameId !== getBaseId(id)));
       toast.success('Exame excluído com sucesso!', { autoClose: 2000 });
       fetchLinhasRequisicao(selectedRequisicao.id);
       fetchAllData();
@@ -364,51 +573,13 @@ function AvaliacaoExameRequisitado({
     }
   };
 
-  const handleReopenExame = async (exame) => {
-    try {
-      const updatedExame = {
-        id: exame.id,
-        produtoId: exame.produtoId,
-        exame: exame.exame,
-        estado: 'NAO_EFECTUADO',
-        hora: moment(exame.hora, [
-          'YYYY-MM-DD HH:mm:ss',
-          'YYYY/MM/DD HH:mm:ss',
-          'YYYY-MM-DDTHH:mm:ss',
-          'YYYY-MM-DDTHH:mm:ss.SSS',
-          'DD/MM/YYYY HH:mm:ss',
-          'DD-MM-YYYY HH:mm:ss',
-          moment.ISO_8601,
-          moment.HTML5_FMT.DATETIME_LOCAL_MS,
-        ], true).isValid()
-          ? moment(exame.hora).format('YYYY-MM-DD HH:mm:ss')
-          : moment().format('YYYY-MM-DD HH:mm:ss'),
-        requisicaoExameId: exame.requisicaoExameId,
-        status: exame.status,
-        finalizado: false,
-      };
-      await api.put('/linharequisicaoexame/edit', updatedExame);
-      const linhaResultado = linhasResultado.find((lr) => lr.exameId === exame.id);
-      if (linhaResultado) {
-        await api.delete(`/linharesultado/${linhaResultado.id}`);
-      }
-      setCachedLinhasResultado((prev) => prev.filter((lr) => lr.exameId !== exame.id));
-      toast.success('Exame reaberto com sucesso!', { autoClose: 2000 });
-      fetchAllData();
-      fetchLinhasRequisicao(selectedRequisicao.id);
-      fetchLinhasResultado();
-      setRequisicoesStatus((prev) => ({ ...prev, [selectedRequisicao.id]: true }));
-    } catch (error) {
-      toast.error('Erro ao reabrir exame: ' + (error.response?.data?.message || error.message), {
-        autoClose: 2000,
-      });
-    }
+  const isLinhaInserida = (linha) => {
+    if (!isLeafNode(linha.produtoId)) return true;
+    return (
+      cachedLinhasResultado.some((lr) => lr.exameId === getBaseId(linha.id) && lr.produtoId === linha.produtoId) ||
+      linhasResultado.some((lr) => lr.exameId === getBaseId(linha.id) && lr.produtoId === linha.produtoId)
+    );
   };
-
-  const isLinhaInserida = (linha) =>
-    (linha.estado === 'EFECTUADO' || linha.status === true) ||
-    cachedLinhasResultado.some((lr) => lr.exameId === linha.id) ||
-    linhasResultado.some((lr) => lr.exameId === linha.id);
 
   const getPacienteNome = (record) => {
     const pacienteNome = record.paciente || record.pacienteNome;
@@ -449,11 +620,13 @@ function AvaliacaoExameRequisitado({
   }
 
   const requisicoesColumns = [
-    { title: 'ID', dataIndex: 'id', key: 'id' },
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 80, fixed: 'left' },
     {
       title: 'Paciente',
       key: 'paciente',
-      render: (_, record) => getPacienteNome(record),
+      render: (_, record) => (
+        <span style={{ fontWeight: 500, color: '#0052cc' }}>{getPacienteNome(record)}</span>
+      ),
     },
     {
       title: 'Médico',
@@ -469,28 +642,39 @@ function AvaliacaoExameRequisitado({
   ];
 
   const examesColumns = [
-    { title: 'ID', dataIndex: 'id', key: 'id' },
     {
       title: 'Exame',
       dataIndex: 'exame',
       key: 'exame',
-      render: (text) => text || 'N/A',
+      width: 300,
+      render: (text, record) => (
+        <span style={{ paddingLeft: record.level * 20, fontWeight: record.isComposto ? 600 : 400 }}>
+          {record.isComposto ? <strong>{text || 'N/A'}</strong> : text || 'N/A'}
+        </span>
+      ),
     },
     {
       title: 'Estado',
       dataIndex: 'estado',
       key: 'estado',
-      render: (text) => text || 'NAO_EFECTUADO',
+      width: 120,
+      render: (text) => (
+        <span style={{ textTransform: 'capitalize', color: text === 'efetuado' ? '#28a745' : '#fa8c16' }}>
+          {text || 'Não Efetuado'}
+        </span>
+      ),
     },
     {
       title: 'Hora',
       dataIndex: 'hora',
       key: 'hora',
+      width: 150,
       render: (hora, record) => parseDate(hora, 'Hora', record),
     },
     {
       title: 'Unidade',
       key: 'unidade',
+      width: 150,
       render: (_, record) => {
         const unidadeId = getUnidadeId(record);
         const unidade = unidades.find((u) => u.id === unidadeId);
@@ -500,14 +684,16 @@ function AvaliacaoExameRequisitado({
     {
       title: 'Status',
       key: 'status',
+      width: 120,
       render: (_, record) => (
         <span
           style={{
             color: isLinhaInserida(record) ? '#28a745' : '#fa8c16',
             fontWeight: 600,
-            padding: '4px 8px',
-            borderRadius: '4px',
+            padding: '4px 12px',
+            borderRadius: '12px',
             backgroundColor: isLinhaInserida(record) ? '#e6ffed' : '#fff7e6',
+            display: 'inline-block',
           }}
         >
           {isLinhaInserida(record) ? 'Inserido' : 'Pendente'}
@@ -517,24 +703,44 @@ function AvaliacaoExameRequisitado({
     {
       title: 'Ações',
       key: 'acoes',
+      width: 200,
+      fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type={isLinhaInserida(record) ? 'default' : 'primary'}
-            disabled={isLinhaInserida(record)}
-            onClick={() => showResultModal(record)}
-            style={{
-              backgroundColor: isLinhaInserida(record) ? '#d9e1f2' : '#0052cc',
-              borderColor: isLinhaInserida(record) ? '#d9e1f2' : '#0052cc',
-              color: isLinhaInserida(record) ? '#4b5e77' : '#fff',
-              borderRadius: '6px',
-              padding: '4px 12px',
-              fontWeight: 500,
-              transition: 'all 0.3s ease',
-            }}
-          >
-            {isLinhaInserida(record) ? 'Inserido' : 'Inserir Resultado'}
-          </Button>
+          {isLeafNode(record.produtoId) && (
+            <Button
+              type={isLinhaInserida(record) ? 'default' : 'primary'}
+              icon={<PlusCircleOutlined />}
+              disabled={isLinhaInserida(record)}
+              onClick={() => showResultModal(record)}
+              style={{
+                backgroundColor: isLinhaInserida(record) ? '#f0f5ff' : '#007bff',
+                borderColor: isLinhaInserida(record) ? '#d9e1f2' : '#007bff',
+                color: isLinhaInserida(record) ? '#4b5e77' : '#fff',
+                borderRadius: '8px',
+                padding: '4px 12px',
+                fontWeight: 500,
+                transition: 'all 0.3s ease',
+                transform: 'scale(1)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isLinhaInserida(record)) {
+                  e.currentTarget.style.backgroundColor = '#0056b3';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 123, 255, 0.3)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isLinhaInserida(record)) {
+                  e.currentTarget.style.backgroundColor = '#007bff';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
+              }}
+            >
+              {isLinhaInserida(record) ? 'Inserido' : 'Inserir Resultado'}
+            </Button>
+          )}
           <Popconfirm
             title="Excluir exame?"
             onConfirm={() => handleDeleteExame(record.id)}
@@ -544,35 +750,53 @@ function AvaliacaoExameRequisitado({
             <Button
               icon={<DeleteOutlined />}
               style={{
-                borderRadius: '6px',
+                borderRadius: '8px',
                 borderColor: '#ff4d4f',
                 color: '#ff4d4f',
                 padding: '4px 12px',
                 fontWeight: 500,
                 transition: 'all 0.3s ease',
+                transform: 'scale(1)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#fff1f0';
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 77, 79, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#fff';
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
               }}
               danger
             />
           </Popconfirm>
-          {isLinhaInserida(record) && (
-            <Popconfirm
-              title="Reabrir exame?"
-              onConfirm={() => handleReopenExame(record)}
-              okText="Sim"
-              cancelText="Não"
+          {isLeafNode(record.produtoId) && isLinhaInserida(record) && (
+            <Button
+              icon={<UndoOutlined />}
+              onClick={() => showReopenModal(record)}
+              style={{
+                borderRadius: '8px',
+                borderColor: '#0052cc',
+                color: '#0052cc',
+                padding: '4px 12px',
+                fontWeight: 500,
+                transition: 'all 0.3s ease',
+                transform: 'scale(1)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e6f0fa';
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 82, 204, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#fff';
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
-              <Button
-                icon={<UndoOutlined />}
-                style={{
-                  borderRadius: '6px',
-                  borderColor: '#0052cc',
-                  color: '#0052cc',
-                  padding: '4px 12px',
-                  fontWeight: 500,
-                  transition: 'all 0.3s ease',
-                }}
-              />
-            </Popconfirm>
+              Reabrir
+            </Button>
           )}
         </Space>
       ),
@@ -580,7 +804,10 @@ function AvaliacaoExameRequisitado({
   ];
 
   const allLinhasInseridas =
-    linhasRequisicao.length > 0 && linhasRequisicao.every((linha) => isLinhaInserida(linha));
+    linhasRequisicao.length > 0 &&
+    linhasRequisicao
+      .filter((linha) => isLeafNode(linha.produtoId))
+      .every((linha) => isLinhaInserida(linha));
 
   const nonFinalizedRequisicoes = examesRequisitados.filter((req) => requisicoesStatus[req.id]);
 
@@ -588,12 +815,14 @@ function AvaliacaoExameRequisitado({
     <div
       style={{
         padding: '32px',
-        backgroundColor: '#f9fbff',
+        background: 'linear-gradient(180deg, #f0f5ff 0%, #ffffff 100%)',
         minHeight: '100vh',
         fontFamily: "'Inter', sans-serif",
         display: 'flex',
         flexDirection: 'column',
         gap: '24px',
+        maxWidth: '1400px',
+        margin: '0 auto',
       }}
     >
       <Title
@@ -604,26 +833,35 @@ function AvaliacaoExameRequisitado({
           margin: '0 auto 24px',
           textAlign: 'center',
           fontSize: '28px',
+          textShadow: '0 2px 4px rgba(0, 82, 204, 0.1)',
         }}
       >
         Avaliação de Exames Requisitados
       </Title>
       <Card
-        title="Requisições de Exames"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircleOutlined style={{ color: '#007bff', fontSize: '20px' }} />
+            <span>Requisições de Exames</span>
+          </div>
+        }
         style={{
           borderRadius: '12px',
-          boxShadow: '0 6px 16px rgba(0, 82, 204, 0.1)',
-          backgroundColor: '#fff',
+          boxShadow: '0 6px 20px rgba(0, 82, 204, 0.15)',
+          backgroundColor: '#ffffff',
           overflow: 'hidden',
+          border: '1px solid #e6f0fa',
         }}
         headStyle={{
-          backgroundColor: '#e6f0fa',
+          background: 'linear-gradient(90deg, #e6f0fa 0%, #d6e6ff 100%)',
           borderRadius: '12px 12px 0 0',
           fontWeight: 600,
           color: '#0052cc',
           padding: '16px 24px',
           fontSize: '18px',
+          borderBottom: '2px solid #007bff',
         }}
+        styles={{ body: { padding: '24px' } }}
       >
         {nonFinalizedRequisicoes.length === 0 ? (
           <Text
@@ -633,6 +871,8 @@ function AvaliacaoExameRequisitado({
               display: 'block',
               textAlign: 'center',
               padding: '24px',
+              backgroundColor: '#f9fbff',
+              borderRadius: '8px',
             }}
           >
             Nenhuma requisição não finalizada disponível.
@@ -644,71 +884,142 @@ function AvaliacaoExameRequisitado({
             rowKey="id"
             onRow={(record) => ({
               onClick: () => handleRowClick(record),
-              style: { cursor: 'pointer', transition: 'background-color 0.3s' },
+              style: {
+                cursor: 'pointer',
+                transition: 'background-color 0.3s',
+                backgroundColor: selectedRequisicao?.id === record.id ? '#e6f0fa' : '#fff',
+              },
             })}
             rowSelection={{
               type: 'radio',
               onChange: (_, selectedRows) => handleRowClick(selectedRows[0]),
             }}
-            style={{ borderRadius: '12px', overflow: 'hidden' }}
+            style={{
+              borderRadius: '12px',
+              overflow: 'hidden',
+              backgroundColor: '#fff',
+              boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.05)',
+            }}
+            rowClassName={(record, index) => index % 2 === 0 ? 'table-row-light' : 'table-row-dark'}
+            scroll={{ x: 'max-content' }}
           />
         )}
       </Card>
       {selectedRequisicao ? (
         <Card
-          title={`Detalhes do Exame - Requisição ${selectedRequisicao.id}`}
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MedicineBoxOutlined style={{ color: '#007bff', fontSize: '20px' }} />
+              <span>{`Detalhes do Exame - Requisição ${selectedRequisicao.id}`}</span>
+            </div>
+          }
           style={{
             borderRadius: '12px',
-            boxShadow: '0 6px 16px rgba(0, 82, 204, 0.1)',
-            backgroundColor: '#fff',
+            boxShadow: '0 6px 20px rgba(0, 82, 204, 0.15)',
+            backgroundColor: '#ffffff',
             overflow: 'hidden',
+            border: '2px double #e6f0fa',
+            borderTop: '4px solid #007bff',
           }}
           headStyle={{
-            backgroundColor: '#e6f0fa',
+            background: 'linear-gradient(90deg, #e6f0fa 0%, #d6e6ff 100%)',
             borderRadius: '12px 12px 0 0',
             fontWeight: 600,
             color: '#0052cc',
             padding: '16px 24px',
             fontSize: '18px',
+            borderBottom: '2px solid #007bff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}
+          extra={
+            <div
+              style={{
+                textAlign: 'right',
+                fontSize: '14px',
+                color: '#4b5e77',
+                lineHeight: '1.5',
+              }}
+            >
+              <div><strong>Paciente:</strong> {getPacienteNome(selectedRequisicao)}</div>
+              <div><strong>Médico:</strong> {getUsuarioNome(selectedRequisicao)}</div>
+              <div><strong>Data/Hora:</strong> {parseDate(selectedRequisicao.data, 'Data da Requisição', selectedRequisicao)}</div>
+            </div>
+          }
+          styles={{ body: { padding: '24px', backgroundColor: '#f9fbff' } }}
         >
-          <Table
-            columns={examesColumns}
-            dataSource={linhasRequisicao}
-            rowKey="id"
-            style={{ borderRadius: '12px', overflow: 'hidden' }}
-          />
-          <Button
-            type="primary"
+          <div
             style={{
-              marginTop: '24px',
-              backgroundColor: allLinhasInseridas ? '#0052cc' : '#d9e1f2',
-              borderColor: allLinhasInseridas ? '#0052cc' : '#d9e1f2',
-              color: allLinhasInseridas ? '#fff' : '#4b5e77',
-              borderRadius: '6px',
-              padding: '8px 24px',
-              fontWeight: 500,
-              fontSize: '16px',
-              width: '100%',
-              maxWidth: '200px',
-              transition: 'all 0.3s ease',
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #e6f0fa',
+              boxShadow: '0 4px 12px rgba(0, 82, 204, 0.1)',
+              padding: '16px',
+              marginBottom: '24px',
             }}
-            onClick={handleFinalizarExame}
-            disabled={!allLinhasInseridas}
-            loading={loading}
           >
-            Finalizar
-          </Button>
+            <Table
+              columns={examesColumns}
+              dataSource={linhasRequisicao}
+              rowKey="id"
+              pagination={false}
+              style={{
+                borderRadius: '12px',
+                overflow: 'hidden',
+                backgroundColor: '#fff',
+              }}
+              rowClassName={(record, index) => index % 2 === 0 ? 'table-row-light' : 'table-row-dark'}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+            <Button
+              type="primary"
+              style={{
+                backgroundColor: allLinhasInseridas ? '#007bff' : '#d9e1f2',
+                borderColor: allLinhasInseridas ? '#007bff' : '#d9e1f2',
+                color: allLinhasInseridas ? '#fff' : '#4b5e77',
+                borderRadius: '8px',
+                padding: '8px 24px',
+                fontWeight: 600,
+                fontSize: '16px',
+                transition: 'all 0.3s ease',
+                transform: 'scale(1)',
+              }}
+              onClick={handleFinalizarExame}
+              disabled={!allLinhasInseridas}
+              loading={loading}
+              onMouseEnter={(e) => {
+                if (allLinhasInseridas) {
+                  e.currentTarget.style.backgroundColor = '#0056b3';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 123, 255, 0.3)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (allLinhasInseridas) {
+                  e.currentTarget.style.backgroundColor = '#007bff';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
+              }}
+            >
+              Finalizar
+            </Button>
+          </div>
         </Card>
       ) : (
         <Card
           style={{
             borderRadius: '12px',
-            boxShadow: '0 6px 16px rgba(0, 82, 204, 0.1)',
-            backgroundColor: '#fff',
+            boxShadow: '0 6px 20px rgba(0, 82, 204, 0.15)',
+            backgroundColor: '#ffffff',
             overflow: 'hidden',
+            border: '1px solid #e6f0fa',
             textAlign: 'center',
           }}
+          styles={{ body: { padding: '24px', backgroundColor: '#f9fbff' } }}
         >
           <Text
             style={{
@@ -716,6 +1027,9 @@ function AvaliacaoExameRequisitado({
               fontSize: '16px',
               display: 'block',
               padding: '24px',
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 82, 204, 0.1)',
             }}
           >
             Selecione uma requisição para ver os exames.
@@ -724,23 +1038,26 @@ function AvaliacaoExameRequisitado({
       )}
 
       <Modal
-        title="Resultado do Exame"
+        title="Registrar Resultado do Exame"
         open={isModalVisible}
         onCancel={handleCancel}
         footer={null}
-        style={{ borderRadius: '12px' }}
-        bodyStyle={{
-          backgroundColor: '#fff',
-          padding: '24px',
-          borderRadius: '0 0 12px 12px',
-        }}
-        titleStyle={{
-          backgroundColor: '#e6f0fa',
-          color: '#0052cc',
-          fontWeight: 600,
-          fontSize: '18px',
-          padding: '16px 24px',
-          borderRadius: '12px 12px 0 0',
+        style={{ borderRadius: '12px', overflow: 'hidden' }}
+        styles={{
+          body: {
+            backgroundColor: '#ffffff',
+            padding: '24px',
+            borderRadius: '0 0 12px 12px',
+          },
+          header: {
+            background: 'linear-gradient(90deg, #e6f0fa 0%, #d6e6ff 100%)',
+            color: '#0052cc',
+            fontWeight: 600,
+            fontSize: '18px',
+            padding: '16px 24px',
+            borderRadius: '12px 12px 0 0',
+            borderBottom: '2px solid #007bff',
+          },
         }}
       >
         {selectedExame && (
@@ -764,10 +1081,11 @@ function AvaliacaoExameRequisitado({
               <InputNumber
                 style={{
                   width: '100%',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   border: '1px solid #d9e1f2',
                   padding: '8px',
                   fontSize: '14px',
+                  boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)',
                 }}
               />
             </Form.Item>
@@ -776,17 +1094,18 @@ function AvaliacaoExameRequisitado({
                 rows={4}
                 placeholder="Observações sobre o exame"
                 style={{
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   border: '1px solid #d9e1f2',
                   padding: '8px',
                   fontSize: '14px',
+                  boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)',
                 }}
               />
             </Form.Item>
             <Form.Item
               style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'center',
                 gap: '12px',
                 marginTop: '24px',
               }}
@@ -801,14 +1120,25 @@ function AvaliacaoExameRequisitado({
                   type="primary"
                   loading={loading}
                   style={{
-                    backgroundColor: '#0052cc',
-                    borderColor: '#0052cc',
+                    backgroundColor: '#007bff',
+                    borderColor: '#007bff',
                     color: '#fff',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     padding: '8px 24px',
-                    fontWeight: 500,
+                    fontWeight: 600,
                     fontSize: '14px',
                     transition: 'all 0.3s ease',
+                    transform: 'scale(1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0056b3';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 123, 255, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#007bff';
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   Adicionar Resultado
@@ -817,13 +1147,24 @@ function AvaliacaoExameRequisitado({
               <Button
                 onClick={handleCancel}
                 style={{
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   border: '1px solid #d9e1f2',
                   color: '#4b5e77',
                   padding: '8px 24px',
-                  fontWeight: 500,
+                  fontWeight: 600,
                   fontSize: '14px',
                   transition: 'all 0.3s ease',
+                  transform: 'scale(1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e6f0fa';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 82, 204, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fff';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
                 Cancelar
@@ -832,6 +1173,234 @@ function AvaliacaoExameRequisitado({
           </Form>
         )}
       </Modal>
+
+      <Modal
+        title="Reabrir e Editar Exame"
+        open={isReopenModalVisible}
+        onCancel={() => {
+          setIsReopenModalVisible(false);
+          setExameToReopen(null);
+          reopenForm.resetFields();
+        }}
+        footer={null}
+        style={{ borderRadius: '12px', overflow: 'hidden' }}
+        styles={{
+          body: {
+            backgroundColor: '#ffffff',
+            padding: '24px',
+            borderRadius: '0 0 12px 12px',
+          },
+          header: {
+            background: 'linear-gradient(90deg, #e6f0fa 0%, #d6e6ff 100%)',
+            color: '#0052cc',
+            fontWeight: 600,
+            fontSize: '18px',
+            padding: '16px 24px',
+            borderRadius: '12px 12px 0 0',
+            borderBottom: '2px solid #007bff',
+          },
+        }}
+      >
+        {exameToReopen && (
+          <Form
+            form={reopenForm}
+            layout="vertical"
+            onFinish={handleConfirmReopen}
+            style={{ padding: '8px 0' }}
+          >
+            <Form.Item
+              name="exame"
+              label="Nome do Exame"
+              rules={[{ required: true, message: 'Insira o nome do exame' }]}
+            >
+              <Input
+                disabled
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid #d9e1f2',
+                  padding: '8px',
+                  fontSize: '14px',
+                  backgroundColor: '#f0f5ff',
+                  color: '#4b5e77',
+                }}
+              />
+            </Form.Item>
+            <Form.Item
+              name="hora"
+              label="Data e Hora"
+              rules={[{ required: true, message: 'Data e hora são obrigatórias' }]}
+            >
+              <Input
+                disabled
+                value={moment().format('DD/MM/YYYY HH:mm:ss')}
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid #d9e1f2',
+                  padding: '8px',
+                  fontSize: '14px',
+                  backgroundColor: '#f0f5ff',
+                  color: '#4b5e77',
+                }}
+              />
+            </Form.Item>
+            <Form.Item
+              name="valorReferencia"
+              label="Valor de Referência"
+              rules={[
+                { required: true, message: 'Insira o valor de referência' },
+                {
+                  validator: (_, value) =>
+                    !value || !isNaN(value) ? Promise.resolve() : Promise.reject('Valor deve ser numérico'),
+                },
+              ]}
+            >
+              <InputNumber
+                style={{
+                  width: '100%',
+                  borderRadius: '8px',
+                  border: '1px solid #d9e1f2',
+                  padding: '8px',
+                  fontSize: '14px',
+                  boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)',
+                }}
+              />
+            </Form.Item>
+            <Form.Item name="observacao" label="Observação">
+              <Input.TextArea
+                rows={4}
+                placeholder="Observações sobre o exame"
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid #d9e1f2',
+                  padding: '8px',
+                  fontSize: '14px',
+                  boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)',
+                }}
+              />
+            </Form.Item>
+            <Form.Item
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '12px',
+                marginTop: '24px',
+              }}
+            >
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                style={{
+                  backgroundColor: '#007bff',
+                  borderColor: '#007bff',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  padding: '8px 24px',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  transition: 'all 0.3s ease',
+                  transform: 'scale(1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0056b3';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 123, 255, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#007bff';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Salvar Alterações
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsReopenModalVisible(false);
+                  setExameToReopen(null);
+                  reopenForm.resetFields();
+                }}
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid #d9e1f2',
+                  color: '#4b5e77',
+                  padding: '8px 24px',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  transition: 'all 0.3s ease',
+                  transform: 'scale(1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e6f0fa';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 82, 204, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fff';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Cancelar
+              </Button>
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
+      <style jsx global>{`
+        .table-row-light {
+          background-color: #ffffff;
+        }
+        .table-row-dark {
+          background-color: #f9fbff;
+        }
+        .ant-table-thead > tr > th {
+          background: linear-gradient(90deg, #e6f0fa 0%, #d6e6ff 100%) !important;
+          color: #0052cc !important;
+          font-weight: 600 !important;
+          font-size: 14px !important;
+          padding: 12px 16px !important;
+          border-bottom: 2px solid #007bff !important;
+        }
+        .ant-table-tbody > tr > td {
+          padding: 12px 16px !important;
+          font-size: 14px !important;
+          color: #4b5e77 !important;
+          border-bottom: 1px solid #e6f0fa !important;
+          transition: background-color 0.3s ease !important;
+        }
+        .ant-table-tbody > tr:hover > td {
+          background-color: #e6f0fa !important;
+        }
+        .ant-table-container {
+          border-radius: 12px !important;
+          overflow: hidden !important;
+        }
+        .ant-table {
+          background-color: #ffffff !important;
+        }
+        .ant-table-selection-column {
+          background: #e6f0fa !important;
+        }
+        @media (max-width: 768px) {
+          .ant-table-tbody > tr > td {
+            padding: 8px !important;
+            font-size: 12px !important;
+          }
+          .ant-table-thead > tr > th {
+            font-size: 12px !important;
+            padding: 8px !important;
+          }
+          .ant-btn {
+            padding: 4px 12px !important;
+            font-size: 12px !important;
+          }
+          .ant-card-extra {
+            font-size: 12px !important;
+            line-height: 1.4 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
