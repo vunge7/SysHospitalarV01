@@ -8,6 +8,7 @@ import Rodape from '../../components/Rodape';
 
 import {
     MenuFoldOutlined,
+    MenuUnfoldOutlined,
     HomeFilled,
     PoweroffOutlined,
 } from '@ant-design/icons';
@@ -77,19 +78,26 @@ function SideMenu(props) {
         } else navigate(key);
     };
 
+    const toggleCollapsed = () => {
+        setCollapsed(!collapsed);
+    };
+
     return (
-        <div
-            style={{
-                width: collapsed ? 80 : 250,
-                transition: 'width 0.3s ease-in-out',
-                padding: 10,
-                height: 'auto',
-                overflow: 'hidden',
-            }}
-        >
+        <div style={{ width: collapsed ? 80 : 250, transition: 'width 0.3s ease-in-out', padding: 10, height: 'auto', overflow: 'hidden' }}>
+            <Button
+                type="primary"
+                onClick={toggleCollapsed}
+                style={{
+                    marginBottom: 16,
+                }}
+            >
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </Button>
+
             <Menu
                 onClick={({ key }) => onClick({ key })}
                 defaultSelectedKeys={[window.location.pathname]}
+                defaultOpenKeys={['sub1']}
                 mode="inline"
                 theme="light"
                 inlineCollapsed={collapsed}

@@ -69,7 +69,7 @@ const ProdutoForm = () => {
   const buscarProdutos = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('produto/all'); // Chamada para a rota 'produto/all'
+      const result = await api.get('/produto/all'); // Chamada para a rota '/produto/all'
       setProduto(result.data); // Armazena os produtos recebidos da API
     } catch (error) {
       console.log('Erro ao efetuar a chamada da API', error);
@@ -83,7 +83,7 @@ const ProdutoForm = () => {
   const buscarProdutosGrupos = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('productgroup/all');
+      const result = await api.get('/productgroup/all');
       const grupos = [...new Set(result.data.map(produto => produto.designacaoProduto))];
       setIdGroup([...new Set(result.data.map(produto => produto.id))]);
 
@@ -100,7 +100,7 @@ const ProdutoForm = () => {
   const buscarTiposProduto = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('producttype/all');
+      const result = await api.get('/producttype/all');
       const tipos = [...new Set(result.data.map(produto => produto.designacaoTipoProduto))];
       setIdType([...new Set(result.data.map(produto => produto.id))]);
       setTipoProduto(tipos);
@@ -133,7 +133,7 @@ const ProdutoForm = () => {
     console.log("Dados a serem enviados para o backend:", dataToSubmit);  // Verifique os dados enviados
 
     if (statusSendEdit == false) {
-      const response = await api.post('produto/add', dataToSubmit)
+      const response = await api.post('/produto/add', dataToSubmit)
         .then((result) => {
           buscarProdutos();
           setModalIsOpen(false);
@@ -147,7 +147,7 @@ const ProdutoForm = () => {
         })
     } else {
       const dataSubmit = { ...{}, status: true, id: id, productType: t, productGroup: g, preco: p, taxIva: i, productNumberCode: nc, productDescription: d, productCode: c };
-      const response = await api.put('produto/edit', dataSubmit)
+      const response = await api.put(`/produto/${dataSubmit.id}`, dataSubmit)
         .then((result) => {
           console.log('Dados Editados com sucess!...');
           buscarProdutos();
@@ -213,7 +213,7 @@ const ProdutoForm = () => {
 
   const onConfirmar = async (data) => {
     const dataSubmit = { ...produtoRemover, status: false, id: produtoRemover.id };
-    const response = await api.put('produto/del', dataSubmit)
+    const response = await api.patch(`/produto/${dataSubmit.id}/status`, null, { params: { status: false } })
       .then((result) => {
         console.log('O produto removido com sucesso!...', dataSubmit);
         buscarProdutos();

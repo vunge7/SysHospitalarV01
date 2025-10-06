@@ -110,10 +110,10 @@ const ListarProduto = () => {
     setCarregar(true);
     try {
       const [unidadesRes, gruposRes, tiposRes, produtosRes] = await Promise.all([
-        api.get('unidade/all'),
-        api.get('productgroup/all'),
-        api.get('producttype/all'),
-        api.get('produto/all'),
+        api.get('/unidade/all'),
+        api.get('/productgroup/all'),
+        api.get('/producttype/all'),
+        api.get('/produto/all'),
       ]);
       setUnidades(unidadesRes.data);
       const newGruposMap = {};
@@ -191,7 +191,7 @@ const ListarProduto = () => {
         console.log(`${key}: ${value instanceof File ? value.name : value}`);
       }
 
-      await api.put('produto/edit', formData, {
+      await api.put(`/produto/${id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Produto editado com sucesso!', { autoClose: 2000 });
@@ -259,7 +259,7 @@ const ListarProduto = () => {
   const onConfirmar = async () => {
     setCarregar(true);
     try {
-      await api.put('produto/del', { id: produtoRemover.id, status: false });
+      await api.patch(`/produto/${produtoRemover.id}/status`, null, { params: { status: false } });
       toast.success('Produto removido com sucesso!', { autoClose: 2000 });
       fetchData();
       setModalIsOpenRemove(false);

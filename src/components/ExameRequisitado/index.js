@@ -52,10 +52,10 @@ const ExameRequisitado = (props) => {
             // Filtrar apenas exames pai (produtoPaiId == null)
             const pais = produtos.filter(p => p.produtoPaiId == null);
             const newData = pais.map(item => ({
-                id: item.id,
-                designacao: item.productDescription,
-                grupo: item.productGroup,
-                obs: '',
+                        id: item.id,
+                        designacao: item.productDescription,
+                        grupo: item.productGroup,
+                        obs: '',
             }));
             setListaFonteExame(newData);
         } catch (e) {

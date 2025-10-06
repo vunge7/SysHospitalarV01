@@ -1,13 +1,16 @@
 
 import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import { Form, Input, InputNumber, Button, Select, Table, Modal, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs } from 'antd';
-import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { Form, Input, InputNumber, Button, Select, Table, Modal, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs, Row, Col, Statistic } from 'antd';
+import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import moment from 'moment-timezone';
 import debounce from 'lodash/debounce';
 import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
 import './Farmacia.css';
 import { toast } from 'react-toastify';
+
+// Importar componentes personalizados
+import OperationForm from './components/OperationForm';
 
 
 
@@ -95,6 +98,8 @@ const Farmacia = () => {
 
   useEffect(() => {
     console.log('Produtos no Farmacia.js:', produtos);
+    console.log('Armazéns no Farmacia.js:', armazens);
+    console.log('Linhas de Lotes no Farmacia.js:', linhasLotes);
     console.log('ProductTypes no Farmacia.js:', productTypes);
     console.log('Mapeamento de produtos:', 
       produtos.map(p => ({
@@ -239,6 +244,22 @@ const Farmacia = () => {
     return produtosLote;
   };
 
+  // Função para obter produtos disponíveis baseado no tipo de operação
+  const getProdutosDisponiveis = (tipoOperacao, loteId) => {
+    if (tipoOperacao === 'ENTRADA') {
+      // Para entrada, mostrar todos os produtos
+      return produtos.map(produto => ({
+        id: produto.id,
+        produtoId: produto.id,
+        productDescription: produto.productDescription || 'Sem Descrição',
+        quantidade: 0, // Não há quantidade disponível para entrada
+      }));
+    } else {
+      // Para saída, transferência e anulação, mostrar apenas produtos do lote
+      return getProdutosByLote(loteId);
+    }
+  };
+
   const handleAddItem = async () => {
     try {
       const values = await form.validateFields(['loteId', 'produtoId', 'quantidade']);
@@ -266,12 +287,31 @@ const Farmacia = () => {
       }
       const tipoOperacao = form.getFieldValue('tipoOperacao');
       if (tipoOperacao === 'SAIDA' || tipoOperacao === 'TRANSFERENCIA' || tipoOperacao === 'ANULACAO') {
-        const existingLinha = linhasLotes.find(
-          (linha) => linha.lotes_id === values.loteId && linha.produto_id === produto.id
+        console.log('=== DEBUG handleAddItem - Verificação de quantidade ===');
+        console.log('Tipo de operação:', tipoOperacao);
+        console.log('Lote ID:', values.loteId, 'Produto ID:', produto.id);
+        console.log('Armazém ID:', form.getFieldValue('armazemId'));
+        
+        // Buscar TODAS as linhas do produto no lote (pode ter múltiplas entradas)
+        const linhasDoProduto = linhasLotes.filter(
+          (linha) => Number(linha.lotes_id) === Number(values.loteId) && 
+                     Number(linha.produto_id) === Number(produto.id) &&
+                     Number(linha.armazem_id) === Number(form.getFieldValue('armazemId'))
         );
-        const qtdDisponivel = existingLinha ? Number(existingLinha.quantidade) : 0;
+        
+        console.log('Linhas encontradas para o produto:', linhasDoProduto);
+        
+        // Calcular quantidade total disponível somando todas as linhas
+        const qtdDisponivel = linhasDoProduto.reduce((total, linha) => total + Number(linha.quantidade || 0), 0);
+        console.log('Quantidade total disponível:', qtdDisponivel, 'Quantidade solicitada:', values.quantidade);
+        
         if (qtdDisponivel < values.quantidade) {
-          toast.error(`Quantidade insuficiente no lote ${lote.designacao} para o produto ${produto.productDescription} (Disponível: ${qtdDisponivel})`);
+          toast.error(`Quantidade insuficiente no lote ${lote.designacao} para o produto ${produto.productDescription} (Disponível: ${qtdDisponivel}, Solicitado: ${values.quantidade})`);
+          return;
+        }
+        
+        if (qtdDisponivel === 0) {
+          toast.error(`Produto ${produto.productDescription} não possui estoque disponível no lote ${lote.designacao}`);
           return;
         }
       }
@@ -314,23 +354,38 @@ const Farmacia = () => {
       toast.warning('Adicione pelo menos um item à operação antes de salvar.');
       return;
     }
-    let tipoOperacao = form.getFieldValue('tipoOperacao');
-    let validateFieldsArr = ['tipoOperacao', 'armazemId', 'descricao'];
+    
+    const tipoOperacao = form.getFieldValue('tipoOperacao');
     if (!tipoOperacao) {
       toast.warning('Selecione o tipo de operação antes de iniciar.');
       return;
     }
+
+    try {
+      console.log('=== DEBUG handleSaveOperacao ===');
+      console.log('tipoOperacao:', tipoOperacao);
+      console.log('tempItens:', tempItens);
+      console.log('loading:', loading);
+      
+      // Validações específicas por tipo de operação
+      const validateFieldsArr = ['tipoOperacao', 'armazemId', 'descricao'];
     if (tipoOperacao === 'TRANSFERENCIA') {
       validateFieldsArr.push('armazemDestinoId');
       validateFieldsArr.push('loteIdDestino');
     }
-    try {
+
+      console.log('validateFieldsArr:', validateFieldsArr);
       const values = await form.validateFields(validateFieldsArr);
+      console.log('values após validação:', values);
+      
+      // Validações de armazém
       const armazem = armazens.find((a) => a.id === values.armazemId);
       if (!armazem) {
         toast.error(`Armazém inválido: ID ${values.armazemId}`);
         return;
       }
+
+      // Validações específicas para transferência
       if (tipoOperacao === 'TRANSFERENCIA') {
         if (!values.armazemDestinoId) {
           toast.error('Armazém de destino é obrigatório para TRANSFERENCIA');
@@ -349,37 +404,177 @@ const Farmacia = () => {
           toast.error('Lote de destino é obrigatório para TRANSFERENCIA');
           return;
         }
-        const loteOrigem = lotes.find((l) => l.id === values.loteId);
+        
+        // Para transferência, verificar se há itens com lotes de origem
+        if (tempItens.length === 0) {
+          toast.error('Adicione pelo menos um item à transferência');
+          return;
+        }
+        
+        // Verificar se todos os itens têm lotes válidos
+        console.log('=== DEBUG TRANSFERÊNCIA ===');
+        console.log('tempItens:', tempItens);
+        console.log('lotes disponíveis:', lotes.map(l => ({ id: l.id, designacao: l.designacao })));
+        
+        for (const item of tempItens) {
+          console.log('Verificando item:', item);
+          console.log('item.loteId:', item.loteId, 'tipo:', typeof item.loteId);
+          
+          const loteOrigem = lotes.find((l) => l.id === item.loteId);
+          console.log('loteOrigem encontrado:', loteOrigem);
+          
+          if (!loteOrigem) {
+            console.error('Lote não encontrado para item:', item);
+            toast.error(`Lote de origem não encontrado: ID ${item.loteId}`);
+            return;
+          }
+        }
+        
         const loteDestino = lotes.find((l) => l.id === values.loteIdDestino);
-        if (loteOrigem.id === loteDestino.id) {
+        if (!loteDestino) {
+          toast.error('Lote de destino não encontrado');
+          return;
+        }
+        
+        // Verificar se algum item tem o mesmo lote de origem e destino
+        for (const item of tempItens) {
+          if (item.loteId === values.loteIdDestino) {
           toast.error('O lote de origem e o de destino não podem ser iguais na transferência.');
           return;
         }
       }
+      }
+
+      // Validações específicas para anulação
+      if (tipoOperacao === 'ANULACAO') {
+        console.log('=== DEBUG ANULAÇÃO - Iniciando validações ===');
+        console.log('TempItens:', tempItens);
+        console.log('Valores do formulário:', values);
+        
+        if (tempItens.length === 0) {
+          toast.error('Adicione pelo menos um item para anular');
+          return;
+        }
+        
+        for (const item of tempItens) {
+          console.log('=== DEBUG ANULAÇÃO - Verificando item ===');
+          console.log('Item:', item);
+          
+          const produto = produtos.find(p => p.id === item.produtoId);
+          const lote = lotes.find(l => l.id === item.loteId);
+          
+          if (!produto || !lote) {
+            toast.error('Produto ou lote não encontrado');
+            return;
+          }
+          
+          // Verificar se o produto existe no lote
+          const existingLinha = linhasLotes.find(
+            (linha) => Number(linha.lotes_id) === Number(item.loteId) && 
+                       Number(linha.produto_id) === Number(item.produtoId) &&
+                       Number(linha.armazem_id) === Number(values.armazemId)
+          );
+          
+          if (!existingLinha) {
+            toast.error(`Produto ${produto.designacao || produto.productDescription} não encontrado no lote ${lote.designacao} para anulação`);
+            return;
+          }
+          
+          // Verificar se há quantidade suficiente para anular
+          if (Number(existingLinha.quantidade) < Number(item.quantidade)) {
+            toast.error(`Quantidade insuficiente para anular o produto ${produto.designacao || produto.productDescription} no lote ${lote.designacao} (Disponível: ${existingLinha.quantidade})`);
+            return;
+          }
+        }
+        
+        console.log('=== DEBUG ANULAÇÃO - Validações passaram, prosseguindo ===');
+      }
+
       setLoading(true);
       toast.loading({ content: 'Salvando operação, aguarde...', key: 'salvandoOperacao', duration: 0 });
       
-      // Corrige DTO para ANULACAO: backend pode exigir campos específicos
+      // Função para distribuir retirada entre múltiplas linhas de lote
+      const distribuirRetirada = (linhasDoProduto, quantidadeARetirar) => {
+        const linhasOrdenadas = [...linhasDoProduto].sort((a, b) => Number(b.quantidade) - Number(a.quantidade));
+        const distribuicao = [];
+        let quantidadeRestante = quantidadeARetirar;
+        
+        for (const linha of linhasOrdenadas) {
+          if (quantidadeRestante <= 0) break;
+          
+          const quantidadeDisponivel = Number(linha.quantidade);
+          const quantidadeRetirar = Math.min(quantidadeDisponivel, quantidadeRestante);
+          
+          distribuicao.push({
+            linhaId: linha.id,
+            quantidadeRetirar: quantidadeRetirar,
+            quantidadeRestante: Math.max(0, quantidadeDisponivel - quantidadeRetirar)
+          });
+          
+          quantidadeRestante -= quantidadeRetirar;
+        }
+        
+        return distribuicao;
+      };
+
+      // Preparar linhas da operação
       const linhasOperacao = tempItens.map((item) => {
         const produto = produtos.find((p) => p.id === item.produtoId);
         const lote = lotes.find((l) => l.id === item.loteId);
-        const existingLinha = linhasLotes.find(
-          (linha) => linha.lotes_id === item.loteId && linha.produto_id === produto.id
+        
+        // Validações de segurança
+        if (!produto) {
+          throw new Error(`Produto não encontrado: ID ${item.produtoId}`);
+        }
+        if (!lote) {
+          throw new Error(`Lote não encontrado: ID ${item.loteId}`);
+        }
+        
+        // Buscar TODAS as linhas do produto no lote (pode ter múltiplas entradas)
+        const linhasDoProduto = linhasLotes.filter(
+          (linha) => Number(linha.lotes_id) === Number(item.loteId) && 
+                     Number(linha.produto_id) === Number(produto.id) &&
+                     Number(linha.armazem_id) === Number(values.armazemId)
         );
-        const qtdAnterior = existingLinha ? Number(existingLinha.quantidade) : 0;
+        
+        // Calcular quantidade total disponível
+        const qtdAnterior = linhasDoProduto.reduce((total, linha) => total + Number(linha.quantidade || 0), 0);
         let qtdActual = qtdAnterior;
         let qtdOperacao = Number(item.quantidade);
 
+        // Calcular nova quantidade baseada no tipo de operação
+        console.log(`=== DEBUG CÁLCULO ${tipoOperacao} ===`);
+        console.log('Produto:', produto.designacao || produto.productDescription);
+        console.log('Lote:', lote.designacao);
+        console.log('qtdAnterior:', qtdAnterior);
+        console.log('qtdOperacao:', qtdOperacao);
+
         if (tipoOperacao === 'ENTRADA') {
           qtdActual = qtdAnterior + qtdOperacao;
-        } else if (tipoOperacao === 'SAIDA' || tipoOperacao === 'TRANSFERENCIA') {
+          console.log('ENTRADA - qtdActual:', qtdActual);
+        } else if (['SAIDA', 'TRANSFERENCIA'].includes(tipoOperacao)) {
           if (qtdAnterior < qtdOperacao) {
-            throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote?.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
+            throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || produto.designacao || 'Sem Descrição'} no lote ${lote.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
           }
           qtdActual = qtdAnterior - qtdOperacao;
+          console.log(`${tipoOperacao} - qtdActual:`, qtdActual);
         } else if (tipoOperacao === 'ANULACAO') {
-          qtdOperacao = 0;
-          qtdActual = qtdAnterior; // Não altera o estoque
+          // Para anulação, REMOVER a quantidade do produto do lote
+          console.log('ANULAÇÃO - Verificando quantidade disponível...');
+          console.log('qtdAnterior:', qtdAnterior, 'qtdOperacao:', qtdOperacao);
+          
+          if (qtdAnterior < qtdOperacao) {
+            throw new Error(`Quantidade insuficiente para anular o produto ${produto.productDescription || produto.designacao || 'Sem Descrição'} no lote ${lote.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
+          }
+          
+          qtdActual = qtdAnterior - qtdOperacao;
+          console.log('ANULAÇÃO - qtdActual calculada:', qtdActual);
+          
+          // Se a quantidade resultante for 0 ou negativa, definir como 0
+          if (qtdActual <= 0) {
+            qtdActual = 0;
+            console.log('ANULAÇÃO - Quantidade ajustada para 0');
+          }
         }
 
         const linha = {
@@ -390,23 +585,18 @@ const Farmacia = () => {
           qtdAnterior: qtdAnterior.toString(),
           qtdOperacao: qtdOperacao.toString(),
           qtdActual: qtdActual.toString(),
-          armazemIdDestino: tipoOperacao === 'TRANSFERENCIA' ? values.armazemDestinoId : null,
-          loteIdDestino: tipoOperacao === 'TRANSFERENCIA' ? values.loteIdDestino : null,
           operacaoStockId: null, // será preenchido no backend
         };
-        // Remover campos não usados em cada operação
-        if (tipoOperacao !== 'TRANSFERENCIA') {
-          delete linha.armazemIdDestino;
-          delete linha.loteIdDestino;
+
+        // Adicionar campos específicos para transferência
+        if (tipoOperacao === 'TRANSFERENCIA') {
+          linha.armazemIdDestino = values.armazemDestinoId;
+          linha.loteIdDestino = values.loteIdDestino;
         }
-        if (tipoOperacao === 'ANULACAO') {
-          // Para anulação, garantir que qtdOperacao seja zero e remover campos de destino
-          linha.qtdOperacao = '0';
-          delete linha.armazemIdDestino;
-          delete linha.loteIdDestino;
-        }
+
         return linha;
       });
+
       const OperacaoStockDTO = {
         id: editOperacaoId || null,
         dataOperacao: moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm:ss'),
@@ -416,85 +606,268 @@ const Farmacia = () => {
         descricao: values.descricao || `Operação ${values.tipoOperacao}`,
         linhas: linhasOperacao,
       };
-      // LOG: Payload enviado para a API
+
       console.log('Payload OperacaoStockDTO:', OperacaoStockDTO);
+      
       const endpoint = editOperacaoId ? `/operacao-stock/edit-with-linhas/${editOperacaoId}` : '/operacao-stock/add-with-linhas';
       const method = editOperacaoId ? api.put : api.post;
-      await method(endpoint, OperacaoStockDTO);
-      let tipoMsg = '';
-      switch (values.tipoOperacao) {
-        case 'ENTRADA':
-          tipoMsg = 'Operação de entrada efectuada com sucesso!';
-          break;
-        case 'SAIDA':
-          tipoMsg = 'Operação de saída efectuada com sucesso!';
-          break;
-        case 'TRANSFERENCIA':
-          tipoMsg = 'Operação de transferência efectuada com sucesso!';
-          break;
-        case 'ANULACAO':
-          tipoMsg = 'Operação de anulação efectuada com sucesso!';
-          break;
-        default:
-          tipoMsg = 'Operação efectuada com sucesso!';
-      }
-      toast.success(tipoMsg, { autoClose: 2000 });
       
-      // Atualiza localmente as quantidades dos produtos em lote
-      setLinhasLotes((prev) => {
-        let updated = [...prev];
-        OperacaoStockDTO.linhas.forEach((linha) => {
-          const idx = updated.findIndex(
-            (l) => l.lotes_id === linha.loteIdOrigem && l.produto_id === linha.produtoId
-          );
-          if (idx !== -1) {
-
-            // Atualiza quantidade existente
-            updated[idx] = {
-              ...updated[idx],
+      const response = await method(endpoint, OperacaoStockDTO);
+      
+      // Mensagem de sucesso específica
+      const mensagens = {
+        'ENTRADA': 'Operação de entrada efectuada com sucesso!',
+        'SAIDA': 'Operação de saída efectuada com sucesso!',
+        'TRANSFERENCIA': 'Operação de transferência efectuada com sucesso!',
+        'ANULACAO': 'Operação de anulação efectuada com sucesso!'
+      };
+      
+      toast.success(mensagens[tipoOperacao] || 'Operação efectuada com sucesso!', { autoClose: 2000 });
+      
+            // Atualizar linhas de lotes localmente e no backend
+      const atualizarLinhasLotes = async () => {
+        try {
+          console.log('=== DEBUG atualizarLinhasLotes ===');
+          console.log('Iniciando atualização de linhas de lote para operação:', tipoOperacao);
+          console.log('Linhas a processar:', OperacaoStockDTO.linhas);
+          console.log('values.armazemId:', values.armazemId);
+          
+          for (const linha of OperacaoStockDTO.linhas) {
+            console.log('Processando linha:', linha);
+            
+            // Validações de segurança
+            if (!linha || !linha.loteIdOrigem || !linha.produtoId) {
+              console.error('Linha inválida:', linha);
+              continue; // Pular linha inválida
+            }
+            
+            if (tipoOperacao === 'TRANSFERENCIA') {
+              // Validações específicas para transferência
+              if (!values.loteIdDestino || !values.armazemDestinoId) {
+                console.error('Dados de destino inválidos para transferência');
+                continue;
+              }
+              
+              // Para transferência, atualizar origem e destino
+              const existingLinhaOrigem = linhasLotes.find(
+                (l) => Number(l.lotes_id) === Number(linha.loteIdOrigem) && 
+                       Number(l.produto_id) === Number(linha.produtoId) && 
+                       Number(l.armazem_id) === Number(values.armazemId)
+              );
+              
+              const existingLinhaDestino = linhasLotes.find(
+                (l) => Number(l.lotes_id) === Number(values.loteIdDestino) && 
+                       Number(l.produto_id) === Number(linha.produtoId) && 
+                       Number(l.armazem_id) === Number(values.armazemDestinoId)
+              );
+              
+              // Atualizar origem (diminuir quantidade)
+              if (existingLinhaOrigem) {
+                const linhasLotesDTOOrigem = {
+                  id: existingLinhaOrigem.id,
+                  lotes_id: linha.loteIdOrigem,
+                  produto_id: linha.produtoId,
               quantidade: linha.qtdActual,
-            };
-          } else if (OperacaoStockDTO.tipoOperacao === 'ENTRADA') {
-
-            // Adiciona nova linha para entrada
-            updated.push({
-              id: Date.now() + Math.random(),
+                  armazem_id: values.armazemId,
+                };
+                console.log('Atualizando origem (transferência):', linhasLotesDTOOrigem);
+                // CORREÇÃO: Usar endpoint correto sem ID na URL
+                await api.put(`/linhaslotes/edit`, linhasLotesDTOOrigem);
+              }
+              
+              // Atualizar/criar destino (aumentar quantidade)
+              if (existingLinhaDestino) {
+                const novaQuantidadeDestino = Number(existingLinhaDestino.quantidade) + Number(linha.qtdOperacao);
+                const linhasLotesDTODestino = {
+                  id: existingLinhaDestino.id,
+                  lotes_id: values.loteIdDestino,
+                  produto_id: linha.produtoId,
+                  quantidade: novaQuantidadeDestino,
+                  armazem_id: values.armazemDestinoId,
+                };
+                console.log('Atualizando destino (transferência):', linhasLotesDTODestino);
+                // CORREÇÃO: Usar endpoint correto sem ID na URL
+                await api.put(`/linhaslotes/edit`, linhasLotesDTODestino);
+              } else {
+                const linhasLotesDTODestino = {
+                  lotes_id: values.loteIdDestino,
+                  produto_id: linha.produtoId,
+                  quantidade: Number(linha.qtdOperacao),
+                  armazem_id: values.armazemDestinoId,
+                };
+                console.log('Criando destino (transferência):', linhasLotesDTODestino);
+                await api.post('/linhaslotes/add', linhasLotesDTODestino);
+              }
+            } else {
+              // Para outras operações (ENTRADA, SAÍDA, ANULAÇÃO)
+              // Validação de segurança para armazém
+              if (!values.armazemId) {
+                console.error('Armazém de origem não definido');
+                continue;
+              }
+              
+              // Buscar TODAS as linhas do produto no lote
+              const linhasDoProduto = linhasLotes.filter(
+                (l) => Number(l.lotes_id) === Number(linha.loteIdOrigem) && 
+                       Number(l.produto_id) === Number(linha.produtoId) && 
+                       Number(l.armazem_id) === Number(values.armazemId)
+              );
+              
+              console.log('=== DEBUG atualizarLinhasLotes ===');
+              console.log('Procurando linhas com:', {
               lotes_id: linha.loteIdOrigem,
               produto_id: linha.produtoId,
-              quantidade: linha.qtdActual,
-            });
+                armazem_id: values.armazemId
+              });
+              console.log('Linhas encontradas:', linhasDoProduto);
+              console.log('Tipo de operação:', tipoOperacao);
+              console.log('Quantidade da operação:', linha.qtdOperacao);
+              
+              if (tipoOperacao === 'ENTRADA') {
+                // Para entrada, sempre criar nova linha
+                const linhasLotesDTO = {
+                  lotes_id: linha.loteIdOrigem,
+                  produto_id: linha.produtoId,
+                  quantidade: linha.qtdOperacao,
+                  armazem_id: values.armazemId,
+                };
+                
+                console.log('Criando nova linha para entrada:', linhasLotesDTO);
+                await api.post('/linhaslotes/add', linhasLotesDTO);
+              } else if (linhasDoProduto.length > 0) {
+                // Para SAIDA, TRANSFERENCIA, ANULACAO - distribuir retirada
+                console.log(`=== DEBUG ${tipoOperacao} - Distribuindo retirada ===`);
+                console.log('Linhas do produto:', linhasDoProduto);
+                console.log('Quantidade a retirar:', linha.qtdOperacao);
+                
+                const distribuicao = distribuirRetirada(linhasDoProduto, Number(linha.qtdOperacao));
+                console.log('Distribuição calculada:', distribuicao);
+                
+                for (const item of distribuicao) {
+                  const linhaOriginal = linhasDoProduto.find(l => l.id === item.linhaId);
+                  if (linhaOriginal) {
+                    const linhasLotesDTO = {
+                      id: linhaOriginal.id,
+                      lotes_id: linha.loteIdOrigem,
+                      produto_id: linha.produtoId,
+                      quantidade: item.quantidadeRestante,
+                      armazem_id: values.armazemId,
+                    };
+                    
+                    console.log(`${tipoOperacao} - Atualizando linha ${linhaOriginal.id}:`, linhasLotesDTO);
+                    console.log(`Quantidade anterior: ${linhaOriginal.quantidade}, Nova quantidade: ${item.quantidadeRestante}`);
+                    
+                    await api.put(`/linhaslotes/edit`, linhasLotesDTO);
+                    console.log(`${tipoOperacao} - Linha ${linhaOriginal.id} atualizada com sucesso`);
+                  }
+                }
+              } else {
+                // Para operações de retirada (SAIDA, TRANSFERENCIA, ANULACAO), se não existe linha, não há o que processar
+                console.log(`${tipoOperacao}: Linha não encontrada, não há o que processar`);
+                console.log('Dados da linha:', linha);
+                console.log('Produto ID:', linha.produtoId, 'Lote ID:', linha.loteIdOrigem);
+                toast.warning(`Produto ${linha.produtoId} não encontrado no lote ${linha.loteIdOrigem} para ${tipoOperacao.toLowerCase()}`);
+              }
+            }
           }
-        });
-        return updated;
-      });
+          
+          // Atualizar lista de linhas de lotes
+          const linhasLotesRes = await api.get('/linhaslotes/all');
+          setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
+          
+          console.log('Atualização de linhas de lote concluída com sucesso');
+          
+        } catch (error) {
+          console.error('Erro ao atualizar linhas de lote:', error);
+          console.error('Detalhes do erro:', error.response?.data);
+          console.error('Status do erro:', error.response?.status);
+          console.error('Mensagem do erro:', error.response?.data?.message || error.message);
+          
+          // Mostrar notificação de erro em vez de quebrar o fluxo
+          toast.error({
+            content: 'Operação salva, mas houve erro ao atualizar linhas de lote',
+            duration: 6,
+            onClose: () => {
+              // Limpar o toast de loading se ainda estiver ativo
+              toast.dismiss('salvandoOperacao');
+            }
+          });
+        }
+      };
+      
+      // Executar atualização das linhas de lote
+      await atualizarLinhasLotes();
 
-      // Atualiza lista de operações
+      // Atualizar lista de operações
       const operacoesRes = await api.get('/operacao-stock/all');
       setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
+      
+      // Atualizar dados do contexto para refletir mudanças em todas as páginas
+      const atualizarDadosGlobais = async () => {
+        try {
+          const [lotesRes, linhasLotesRes] = await Promise.all([
+            api.get('/lotes/all'),
+            api.get('/linhaslotes/all')
+          ]);
+          
+          setLotes(Array.isArray(lotesRes.data) ? lotesRes.data : []);
+          setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
+          
+          console.log('Dados globais atualizados com sucesso');
+        } catch (error) {
+          console.error('Erro ao atualizar dados globais:', error);
+        }
+      };
+      
+      await atualizarDadosGlobais();
+      
+      // Limpar formulário e estados
       setTempItens([]);
       setEditOperacaoId(null);
       setEditItemId(null);
       setSelectedLoteId(null);
       form.resetFields();
 
-      // Foca no tipo de operação para nova acção
-      setTimeout(() => {
-        form.setFieldsValue({ tipoOperacao: undefined });
-      }, 300);
+      // Limpar campos específicos para garantir limpeza completa
+      form.setFieldsValue({
+        tipoOperacao: undefined,
+        armazemId: undefined,
+        armazemDestinoId: undefined,
+        loteIdDestino: undefined,
+        descricao: undefined,
+        produtoId: undefined,
+        quantidade: undefined,
+        loteId: undefined
+      });
+
     } catch (error) {
       let backendMsg = error.response?.data?.message || error.response?.data?.error;
       let msg = backendMsg || error.message || 'Erro ao salvar operação';
-      // LOG: Resposta de erro detalhada
+      
       console.error('Erro detalhado da API:', error.response?.data);
-      // Nova lógica: se vier um array de erros de validação do backend
+      console.error('Erro completo:', error);
+      
       if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
         msg = error.response.data.errors.map(e => e.defaultMessage || e.message || e).join(' | ');
       }
-      toast.error({ content: msg, key: 'salvandoOperacao', duration: 6 });
-      setError(msg);
+      
+      // Mostrar notificação de erro em vez de quebrar o fluxo
+      toast.error({ 
+        content: msg, 
+        key: 'salvandoOperacao', 
+        duration: 6,
+        onClose: () => {
+          // Limpar o toast de loading se ainda estiver ativo
+          toast.dismiss('salvandoOperacao');
+        }
+      });
+      
+      // Não definir setError para não quebrar o fluxo
       console.error('Erro ao salvar operação:', msg);
     } finally {
       setLoading(false);
+      // Limpar o toast de loading
+      toast.dismiss('salvandoOperacao');
     }
   };
 
@@ -651,6 +1024,8 @@ const Farmacia = () => {
     try {
       const productGroup = produtos.find((p) => p.id === values.produtoId);
       const lote = lotes.find((l) => l.id === values.lotes_id);
+      const armazem = armazens.find((a) => a.id === values.armazem_id);
+      
       if (!productGroup) {
         toast.error(`Produto inválido: ID ${values.produtoId}`);
         return;
@@ -659,19 +1034,27 @@ const Farmacia = () => {
         toast.error(`Lote inválido: ID ${values.lotes_id}`);
         return;
       }
+      if (!armazem) {
+        toast.error(`Armazém inválido: ID ${values.armazem_id}`);
+        return;
+      }
+      
       const linhasLotesDTO = {
         id: editLinhasLotesId || null,
         lotes_id: values.lotes_id,
         produto_id: values.produtoId,
+        armazem_id: values.armazem_id,
         quantidade: Number(values.quantidade),
       };
+      
       if (editLinhasLotesId) {
-        await api.put('/linhaslotes/edit', linhasLotesDTO);
+        await api.put(`/linhaslotes/edit/${editLinhasLotesId}`, linhasLotesDTO);
         toast.success('Linha de lote atualizada com sucesso');
       } else {
         await api.post('/linhaslotes/add', linhasLotesDTO);
         toast.success('Linha de lote adicionada com sucesso');
       }
+      
       setShowLinhasLotesModal(false);
       setEditLinhasLotesId(null);
       linhasLotesForm.resetFields();
@@ -706,35 +1089,100 @@ const Farmacia = () => {
   const handleVerProdutosLote = async (lote) => {
     setLoading(true);
     try {
-      const res = await api.get(`/linha-operacao-stock/lotes/${lote.id}`);
-      // Agrupar produtos iguais e somar as quantidades
-      const produtosLoteRaw = Array.isArray(res.data) ? res.data : [];
+      console.log('=== DEBUG handleVerProdutosLote ===');
+      console.log('Lote selecionado:', lote);
+      console.log('Dados do contexto:');
+      console.log('- armazens:', armazens.length, armazens.map(a => ({ id: a.id, designacao: a.designacao })));
+      console.log('- produtos:', produtos.length, produtos.slice(0, 3).map(p => ({ id: p.id, designacao: p.productDescription || p.designacao })));
+      console.log('- linhasLotes:', linhasLotes.length, linhasLotes.slice(0, 3));
+      
+      // Verificar se os dados estão disponíveis
+      if (!armazens || armazens.length === 0) {
+        console.error('Armazéns não estão disponíveis no contexto');
+        toast.error('Erro: Armazéns não carregados');
+        return;
+      }
+      
+      if (!produtos || produtos.length === 0) {
+        console.error('Produtos não estão disponíveis no contexto');
+        toast.error('Erro: Produtos não carregados');
+        return;
+      }
+      
+      if (!linhasLotes || linhasLotes.length === 0) {
+        console.error('Linhas de lotes não estão disponíveis no contexto');
+        toast.error('Erro: Linhas de lotes não carregadas');
+        return;
+      }
+      
+      // Usar dados do contexto em vez de fazer chamadas à API
+      const linhasDoLote = linhasLotes.filter(linha => Number(linha.lotes_id) === Number(lote.id));
+      
+      console.log('Linhas do lote específico:', linhasDoLote);
+      
+      if (linhasDoLote.length === 0) {
+        console.log('Nenhuma linha de lote encontrada para este lote');
+        setProdutosLoteModal([]);
+        setProdutosLoteModalTitle(lote.designacao);
+        setShowProdutosLoteModal(true);
+        return;
+      }
+      
+      // Agrupar produtos por produto e armazém
       const produtosMap = {};
-      produtosLoteRaw.forEach((linha) => {
-        // Corrigir: garantir que o campo correto é produto_id
-        const produtoId = linha.produto_id || linha.produtoId;
-        const produto = produtos.find((p) => p.id === produtoId);
-        const key = produtoId;
-        let quantidadeAtual = linha.qtdActual;
-        if (quantidadeAtual === undefined || quantidadeAtual === null) {
-          quantidadeAtual = linha.qtdOperacao !== undefined ? linha.qtdOperacao : linha.qtdAnterior || 0;
+      linhasDoLote.forEach((linha, index) => {
+        console.log(`\n--- Processando linha ${index + 1} ---`);
+        console.log('Linha completa:', linha);
+        
+        const produtoId = linha.produto_id;
+        const armazemId = linha.armazem_id;
+        
+        console.log('IDs extraídos:', { produtoId, armazemId });
+        console.log('Tipos:', { produtoId: typeof produtoId, armazemId: typeof armazemId });
+        
+        const produto = produtos.find((p) => Number(p.id) === Number(produtoId));
+        const armazem = armazens.find((a) => Number(a.id) === Number(armazemId));
+        
+        console.log('Produto encontrado:', produto);
+        console.log('Armazém encontrado:', armazem);
+        console.log('Armazém designacao:', armazem?.designacao);
+        console.log('Todos os armazéns disponíveis:', armazens.map(a => ({ id: a.id, designacao: a.designacao })));
+        
+        // Verificar se o armazém foi encontrado
+        if (!armazem) {
+          console.error(`Armazém com ID ${armazemId} não encontrado!`);
+          console.error('Armazéns disponíveis:', armazens.map(a => a.id));
         }
+        
+        // Chave única: produto + armazém
+        const key = `${produtoId}-${armazemId}`;
+        
         if (!produtosMap[key]) {
           produtosMap[key] = {
-            id: linha.id, // pode ser o primeiro id encontrado
+            id: linha.id,
             produtoId: produtoId,
-            productDescription: produto?.productDescription || 'Sem Descrição',
-            quantidade: Number(quantidadeAtual),
+            productDescription: produto?.productDescription || produto?.designacao || 'Sem Descrição',
+            armazem_id: armazemId,
+            armazem_nome: armazem?.designacao || `Armazém ID: ${armazemId}`,
+            quantidade: Number(linha.quantidade || 0),
           };
+          console.log('Novo produto criado:', produtosMap[key]);
         } else {
-          produtosMap[key].quantidade += Number(quantidadeAtual);
+          produtosMap[key].quantidade += Number(linha.quantidade || 0);
+          console.log('Quantidade atualizada para:', produtosMap[key].quantidade);
         }
       });
+      
       const produtosLote = Object.values(produtosMap);
+      console.log('\n=== Produtos do lote processados ===');
+      console.log(produtosLote);
+      
       setProdutosLoteModal(produtosLote);
       setProdutosLoteModalTitle(lote.designacao);
       setShowProdutosLoteModal(true);
     } catch (error) {
+      console.error('Erro ao buscar produtos do lote:', error);
+      console.error('Detalhes do erro:', error.response?.data || error.message);
       toast.error('Erro ao buscar produtos do lote');
     } finally {
       setLoading(false);
@@ -760,11 +1208,27 @@ const Farmacia = () => {
     {
       title: 'Produtos',
       key: 'produtos',
-      render: (_, record) => (
-        <Button icon={<UnorderedListOutlined />} size="small" onClick={() => handleVerProdutosLote(record)}>
+      render: (_, record) => {
+        // Verificar se o lote tem produtos
+        const temProdutos = linhasLotes.some(linha => Number(linha.lotes_id) === Number(record.id) && Number(linha.quantidade) > 0);
+        
+        return (
+          <Space>
+            {temProdutos ? (
+              <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+            ) : (
+              <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '16px' }} />
+            )}
+            <Button 
+              icon={<UnorderedListOutlined />} 
+              size="small" 
+              onClick={() => handleVerProdutosLote(record)}
+            >
           Ver Produtos
         </Button>
-      ),
+          </Space>
+        );
+      },
     },
     {
       title: 'Ações',
@@ -798,11 +1262,41 @@ const Farmacia = () => {
     },
   ];
 
-  // Remover a coluna 'Armazém' do modal de produtos do lote
+  // Colunas para o modal de produtos do lote
   const produtosPorLoteColumns = [
-    { title: 'ID', dataIndex: 'id', key: 'id' },
-    { title: 'Produto', dataIndex: 'productDescription', key: 'productDescription' },
-    { title: 'Quantidade Disponível', dataIndex: 'quantidade', key: 'quantidade' },
+    { 
+      title: 'ID do Produto', 
+      dataIndex: 'produtoId', 
+      key: 'produtoId',
+      width: 100
+    },
+    { 
+      title: 'Descrição do Produto', 
+      dataIndex: 'productDescription', 
+      key: 'productDescription',
+      ellipsis: true
+    },
+    { 
+      title: 'Armazém', 
+      key: 'armazem',
+      width: 150,
+      render: (_, record) => (
+        <Tag color="green" style={{ fontSize: 14, padding: '4px 8px' }}>
+          {record.armazem_nome || 'Desconhecido'}
+        </Tag>
+      )
+    },
+    { 
+      title: 'Quantidade no Lote', 
+      dataIndex: 'quantidade', 
+      key: 'quantidade',
+      width: 150,
+      render: (quantidade) => (
+        <Tag color="blue" style={{ fontSize: 14, padding: '4px 8px' }}>
+          {quantidade} unidades
+        </Tag>
+      )
+    },
   ];
 
   const tempItemColumns = [
@@ -993,6 +1487,18 @@ const Farmacia = () => {
       key: 'produto_id',
       render: (produto_id) => produtos.find((p) => p.id === produto_id)?.productDescription || 'Sem Descrição',
     },
+    {
+      title: 'Armazém',
+      key: 'armazem',
+      render: (_, record) => {
+        const armazem = armazens.find(a => a.id === record.armazem_id);
+        return armazem ? (
+          <Tag color="green" style={{ fontSize: 12, padding: '2px 6px' }}>
+            {armazem.designacao}
+          </Tag>
+        ) : '-';
+      }
+    },
     { title: 'Quantidade', dataIndex: 'quantidade', key: 'quantidade' },
     {
       title: 'Ações',
@@ -1006,6 +1512,7 @@ const Farmacia = () => {
               linhasLotesForm.setFieldsValue({
                 lotes_id: record.lotes_id,
                 produtoId: record.produto_id,
+                  armazem_id: record.armazem_id,
                 quantidade: record.quantidade,
               });
               setShowLinhasLotesModal(true);
@@ -1091,7 +1598,7 @@ const Farmacia = () => {
   const renderSection = () => (
     <div>
       {activeSection === 'entrada-saida' && (
-        <div className="section-content">
+        <div className="section-content fade-in">
           {(produtos.length === 0 || armazens.length === 0 || lotes.length === 0) && (
             <Alert
               message="Aviso"
@@ -1099,182 +1606,47 @@ const Farmacia = () => {
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}
+              className="alert-container"
             />
           )}
-          <Form form={form} layout="vertical" className="operation-form">
-            <div className="form-grid">
-              <Form.Item
-                name="tipoOperacao"
-                label="Tipo de Operação"
-                rules={[{ required: true, message: 'Selecione o tipo de operação' }]}
-              >
-                <Select
-                  placeholder="Selecione a operação"
-                  onChange={(value) => {
-                    form.setFieldsValue({ loteId: null, produtoId: null, quantidade: null, armazemDestinoId: null, loteIdDestino: null });
-                    setSelectedLoteId(null);
-                    setTempItens([]);
-                    form.resetFields(['loteId', 'produtoId', 'quantidade', 'armazemDestinoId', 'loteIdDestino']);
-                  }}
-                >
-                  {['ENTRADA', 'SAIDA', 'TRANSFERENCIA', 'ANULACAO'].map((op) => (
-                    <Option key={op} value={op}>{op}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="armazemId"
-                label="Armazém Origem"
-                rules={[{ required: true, message: 'Selecione o armazém de origem' }]}
-              >
-                <Select placeholder="Selecione o armazém"
-                  onChange={(armazemId) => {
-                    form.setFieldsValue({ loteId: null, produtoId: null, quantidade: null });
-                    setSelectedLoteId(null);
-                    setTempItens([]);
-                    // Removida a validação e notificação de lotes/produtos no armazém
-                  }}
-                >
-                  {armazens.map((armazem) => (
-                    <Option key={armazem.id} value={armazem.id}>
-                      {armazem.designacao}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              {form.getFieldValue('tipoOperacao') === 'TRANSFERENCIA' && (
-                <>
-                  <Form.Item
-                    name="armazemDestinoId"
-                    label="Armazém Destino"
-                    rules={[{ required: true, message: 'Selecione o armazém de destino' }]}
-                  >
-                    <Select placeholder="Selecione o armazém de destino" allowClear>
-                      {armazens.map((armazem) => (
-                        <Option key={armazem.id} value={armazem.id}>
-                          {armazem.designacao}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                  <Form.Item
-                    name="loteIdDestino"
-                    label="Lote Destino"
-                    rules={[{ required: true, message: 'Selecione o lote de destino' }]}
-                  >
-                    <Select placeholder="Selecione o lote de destino">
-                      {(() => {
-                        // Mostra apenas lotes ativos diferentes do lote de origem
-                        const armazemDestinoId = form.getFieldValue('armazemDestinoId');
-                        const loteIdOrigem = form.getFieldValue('loteId');
-                        let lotesDisponiveis = lotes.filter(l => l.status);
-                        if (armazemDestinoId) {
-                          lotesDisponiveis = lotesDisponiveis.filter(lote =>
-                            linhasLotes.some(linha => linha.lotes_id === lote.id && linha.armazem_id === armazemDestinoId)
-                          );
-                        }
-                        return lotesDisponiveis
-                          .filter(lote => lote.id !== loteIdOrigem)
-                          .map((lote) => (
-                            <Option key={lote.id} value={lote.id}>
-                              {lote.designacao}
-                            </Option>
-                          ));
-                      })()}
-                    </Select>
-                  </Form.Item>
-                </>
-              )}
-              <Form.Item name="descricao" label="Descrição">
-                <Input placeholder="Descrição da operação" />
-              </Form.Item>
-              <Form.Item
-                name="loteId"
-                label="Lote"
-                rules={[{ required: true, message: 'Selecione o lote' }]}
-              >
-                <Select
-                  placeholder="Selecione o lote"
-                  onChange={(value, option) => {
-                    setSelectedLoteId(value);
-                    // Salvar também a designação do lote no form para exibição
-                    form.setFieldsValue({ loteDesignacao: option?.children });
-                  }}
-                  disabled={lotes.length === 0}
-                  optionLabelProp="children"
-                >
-                  {lotes.filter(l => l.status).map((lote) => (
-                    <Option key={lote.id} value={lote.id}>
-                      {lote.designacao}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="produtoId"
-                label="Produto"
-                rules={[{ required: true, message: 'Selecione o produto' }]}
-              >
-                <Select
-                  placeholder={selectedLoteId ? "Selecione o produto do lote" : "Selecione o lote primeiro"}
-                  disabled={selectedLoteId === null || produtos.length === 0}
-                  onDropdownVisibleChange={(open) => {
-                    if (open && selectedLoteId === null) {
-                      toast.info('Selecione um lote para ver os produtos disponíveis.');
-                    }
-                  }}
-                  optionLabelProp="children"
-                >
-                  {form.getFieldValue('tipoOperacao') === 'ENTRADA'
-                    ? produtos.map((produto) => (
-                        <Option key={produto.id} value={produto.id}>
-                          {produto.productDescription}
-                        </Option>
-                      ))
-                    : getProdutosByLote(selectedLoteId).map((produto) => (
-                        <Option key={produto.produtoId} value={produto.produtoId}>
-                          {produto.productDescription} (Disponível: {produto.quantidade})
-                        </Option>
-                      ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="quantidade"
-                label="Quantidade"
-                rules={[
-                  { required: true, message: 'Insira a quantidade' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(getFieldValue('tipoOperacao'))) {
-                        const loteId = getFieldValue('loteId');
-                        const produtoId = getFieldValue('produtoId');
-                        const linha = linhasLotes.find(
-                          (l) => l.lotes_id === loteId && l.produto_id === produtoId
-                        );
-                        const quantidadeDisponivel = linha ? Number(linha.quantidade) : 0;
-                        if (value > quantidadeDisponivel) {
-                          return Promise.reject(`Quantidade excede o disponível (${quantidadeDisponivel})`);
-                        }
-                      }
-                      return Promise.resolve();
-                    },
-                  }),
-                ]}
-              >
-                <InputNumber min={1} placeholder="Quantidade" style={{ width: '100%' }} />
-              </Form.Item>
-            </div>
-            <Space style={{ marginBottom: 16 }}>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem} disabled={loading} />
-              <Button icon={<SaveOutlined />} type="primary" onClick={handleSaveOperacao} loading={loading} disabled={loading} />
-              <Button icon={<CloseOutlined />} onClick={() => {
-                  form.resetFields();
-                  setTempItens([]);
-                  setEditOperacaoId(null);
-                  setEditItemId(null);
-                  setSelectedLoteId(null);
-                }} disabled={loading} />
-          </Space>
+          
+          <OperationForm
+            form={form}
+            armazens={armazens}
+            lotes={lotes}
+            produtos={produtos}
+            linhasLotes={linhasLotes}
+            tempItens={tempItens}
+            editOperacaoId={editOperacaoId}
+            editItemId={editItemId}
+            selectedLoteId={selectedLoteId}
+            loading={loading}
+            onAddItem={handleAddItem}
+            onSaveOperation={handleSaveOperacao}
+            onReset={() => {
+              form.resetFields();
+              setTempItens([]);
+              setEditOperacaoId(null);
+              setEditItemId(null);
+              setSelectedLoteId(null);
+            }}
+            onEditItem={handleEditItem}
+            onRemoveItem={(itemId) => {
+              setTempItens((prev) => prev.filter((item) => item.id !== itemId));
+              toast.success('Item removido da lista temporária');
+            }}
+            onChangeQuantidade={(itemId, value) => {
+              setTempItens((prev) =>
+                prev.map((item) =>
+                  item.id === itemId ? { ...item, quantidade: value } : item
+                )
+              );
+            }}
+            onLoteChange={(loteId) => {
+              setSelectedLoteId(loteId);
+            }}
+          />
+          
           <Table
             dataSource={tempItens}
             columns={tempItemColumns}
@@ -1284,7 +1656,6 @@ const Farmacia = () => {
             className="stock-table"
             title={() => <Title level={3}>Itens da Operação</Title>}
           />
-        </Form>
         </div>
       )}
       {activeSection === 'lotes' && (
@@ -1325,17 +1696,61 @@ const Farmacia = () => {
             title={() => <Title level={3}>Lotes</Title>}
           />
           <Modal
-            title={`Produtos do Lote: ${produtosLoteModalTitle}`}
+            title={
+              <Space>
+                <UnorderedListOutlined />
+                <span>Produtos do Lote: {produtosLoteModalTitle}</span>
+              </Space>
+            }
             open={showProdutosLoteModal}
             onCancel={() => setShowProdutosLoteModal(false)}
             footer={null}
+            style={{ top: 25 }}
+            width={800}
           >
+            {produtosLoteModal.length === 0 ? (
+              <Alert
+                message="Nenhum produto encontrado"
+                description="Este lote não possui produtos cadastrados."
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+            ) : (
+              <>
+                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                  <Col span={8}>
+                    <Statistic
+                      title="Total de Produtos"
+                      value={produtosLoteModal.length}
+                      valueStyle={{ color: '#1890ff' }}
+                    />
+                  </Col>
+                  <Col span={8}>
+                    <Statistic
+                      title="Total de Unidades"
+                      value={produtosLoteModal.reduce((sum, item) => sum + (item.quantidade || 0), 0)}
+                      valueStyle={{ color: '#52c41a' }}
+                    />
+                  </Col>
+                  <Col span={8}>
+                    <Statistic
+                      title="Produtos Únicos"
+                      value={new Set(produtosLoteModal.map(item => item.produtoId)).size}
+                      valueStyle={{ color: '#722ed1' }}
+                    />
+                  </Col>
+                </Row>
             <Table
               dataSource={produtosLoteModal}
               columns={produtosPorLoteColumns}
               rowKey={record => record.id}
               pagination={false}
+                  size="small"
+                  scroll={{ y: 300 }}
             />
+              </>
+            )}
           </Modal>
         </div>
       )}
@@ -1465,6 +1880,8 @@ const Farmacia = () => {
             loteForm.resetFields();
           }}
           footer={null}
+          style={{ top: 25 }}
+          width={600}
         >
           {/* Data de Entrada exibida no canto superior direito, apenas leitura */}
           <div style={{ position: 'absolute', top: 16, right: 24, color: '#888', fontSize: 13 }}>
@@ -1520,6 +1937,8 @@ const Farmacia = () => {
             fornecedorForm.resetFields();
           }}
           footer={null}
+          style={{ top: 25 }}
+          width={600}
         >
           <Form form={fornecedorForm} layout="vertical" onFinish={handleAddFornecedor}>
             <Form.Item
@@ -1592,6 +2011,8 @@ const Farmacia = () => {
             linhasLotesForm.resetFields();
           }}
           footer={null}
+          style={{ top: 25 }}
+          width={600}
         >
           <Form form={linhasLotesForm} layout="vertical" onFinish={handleAddLinhasLotes}>
             <Form.Item
@@ -1603,6 +2024,19 @@ const Farmacia = () => {
                 {lotes.map((lote) => (
                   <Option key={lote.id} value={lote.id}>
                     {lote.designacao}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="armazem_id"
+              label="Armazém"
+              rules={[{ required: true, message: 'Selecione o armazém' }]}
+            >
+              <Select placeholder="Selecione o armazém" showSearch optionFilterProp="children">
+                {armazens.map((armazem) => (
+                  <Option key={armazem.id} value={armazem.id}>
+                    {armazem.designacao}
                   </Option>
                 ))}
               </Select>
