@@ -12,18 +12,20 @@ import Internamento from '../Internamento';
 import { ConfigProvider } from 'antd';
 import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
-import { viewPdfGenerico, ModalTriagem } from '../../util/utilitarios';
+import {
+    viewPdfGenerico,
+    ModalTriagem,
+    ModalFinalizarAtendimento,
+} from '../../util/utilitarios';
 import {
     List,
     Flex,
     Button,
-    Avatar,
     Modal,
     Tabs,
     Input,
     Form,
     message,
-    AutoComplete,
     Tooltip,
 } from 'antd';
 import {
@@ -38,7 +40,8 @@ const { TextArea } = Input;
 function Consulta() {
     const [id, setId] = useState(0);
     const [data, setData] = useState([]);
-    const [dataCID, setDataCID] = useState([]);
+    const [dataCIDInicial, setdataCIDInicial] = useState([]);
+    const [dataCIDFinal, setdataCIDFinal] = useState([]);
     const [nomePaciente, setNomePaciente] = useState('');
     const [exameFisico, setExameFisico] = useState('');
     const [motivoConsulta, setMotivoConsulta] = useState('');
@@ -56,6 +59,8 @@ function Consulta() {
 
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalTriagem, setIsModalTriagem] = useState(false);
+    const [isModalFinalizarAtendimento, setIsModalFinalizarAtendimento] =
+        useState(false);
     const [inscricaoIdTriagem, setInscricaoIdTriagem] = useState(null);
 
     useEffect(() => {
@@ -81,23 +86,45 @@ function Consulta() {
     ]);
 
     useEffect(() => {
-        console.log('Data CID', dataCID);
-    }, [dataCID]);
+        // console.log('Data CID', dataCIDInicial);
+    }, [dataCIDInicial]);
 
-    const _showModal = async (id, nome) => {
+    const _showModalConsulta = async (idInscricao, nome) => {
+        // Limpa os estados antes de carregar novos dados
+        limpar();
         setNomePaciente(nome);
 
         await api
-            .get('/consulta/' + id + '/ABERTO')
+            .get('/consulta/' + idInscricao + '/ABERTO')
             .then((r) => {
                 setIsConsultaCriada(true);
                 updateFieldsInForm(r.data);
+                // Parse do diagnóstico inicial
+                let diaInicial = r.data.diagnosticoInicial;
+                if (typeof diaInicial === 'string') {
+                    try {
+                        diaInicial = JSON.parse(diaInicial);
+                    } catch (e) {
+                        diaInicial = [];
+                    }
+                }
+                setdataCIDInicial(diaInicial);
+                // Parse do diagnóstico inicial
+                let diaFinal = r.data.diagnosticoFinal;
+                if (typeof diaFinal === 'string') {
+                    try {
+                        diaFinal = JSON.parse(diaFinal);
+                    } catch (e) {
+                        diaFinal = [];
+                    }
+                }
+                setdataCIDFinal(diaFinal);
             })
             .catch((e) => {
                 limpar();
             });
 
-        setIdInscricao(id);
+        setIdInscricao(idInscricao);
         setIsModalConsulta(true);
     };
 
@@ -134,6 +161,8 @@ function Consulta() {
         setDiagnosticoFinal('');
         setId(0);
         setListaExamesRequisitado([]);
+        setdataCIDInicial([]);
+        setdataCIDFinal([]);
         formConsulta.resetFields();
     };
 
@@ -151,13 +180,14 @@ function Consulta() {
                     return item;
                 });
                 setData(data);
+                console.log(data);
             })
             .catch((e) => {
                 console.log('Falha na busca', e);
             });
     };
 
-    const consultaCreate = (values) => {
+    const prepararConsulta = (values) => {
         console.log(values.receita);
         let consulta = {
             motivoConsulta: values.motivoConsulta,
@@ -167,13 +197,15 @@ function Consulta() {
             estadoConsulta: 'ABERTO',
             receita: values.receita,
             inscricaoId: idInscricao,
+            diagnosticoInicial: JSON.stringify(dataCIDInicial),
+            diagnosticoFinal: JSON.stringify(dataCIDFinal),
             usuarioId: 1,
         };
         return consulta;
     };
     const _onFinishCriar = async (values) => {
         setLoading(true);
-        let consulta = consultaCreate(values);
+        let consulta = prepararConsulta(values);
         await api
             .post('consulta/add', consulta)
             .then((r) => {
@@ -193,7 +225,7 @@ function Consulta() {
 
     const _onFinishActualizar = async (values) => {
         setLoading(true);
-        let consulta = consultaCreate(values);
+        let consulta = prepararConsulta(values);
         Object.defineProperty(consulta, 'id', {
             value: id,
             writable: true,
@@ -215,6 +247,19 @@ function Consulta() {
                 console.error(msg, e);
                 error(msg);
                 setLoading(false);
+            });
+    };
+
+    const _onFinalizarInscricao = async () => {
+        ///inscricao/estadocondicao/edit/
+        await api
+            .put('inscricao/estadocondicao/edit/' + idInscricao + '/FECHADO')
+            .then((r) => {
+                console.log(r.data);
+                _carrgarDados();
+            })
+            .catch((e) => {
+                console.error('Erro ao finalizar inscrição:', e);
             });
     };
 
@@ -274,24 +319,23 @@ function Consulta() {
             key: '1',
             label: 'Motivo da consulta',
             children: (
-                <>
-                    <Form.Item
-                        name="motivoConsulta"
-                        rules={[
-                            {
-                                required: true,
-                                message:
-                                    'Por favor digite o motivo da consulta',
-                            },
-                        ]}
-                    >
+                <Form.Item
+                    name="motivoConsulta"
+                    rules={[
+                        {
+                            required: true,
+                            message: 'Por favor digite o motivo da consulta',
+                        },
+                    ]}
+                >
+                    <div>
                         <Tooltip title="Imprimir Motivo da Consulta">
                             <Button
                                 type="primary"
                                 onClick={() => visualizar('motivo_consulta')}
                                 icon={<PrinterOutlined />}
                                 style={{
-                                    backgroundColor: '#184d77', // azul escuro
+                                    backgroundColor: '#184d77',
                                     borderColor: '#133a5c',
                                     color: '#fff',
                                     fontWeight: 'bold',
@@ -301,14 +345,14 @@ function Consulta() {
                                     height: 40,
                                     fontSize: 16,
                                 }}
-                            ></Button>
+                            />
                         </Tooltip>
                         <TextToSpeech
                             inputText={motivoConsulta}
                             setInputText={setMotivoConsulta}
                         />
-                    </Form.Item>
-                </>
+                    </div>
+                </Form.Item>
             ),
         },
         {
@@ -364,7 +408,10 @@ function Consulta() {
             children: (
                 <>
                     <Form.Item name="diagnosticoInicial">
-                        <Cid10 data={dataCID} setData={setDataCID} />
+                        <Cid10
+                            data={dataCIDInicial}
+                            setData={setdataCIDInicial}
+                        />
                     </Form.Item>
                 </>
             ),
@@ -373,17 +420,21 @@ function Consulta() {
             key: '5',
             label: 'Exames Complementares',
             children: (
-                <form>
-                    <ExameRequisitado
-                        listaExamesRequisitado={listaExamesRequisitado}
-                        setListaExamesRequisitado={setListaExamesRequisitado}
-                        removerItemExameRequisitado={
-                            removerItemExameRequisitado
-                        }
-                        updateDescricao={updateDescricao}
-                        salvarRequisicao={salvarRequisicao}
-                    />
-                </form>
+                <>
+                    <form>
+                        <ExameRequisitado
+                            listaExamesRequisitado={listaExamesRequisitado}
+                            setListaExamesRequisitado={
+                                setListaExamesRequisitado
+                            }
+                            removerItemExameRequisitado={
+                                removerItemExameRequisitado
+                            }
+                            updateDescricao={updateDescricao}
+                            salvarRequisicao={salvarRequisicao}
+                        />
+                    </form>
+                </>
             ),
         },
         {
@@ -391,12 +442,8 @@ function Consulta() {
             label: 'Diagnóstico Final',
             children: (
                 <>
-                    <Form.Item name="diagnosticoFinal">
-                        <TextArea
-                            id="diagnosticoFinal"
-                            rows={10}
-                            placeholder="Insira o diagnóstico final"
-                        />
+                    <Form.Item name="diagnosticoInicial">
+                        <Cid10 data={dataCIDFinal} setData={setdataCIDFinal} />
                     </Form.Item>
                 </>
             ),
@@ -505,7 +552,7 @@ function Consulta() {
                                         size="small"
                                         type="primary"
                                         onClick={(e) =>
-                                            _showModal(
+                                            _showModalConsulta(
                                                 item.inscricaoId,
                                                 item.nome
                                             )
@@ -524,9 +571,7 @@ function Consulta() {
                                                 }}
                                             />
                                         }
-                                    >
-                                        
-                                    </Button>
+                                    ></Button>
                                 </Tooltip>
 
                                 <Tooltip
@@ -571,6 +616,13 @@ function Consulta() {
                                             padding: 10,
                                             height: 35,
                                             borderRadius: 30,
+                                        }}
+                                        onClick={async () => {
+                                            console.log('Finalizar', item);
+                                            setIsModalFinalizarAtendimento(
+                                                true
+                                            );
+                                            setIdInscricao(item.inscricaoId);
                                         }}
                                         icon={
                                             <CloseCircleOutlined
@@ -644,6 +696,14 @@ function Consulta() {
                 }}
                 exibirEncaminhamento={false}
                 exibirManchester={false}
+            />
+
+            <ModalFinalizarAtendimento
+                estado={isModalFinalizarAtendimento}
+                onCancel={() => {
+                    setIsModalFinalizarAtendimento(false);
+                }}
+                onFinalizar={_onFinalizarInscricao}
             />
         </>
     );

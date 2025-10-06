@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserOutlined, CloseSquareOutlined } from '@ant-design/icons';
 import { AutoComplete, Flex, Input, List, Avatar, Button } from 'antd';
 import * as XLSX from 'xlsx';
+import axios from 'axios';
 
 const renderItem = (title, description) => ({
     value: title,
@@ -20,18 +21,18 @@ const Cid10 = (props) => {
 
     useEffect(() => {
         // Lê o arquivo Excel automaticamente ao montar o componente
-        fetch(process.env.PUBLIC_URL + '/cids.xlsx')
-            .then((res) => res.arrayBuffer())
-            .then((ab) => {
-                const workbook = XLSX.read(ab, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-                    header: ['title', 'description'],
-                    range: 1,
-                });
-                setDataSource(jsonData);
+        axios
+        .get(process.env.PUBLIC_URL + '/cids.xlsx', { responseType: 'arraybuffer' })
+        .then((res) => {
+            const workbook = XLSX.read(res.data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                header: ['title', 'description'],
+                range: 1,
             });
+            setDataSource(jsonData);
+        });
     }, []);
 
     const handleSearch = (value) => {

@@ -15,7 +15,7 @@ import {
 } from 'antd';
 import TriagemManchester from '../TriagemManchester';
 import { api } from '../../service/api';
-import { format } from 'date-fns';
+import { format, set } from 'date-fns';
 
 export const viewPdf = async (fileName, id) => {
     // Abrir uma nova aba imediatamente
@@ -616,7 +616,7 @@ export const ModalTriagem = ({
                 'mmHg'
             )
         );
-       // _linhas.push(getItem(triagemId, campoPeso, peso, 'Kg'));
+        // _linhas.push(getItem(triagemId, campoPeso, peso, 'Kg'));
         _linhas.push(getItem(triagemId, campoTemperatura, temperatura, '°C'));
         _linhas.push(getItem(triagemId, campoPulso, pulso, 'bpm'));
         _linhas.push(getItem(triagemId, campoSaturacaiOxigenio, so, '%'));
@@ -857,6 +857,28 @@ export const ModalTriagem = ({
                     </Card>
                 )}
             </Flex>
+        </Modal>
+    );
+};
+
+export const ModalFinalizarAtendimento = ({
+    estado,
+    onCancel,
+    onFinalizar,
+}) => {
+    const _finalizarProcesso = async () => {
+        await onFinalizar();
+        onCancel();
+    };
+    return (
+        <Modal
+            title="Finalizar Atendimento"
+            visible={estado}
+            okText="Sim"
+            onCancel={onCancel}
+            onOk={_finalizarProcesso}
+        >
+            <p>Tem certeza que deseja finalizar o atendimento?</p>
         </Modal>
     );
 };
