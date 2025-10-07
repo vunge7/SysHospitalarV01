@@ -157,7 +157,7 @@ const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, age
   );
 };
 
-const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'consultas', onAgendamentoCriado }) => {
+const NovaAgenda = () => {
   const [form] = Form.useForm();
   const [formularios, setFormularios] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
@@ -168,6 +168,7 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
   const [linhasAgenda, setLinhasAgenda] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -181,15 +182,13 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
         api.get('linhaagenda/all')
       ]);
 
-      let produtosConsultas = produtosRes.data.filter(produto =>
+      console.log('Produtos recebidos:', produtosRes.data);
+      const produtosConsultas = produtosRes.data.filter(produto =>
         produto.productGroup &&
-        produto.productGroup.toLowerCase() === tipoAgendamento &&
+        produto.productGroup.toLowerCase() === 'consultas' &&
         produto.productDescription
       );
-      if (produtosConsultas.length === 0 && tipoAgendamento === 'cirurgia') {
-        // fallback: se não houver grupo 'cirurgia', pega todos
-        produtosConsultas = produtosRes.data.filter(produto => produto.productDescription);
-      }
+      console.log('Consultas filtradas:', produtosConsultas);
 
       setFuncionarios(funcionariosRes.data || []);
       setPessoas(pessoasRes.data || []);
@@ -197,33 +196,52 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
       setConsultas(produtosConsultas || []);
       setAgendas(agendasRes.data || []);
       setLinhasAgenda(linhasAgendaRes.data || []);
+
+      console.log('Dados carregados em NovaAgenda:', {
+        funcionarios: funcionariosRes.data,
+        linhasAgenda: linhasAgendaRes.data,
+        consultas: produtosConsultas,
+        pessoas: pessoasRes.data
+      });
+
+      if (produtosConsultas.length === 0) {
+        console.warn('Nenhuma consulta válida encontrada. Verifique o backend.');
+      }
     } catch (error) {
-      message.error('Erro ao carregar dados. Tente novamente.');
+      console.error('Erro ao carregar dados em NovaAgenda:', error);
+      message.error({
+        content: 'Erro ao carregar dados. Tente novamente.',
+        className: 'custom-message',
+        style: { top: '20px', right: '20px' }
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isModalVisible) {
-      fetchAllData();
-      // Ao abrir, já prepara um formulário vazio
-      setFormularios([{
-        consultaId: '',
-        funcionarioId: '',
-        pacienteId: '',
-        dataRealizacao: '',
-        agendaId: agendas[0]?.id || '',
-        uniqueKey: uuidv4()
-      }]);
-    }
-  }, [isModalVisible, tipoAgendamento]);
+    fetchAllData();
+  }, []);
+
+  const adicionarFormulario = () => {
+    const novoFormulario = {
+      consultaId: '',
+      funcionarioId: '',
+      pacienteId: '',
+      dataRealizacao: '',
+      agendaId: agendas[0]?.id || '',
+      uniqueKey: uuidv4()
+    };
+    setFormularios([novoFormulario]);
+    setIsModalVisible(true);
+  };
 
   const handleInputChange = (index, e) => {
     const { name, value } = e.target;
     const novosFormularios = [...formularios];
     novosFormularios[index] = { ...novosFormularios[index], [name]: value };
     setFormularios(novosFormularios);
+    console.log('Formulários atualizados:', novosFormularios);
   };
 
   const formatDateForBackend = (dateString) => {
@@ -237,10 +255,72 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
+  const prepareEmailData = (form, pacientes, pessoas, funcionarios, consultas) => {
+    const paciente = pacientes.find(p => p.id === Number(form.pacienteId));
+    const funcionario = funcionarios.find(f => f.id === Number(form.funcionarioId));
+    const pessoaMedico = pessoas.find(p => p.id === funcionario?.pessoaId);
+    const pessoaPaciente = pessoas.find(p => p.id === paciente?.pessoaId);
+    const consulta = consultas.find(c => c.id === Number(form.consultaId));
+
+    const dataRealizacao = new Date(form.dataRealizacao.replace('T', ' '));
+    const data = `${dataRealizacao.getDate().toString().padStart(2, '0')}/${(dataRealizacao.getMonth() + 1).toString().padStart(2, '0')}/${dataRealizacao.getFullYear()}`;
+    const hora = `${dataRealizacao.getHours().toString().padStart(2, '0')}:${dataRealizacao.getMinutes().toString().padStart(2, '0')}`;
+
+    return {
+      pacienteEmail: pessoaPaciente?.email || '',
+      dotorEmail: pessoaMedico?.email || '',
+      pacienteNome: pessoaPaciente?.nome || 'Paciente Desconhecido',
+      dotorNome: pessoaMedico?.nome || 'Médico Desconhecido',
+      data,
+      hora,
+      consulta: consulta?.productDescription || 'Consulta Desconhecida',
+      funcionarioId: funcionario?.id || ''
+    };
+  };
+
+  const sendEmailInBackground = async (formulario) => {
+    try {
+      const emailData = prepareEmailData(formulario, pacientes, pessoas, funcionarios, consultas);
+      console.log('Enviando e-mail em segundo plano:', emailData);
+      message.loading({
+        content: 'Enviando e-mail de confirmação...',
+        key: 'emailSending',
+        className: 'custom-message',
+        style: { top: '20px', right: '20px' }
+      });
+      if (!emailData.pacienteEmail || !emailData.dotorEmail) {
+        console.warn('E-mails do paciente ou médico não disponíveis, e-mail não enviado:', emailData);
+        message.warning({
+          content: 'E-mails do paciente ou médico não disponíveis.',
+          key: 'emailSending',
+          className: 'custom-message',
+          style: { top: '20px', right: '20px' }
+        });
+        return;
+      }
+      await api.post('enviar-email', emailData);
+      message.success({
+        content: 'E-mail de confirmação enviado com sucesso!',
+        key: 'emailSending',
+        className: 'custom-message',
+        style: { top: '20px', right: '20px' }
+      });
+    } catch (error) {
+      console.error('Erro ao enviar e-mail:', error);
+      message.error({
+        content: 'Erro ao enviar e-mail de confirmação.',
+        key: 'emailSending',
+        className: 'custom-message',
+        style: { top: '20px', right: '20px' }
+      });
+    }
+  };
+
   const handleOk = async () => {
     try {
       await form.validateFields();
       setIsSaving(true);
+      const createdForms = [];
       for (const formulario of formularios) {
         const dataFormatada = formatDateForBackend(formulario.dataRealizacao);
         const linhaData = {
@@ -251,15 +331,33 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
           agendaId: Number(formulario.agendaId),
           status: true
         };
-        await api.post('linhaagenda/add', linhaData);
+        console.log('Enviando para POST linhaagenda/add:', linhaData);
+
+        const response = await api.post('linhaagenda/add', linhaData);
+        setLinhasAgenda(prev => [...prev, { ...linhaData, id: response.data.id }]);
+        createdForms.push(formulario);
       }
       setFormularios([]);
       setIsModalVisible(false);
       form.resetFields();
-      if (onAgendamentoCriado) onAgendamentoCriado();
-      message.success('Linha de agenda criada com sucesso!');
+      await fetchAllData();
+      message.success({
+        content: 'Linha de agenda criada com sucesso!',
+        className: 'custom-message',
+        style: { top: '20px', right: '20px' }
+      });
+
+      // Enviar e-mails em segundo plano
+      createdForms.forEach(formulario => {
+        sendEmailInBackground(formulario);
+      });
     } catch (error) {
-      message.error('Erro ao criar linha de agenda. Verifique os dados e tente novamente.');
+      console.error('Erro ao salvar linha de agenda:', error);
+      message.error({
+        content: 'Erro ao criar linha de agenda. Verifique os dados e tente novamente.',
+        className: 'custom-message',
+        style: { top: '20px', right: '20px' }
+      });
     } finally {
       setIsSaving(false);
     }
@@ -270,25 +368,14 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
     setTimeout(() => {
       form.resetFields();
       setFormularios([]);
-    }, 300);
+    }, 300); // Aguarda o modal fechar antes de limpar
   };
 
   return (
-    <Modal
-      title={tipoAgendamento === 'cirurgia' ? 'Nova Cirurgia' : 'Novo Agendamento'}
-      open={isModalVisible}
-      onOk={handleOk}
-      onCancel={handleCancel}
-      okText="Salvar"
-      cancelText="Cancelar"
-      confirmLoading={isSaving}
-      width={800}
-      className="agenda-modal"
-    >
+    <div className="nova-agenda-container">
       {isLoading ? (
         <Spin tip="Carregando dados..." className="spinner" />
       ) : (
-<<<<<<< HEAD
         <>
           <Button
             type="primary"
@@ -327,26 +414,8 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
             </Form>
           </Modal>
         </>
-=======
-        <Form form={form} layout="vertical" className="agenda-form">
-          {formularios.map((formItem, index) => (
-            <FormRow
-              key={formItem.uniqueKey}
-              form={formItem}
-              index={index}
-              funcionarios={funcionarios}
-              pessoas={pessoas}
-              pacientes={pacientes}
-              consultas={consultas}
-              agendas={agendas}
-              linhasAgenda={linhasAgenda}
-              handleInputChange={handleInputChange}
-            />
-          ))}
-        </Form>
->>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
       )}
-    </Modal>
+    </div>
   );
 };
 

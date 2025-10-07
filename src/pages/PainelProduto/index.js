@@ -94,40 +94,29 @@ function PainelProduto() {
 }
 
 function SideMenu({ menu, onClick }) {
-    const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
-
-    useEffect(() => {
-        const handleResize = () => {
-            setCollapsed(window.innerWidth <= 768);
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    const [collapsed, setCollapsed] = useState(false);
 
     const toggleCollapsed = () => {
         setCollapsed(!collapsed);
     };
 
     return (
-        <div style={{ width: collapsed ? 80 : 250, transition: 'width 0.3s ease-in-out', padding: 10, height: 'auto', overflow: 'hidden' }}>
+        <div className="sidebar">
             <Button
                 type="primary"
                 onClick={toggleCollapsed}
-                style={{
-                    marginBottom: 16,
-                }}
+                style={{ marginBottom: 16 }}
             >
                 {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             </Button>
-
             <Menu
                 onClick={onClick}
                 defaultSelectedKeys={['dashboard']}
-                defaultOpenKeys={['sub1']}
                 mode="inline"
                 theme="light"
                 inlineCollapsed={collapsed}
                 items={menu}
+                className="sidebar-menu"
             />
         </div>
     );
