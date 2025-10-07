@@ -101,7 +101,7 @@ function SideMenu(props) {
     };
 
     return (
-        <div>
+        <div style={{ width: collapsed ? 80 : 250, transition: 'width 0.3s ease-in-out', padding: 10, height: 'auto', overflow: 'hidden' }}>
             <Button
                 type="primary"
                 onClick={toggleCollapsed}

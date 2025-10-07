@@ -93,7 +93,79 @@ function PainelPrincipal() {
                             })}
                         </div>
                     </div>
+<<<<<<< HEAD
                 ))}
+=======
+                </div>
+
+                <div className="panel">
+                    <h2>Processos Administrativos</h2>
+                    <div className="grid">
+                        <div className="block">
+                            <Link to="/facturacao">
+                                <i className="fas fa-file-invoice-dollar"></i>
+                                <p>Facturação</p>
+                            </Link>
+                        </div>
+
+                        <div className="block">
+                            <Link to="/artigo">
+                                <i className="fas fa-tools"></i>
+                                <p>Serviços</p>
+                            </Link>
+                        </div>
+                        <div className="block">
+                            <Link to="/admin/usuario">
+                                <i className="fas fa-users"></i>
+                                <p>Usuários</p>
+                            </Link>
+                        </div>
+                        <div className="block">
+                            <Link to="/stock">
+                                <i className="fas fa-tools"></i>
+                                <p>Stock</p>
+                            </Link>
+                        </div>
+                        <div className="block">
+                            <i className="fas fa-shopping-cart"></i>
+                            <p>Compras</p>
+                        </div>
+
+                        <div className="block">
+                            <Link to="/rh">
+                                <i className="fas fa-briefcase"></i>
+                                <p>Recursos Humanos</p>
+                            </Link>
+                        </div>
+                        <div className="block">
+                            <Link to="/tesouraria">
+                                <i className="fas fa-cash-register"></i>
+                                <p>Tesouraria</p>
+                            </Link>
+                        </div>
+                        <div className="block">
+                            <i className="fas fa-calculator"></i>
+                            <p>Contabilidade</p>
+                        </div>
+                        <div className="block">
+                            <i className="fas fa-user-tie"></i>
+                            <p>Clientes</p>
+                        </div>
+                        <div className="block">
+                            <i className="fas fa-shield-alt"></i>
+                            <p>Seguradoras</p>
+                        </div>
+                        <div className="block">
+                            <i className="fas fa-building"></i>
+                            <p>Empresas</p>
+                        </div>
+                        <div className="block">
+                            <i className="fas fa-chart-line"></i>
+                            <p>Relatórios</p>
+                        </div>
+                    </div>
+                </div>
+>>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
             </div>
             <Rodape />
         </div>

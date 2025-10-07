@@ -74,7 +74,7 @@ function Usuario() {
   // Funções de busca de dados
   const fetchUsuarios = async () => {
     try {
-      const response = await api.get('usuario/all');
+      const response = await api.get('api/usuarios/listar');
       setUsuarios(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);

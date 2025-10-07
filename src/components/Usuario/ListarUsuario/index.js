@@ -107,8 +107,13 @@ const ListarUsuario = () => {
     try {
       const [usuariosRes, funcionariosRes, funcoesRes] = await Promise.all([
         api.get('/api/usuarios/listar'),
+<<<<<<< HEAD
         api.get('funcionario/all'),
         api.get('funcao/all'),
+=======
+        api.get('/funcionario/all'),
+        api.get('/funcao/all'),
+>>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
       ]);
       const usuariosData = Array.isArray(usuariosRes.data) ? usuariosRes.data : [];
       const funcionariosData = Array.isArray(funcionariosRes.data) ? funcionariosRes.data : [];
@@ -137,9 +142,9 @@ const ListarUsuario = () => {
     try {
       let endpoint = '/api/usuarios/listar';
       if (filtro === 'ativos') {
-        endpoint = 'usuario/ativos';
+        endpoint = '/api/usuarios/listar/ativos';
       } else if (filtro === 'inativos') {
-        endpoint = 'usuario/inativos';
+        endpoint = '/api/usuarios/listar/inativos';
       }
 
       const response = await api.get(endpoint, { headers: { 'Cache-Control': 'no-cache' } });
@@ -257,8 +262,8 @@ const ListarUsuario = () => {
     // Verificar unicidade do username apenas se for alterado
     if (usuarioEditado.userName !== usuarios.find((u) => u.id === usuarioEditado.id)?.userName) {
       try {
-        const response = await api.get(`usuario/${usuarioEditado.userName}`);
-        if (response.data) {
+        const response = await api.get(`/api/usuarios/listar?userName=${usuarioEditado.userName}`);
+        if (response.data && response.data.length > 0) {
           alert('Username já está associado a outro usuário.');
           return false;
         }
@@ -290,7 +295,7 @@ const ListarUsuario = () => {
         ip: usuarioEditado.ip ? usuarioEditado.ip.trim() : undefined,
       };
 
-      const response = await api.put(`usuario/${usuarioId}`, usuarioData);
+      const response = await api.put(`/api/usuarios/editar/${usuarioId}`, usuarioData);
       setUsuarios((prev) =>
         prev.map((u) => (u.id === response.data.id ? { ...u, ...response.data } : u))
       );
@@ -325,7 +330,7 @@ const ListarUsuario = () => {
 
     setIsSubmitting(true);
     try {
-      await api.delete(`usuario/${row.id}`);
+      await api.delete(`/api/usuarios/deletar/${row.id}`);
       setUsuarios((prev) => prev.filter((u) => u.id !== row.id));
       await fetchUsuarios(filtros.status);
       alert('Usuário excluído com sucesso!');

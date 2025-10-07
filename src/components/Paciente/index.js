@@ -24,6 +24,7 @@ import {
 } from '../../util/db';
 import moment from 'moment/moment';
 import Seguradora from '../Seguradora';
+import { toast } from 'react-toastify';
 
 const baseStyle = {};
 const { Search } = Input;
@@ -62,8 +63,6 @@ function Paciente() {
     const [municipioOptionsNascimento, setMunicipioOptionsNascimento] =
         useState([]);
     const [formHeader] = Form.useForm();
-
-    const [messageApi, contextHolder] = message.useMessage();
 
     const [pacienteSeguradora, setPacienteSeguradora] = useState([]);
 
@@ -117,15 +116,13 @@ function Paciente() {
     ]);
 
     const success = (msg) => {
-        messageApi.open({
-            type: 'success',
-            content: msg,
+        toast.success(msg, {
+            autoClose: 2000,
         });
     };
     const error = (msg) => {
-        messageApi.open({
-            type: 'error',
-            content: msg,
+        toast.error(msg, {
+            autoClose: 2000,
         });
     };
 
@@ -522,7 +519,6 @@ function Paciente() {
             vertical={true}
             style={{ ...baseStyle }}
         >
-            {contextHolder}
 
             <Flex gap="small" horizontal={true} style={{ marginBottom: 10 }}>
                 <Search

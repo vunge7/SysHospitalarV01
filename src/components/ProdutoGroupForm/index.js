@@ -35,7 +35,7 @@ function ProdutoGroupForm({ buscarProdutosGrupos }) {
         console.log("Dados a serem enviados para o backend:", dataToSubmit);  // Verifique os dados enviados
 
         if (statusSendEdit == true) {
-            const response = await api.put('productgroup/edit', dataToSubmit)
+            const response = await api.put('/productgroup/edit', dataToSubmit)
                 .then((result) => {
                     setValue("designacaoProduto", "")
                     alert("Grupo do Produto Editado com Sucesso")
@@ -53,7 +53,7 @@ function ProdutoGroupForm({ buscarProdutosGrupos }) {
                 })
         } else {
             const dataSubmit = { ...{}, designacaoProduto: v };
-            const response = await api.post('productgroup/add', dataSubmit)
+            const response = await api.post('/productgroup/add', dataSubmit)
                 .then((result) => {
                     setValue("designacaoProduto", "")
                     alert("Grupo do Produto Salvo com Sucesso")
@@ -88,7 +88,7 @@ function ProdutoGroupForm({ buscarProdutosGrupos }) {
     const buscarProdutosGrupo = async () => {
         setCarregar(true);
         try {
-            const result = await api.get('productgroup/all'); // Chamada para a rota 'produto/all'
+            const result = await api.get('/productgroup/all'); // Chamada para a rota '/productgroup/all'
             setProduto(result.data); // Armazena os produtos recebidos da API
             currentProducts = result.data;
         } catch (error) {
@@ -116,7 +116,7 @@ function ProdutoGroupForm({ buscarProdutosGrupos }) {
     }
 
     const onConfirmar = async () => {
-        const response = await api.delete('productgroup/' + produtoRemover.id)
+        const response = await api.delete('/productgroup/' + produtoRemover.id)
             .then((result) => {
                 console.log('O produto removido com sucesso!...', produtoRemover.id);
                 buscarProdutosGrupo();

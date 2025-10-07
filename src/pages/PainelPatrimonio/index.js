@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Menu, Layout } from 'antd';
+import { Button, Menu } from 'antd';
 import BemPatrimonialList from './bens-patrimoniais/components/BemPatrimonialList';
 import BemPatrimonialForm from './bens-patrimoniais/components/BemPatrimonialForm';
 import CategoriaBemList from './categorias-bens/components/CategoriaBemList';
@@ -32,11 +32,8 @@ import {
 import './style.css';
 import { AuthContext } from '../../contexts/auth';
 
-const { Sider, Content } = Layout;
-
 function PainelPatrimonio() {
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [collapsed, setCollapsed] = useState(false);
     const [menu, setMenu] = useState([]);
     const navigate = useNavigate();
     const { logout } = useContext(AuthContext);
@@ -101,62 +98,74 @@ function PainelPatrimonio() {
         }
     };
 
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100vh' }}>
+            <Cabecario />
+            <div style={{ width: 'auto', display: 'flex', flexDirection: 'row', flex: 1 }}>
+                <SideMenu menu={menu} onClick={handleTabClick} />
+                <Content>
+                    {activeTab === 'dashboard' && (
+                        <div className="text-center p-4">
+                            <h2 className="text-2xl font-bold text-gray-800">Dashboard - Visão Geral do Patrimônio</h2>
+                            <p className="text-gray-600">Bem-vindo ao sistema de gerenciamento de patrimônio hospitalar.</p>
+                        </div>
+                    )}
+                    {activeTab === 'bens-patrimoniais' && <BemPatrimonialList />}
+                    {activeTab === 'categorias-bens' && <CategoriaBemList />}
+                    {activeTab === 'localizacoes' && <LocalizacaoList />}
+                    {activeTab === 'manutencoes' && <ManutencaoList />}
+                    {activeTab === 'movimentacoes' && <MovimentacaoList />}
+                    {activeTab === 'usuarios' && <UsuarioList />}
+                    {activeTab === 'depreciacoes' && <DepreciacaoList />}
+                </Content>
+            </div>
+            <Rodape />
+        </div>
+    );
+}
+
+function SideMenu({ menu, onClick }) {
+    const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setCollapsed(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const toggleCollapsed = () => {
         setCollapsed(!collapsed);
     };
 
     return (
-        <Layout className="min-h-screen bg-white">
-            <Cabecario />
-            <Layout>
-                <Sider
-                    collapsible
-                    collapsed={collapsed}
-                    onCollapse={toggleCollapsed}
-                    trigger={null}
-                    className="bg-white shadow-md"
-                    width={256}
-                    breakpoint="lg"
-                    collapsedWidth={80}
-                >
-                    <Button
-                        type="primary"
-                        onClick={toggleCollapsed}
-                        className="m-4 bg-blue-600 hover:bg-blue-700"
-                    >
-                        {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                    </Button>
-                    <Menu
-                        onClick={handleTabClick}
-                        selectedKeys={[activeTab]}
-                        mode="inline"
-                        theme="light"
-                        inlineCollapsed={collapsed}
-                        items={menu}
-                        className="sidebar-menu"
-                    />
-                </Sider>
-                <Layout>
-                    <Content className="p-6 bg-white">
-                        {activeTab === 'dashboard' && (
-                            <div className="text-center p-4">
-                                <h2 className="text-2xl font-bold text-gray-800">Dashboard - Visão Geral do Patrimônio</h2>
-                                <p className="text-gray-600">Bem-vindo ao sistema de gerenciamento de patrimônio hospitalar.</p>
-                            </div>
-                        )}
-                        {activeTab === 'bens-patrimoniais' && <BemPatrimonialList />}
-                        {activeTab === 'categorias-bens' && <CategoriaBemList />}
-                        {activeTab === 'localizacoes' && <LocalizacaoList />}
-                        {activeTab === 'manutencoes' && <ManutencaoList />}
-                        {activeTab === 'movimentacoes' && <MovimentacaoList />}
-                        {activeTab === 'usuarios' && <UsuarioList />}
-                        {activeTab === 'depreciacoes' && <DepreciacaoList />}
-                    </Content>
-                </Layout>
-            </Layout>
-            <Rodape />
-        </Layout>
+        <div style={{ width: collapsed ? 80 : 250, transition: 'width 0.3s ease-in-out', padding: 10, height: 'auto', overflow: 'hidden' }}>
+            <Button
+                type="primary"
+                onClick={toggleCollapsed}
+                style={{
+                    marginBottom: 16,
+                }}
+            >
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </Button>
+
+            <Menu
+                onClick={onClick}
+                defaultSelectedKeys={['dashboard']}
+                defaultOpenKeys={['sub1']}
+                mode="inline"
+                theme="light"
+                inlineCollapsed={collapsed}
+                items={menu}
+            />
+        </div>
     );
+}
+
+function Content({ children }) {
+    return <div style={{ marginTop: 10, marginLeft: 50, width: '100%' }}>{children}</div>;
 }
 
 export default PainelPatrimonio;

@@ -28,8 +28,6 @@ import FormularioQRCode from '../util/FormularioQRCode';
 import Html5QrcodeScanner from '../util/Html5QrcodeScanner';
 import RotaTest from '../util/RotaTest';
 import GraficoTriagem from '../components/GraficoTriagem';
-import RoleRoute from '../contexts/RoleRoute.js';
-import SelecionarFilial from "../pages/SelecionarFilial"
 
 function RoutesApp() {
     return (
@@ -214,7 +212,7 @@ function RoutesApp() {
                         </RoleRoute>
                     </Private>
                 }
-            />}
+            />
 
             { <Route path="*" element={<div>Página não existente</div>} />}
         </Routes>

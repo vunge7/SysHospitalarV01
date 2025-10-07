@@ -30,7 +30,7 @@ export default function Gasto(props) {
     const carregarGastos = async () => {
         setLoadingGastos(true);
         try {
-            const r = await api.get('gasto/all');
+            const r = await api.get('/gasto/all');
             setGastos([...r.data]);
         } catch {
             message.error('Falha ao carregar os gastos ');
@@ -42,7 +42,7 @@ export default function Gasto(props) {
         setLoadingLinhas(true);
         setSelectedGasto(gastoId); // Atualiza o selecionado imediatamente
         try {
-            const r = await api.get('linhagasto/gasto/' + gastoId);
+            const r = await api.get('/linhagasto/gasto/' + gastoId);
             setLinhasGasto([...r.data]);
         } catch {
             message.error('Falha ao buscar as linhas do gasto ');
@@ -55,7 +55,7 @@ export default function Gasto(props) {
         setExportLoading(true);
         for (const item of linhasGasto) {
             try {
-                const r = await api.get('produto/' + item.servicoId);
+                const r = await api.get('/produto/' + item.servicoId);
                 const _item = r.data;
                 const artigo = {
                     id: _item.id,

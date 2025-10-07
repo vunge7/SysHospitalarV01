@@ -60,3 +60,61 @@ body {
 .ant-flex-center {
     align-items: center;
 }
+
+/* Responsividade global - sem alterar layout ou cores */
+@media (max-width: 1024px) {
+  .container, .content, .ant-layout-content {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+@media (max-width: 768px) {
+  .container, .content, .ant-layout-content {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+  .ant-card {
+    margin-bottom: 12px !important;
+  }
+}
+@media (max-width: 600px) {
+  .ant-table-wrapper {
+    overflow-x: auto !important;
+    width: 100%;
+  }
+  .ant-table {
+    min-width: 400px !important;
+    font-size: 0.97rem;
+  }
+  .recharts-responsive-container {
+    height: 180px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .ant-form-item {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .ant-form-item-label > label {
+    font-size: 0.98rem;
+  }
+  .ant-input, .ant-select-selector, .ant-input-number {
+    font-size: 1rem;
+    min-height: 36px;
+  }
+  .ant-btn {
+    font-size: 1rem;
+    min-width: 90px;
+    min-height: 36px;
+  }
+  .ant-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .ant-col {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}

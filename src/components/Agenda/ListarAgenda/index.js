@@ -3,6 +3,7 @@ import { Table, Button, Input, Select, Spin, Alert, message, Modal, DatePicker }
 import { EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined, SaveOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import './style.css';
+import {viewPdfGenerico} from '../../util/utilitarios';
 
 const { confirm } = Modal;
 
@@ -20,6 +21,8 @@ const ListarAgenda = React.memo(({
   fetchAgendas,
   fetchLinhasAgenda,
   fetchAllData,
+  tipoAgendamento, // NOVO: tipo de agendamento
+  renderExtraButtons, // NOVO: botão extra
 }) => {
   const [editandoLinhaId, setEditandoLinhaId] = useState(null);
   const [linhaEditada, setLinhaEditada] = useState({});
@@ -58,17 +61,68 @@ const ListarAgenda = React.memo(({
   const fetchConsultas = async () => {
     try {
       const response = await api.get('produto/all');
-      const produtosConsultas = response.data.filter(produto =>
-        produto.productGroup &&
-        produto.productGroup.toLowerCase().includes('consulta') &&
-        produto.productDescription
-      );
+      let produtosConsultas;
+      if (tipoAgendamento && tipoAgendamento !== 'consulta') {
+        produtosConsultas = response.data.filter(produto =>
+          produto.productGroup &&
+          produto.productGroup.toLowerCase().includes(tipoAgendamento) &&
+          produto.productDescription
+        );
+        // fallback: se não houver nenhum, pega todos
+        if (produtosConsultas.length === 0) {
+          produtosConsultas = response.data.filter(produto => produto.productDescription);
+        }
+      } else {
+        produtosConsultas = response.data.filter(produto =>
+          produto.productGroup &&
+          produto.productGroup.toLowerCase().includes('consulta') &&
+          produto.productDescription
+        );
+      }
       if (produtosConsultas.length === 0) {
-        setError('Nenhuma consulta válida encontrada. Verifique o backend.');
+        setError('Nenhum agendamento encontrado. Verifique o backend.');
       }
       return produtosConsultas;
     } catch (error) {
-      setError('Erro ao carregar consultas: ' + error.message);
+      setError('Erro ao carregar agendamentos: ' + error.message);
+      return [];
+    }
+  };
+
+  const fetchLinhaAgenda = async () => {
+    try {
+      const res = await api.get('linhaagenda/all');
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (e) {
+      setError('Erro ao carregar linhas da agenda: ' + (e.message || 'Erro desconhecido'));
+      return [];
+    }
+  };
+
+  const fetchFuncionarios = async () => {
+    try {
+      const res = await api.get('funcionario/all');
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (e) {
+      setError('Erro ao carregar funcionários: ' + (e.message || 'Erro desconhecido'));
+      return [];
+    }
+  };
+  const fetchPessoas = async () => {
+    try {
+      const res = await api.get('pessoa/all');
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (e) {
+      setError('Erro ao carregar pessoas: ' + (e.message || 'Erro desconhecido'));
+      return [];
+    }
+  };
+  const fetchPacientes = async () => {
+    try {
+      const res = await api.get('paciente/all');
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (e) {
+      setError('Erro ao carregar pacientes: ' + (e.message || 'Erro desconhecido'));
       return [];
     }
   };
@@ -79,14 +133,20 @@ const ListarAgenda = React.memo(({
     setIsLoading(true);
     setError(null);
     try {
-      await fetchAllData();
+      if (typeof fetchAllData === 'function') {
+        await fetchAllData();
+      }
       const consultasData = await fetchConsultas();
+      const linhasAgendaData = await fetchLinhaAgenda();
+      const funcionariosData = await fetchFuncionarios();
+      const pessoasData = await fetchPessoas();
+      const pacientesData = await fetchPacientes();
       const newLocalData = {
         agendas: initialAgendas || [],
-        linhasAgenda: initialLinhasAgenda || [],
-        funcionarios: initialFuncionarios || [],
-        pessoas: initialPessoas || [],
-        pacientes: initialPacientes || [],
+        linhasAgenda: linhasAgendaData,
+        funcionarios: funcionariosData,
+        pessoas: pessoasData,
+        pacientes: pacientesData,
       };
       setLocalData(newLocalData);
       setConsultasCarregadas(consultasData);
@@ -98,7 +158,7 @@ const ListarAgenda = React.memo(({
       setError('Erro ao carregar dados: ' + err.message);
       setIsLoading(false);
     }
-  }, [fetchAllData, initialAgendas, initialLinhasAgenda, initialFuncionarios, initialPessoas, initialPacientes]);
+  }, [fetchAllData, initialAgendas, initialLinhasAgenda, initialFuncionarios, initialPessoas, initialPacientes, tipoAgendamento]);
 
   useEffect(() => {
     loadData();
@@ -253,7 +313,6 @@ const ListarAgenda = React.memo(({
         className: 'custom-message',
         style: { top: '20px', right: '20px' }
       });
-      await fetchLinhasAgenda();
     }
   };
 
@@ -283,7 +342,6 @@ const ListarAgenda = React.memo(({
         className: 'custom-message',
         style: { top: '20px', right: '20px' }
       });
-      await fetchLinhasAgenda();
     }
   };
 
@@ -468,7 +526,6 @@ const ListarAgenda = React.memo(({
       setEditandoLinhaId(null);
       setFiltros({ usuario: '', medico: '', paciente: '', consulta: '' });
       setMostrarSugestoes({ usuario: false, medico: false, paciente: false, consulta: false });
-      await fetchAllData();
       message.success({
         content: 'Linha atualizada com sucesso!',
         className: 'custom-message',
@@ -484,7 +541,6 @@ const ListarAgenda = React.memo(({
         className: 'custom-message',
         style: { top: '20px', right: '20px' }
       });
-      await fetchLinhasAgenda();
     }
   };
 
@@ -567,26 +623,8 @@ const ListarAgenda = React.memo(({
       dataIndex: 'funcionarioId',
       key: 'medico',
       render: (funcionarioId, linha) => {
-        if (editandoLinhaId === linha.id) {
-          return (
-            <Select
-              showSearch
-              value={filtros.medico}
-              onChange={(value, option) => handleSelectOption('medicoNome', 'funcionarioId', option.children, value)}
-              onSearch={value => handleChange(value, 'medico', 'funcionarioId')}
-              filterOption={false}
-              style={{ width: '100%' }}
-              placeholder="Selecione um médico"
-            >
-              {filteredFuncionarios.map(f => {
-                const nome = localData.pessoas.find(p => p.id === f.pessoaId)?.nome || 'Sem nome';
-                return <Select.Option key={f.id} value={f.id}>{nome}</Select.Option>;
-              })}
-            </Select>
-          );
-        }
         const funcionario = localData.funcionarios.find(f => f.id === Number(funcionarioId));
-        const pessoa = localData.pessoas.find(p => p.id === funcionario?.pessoaId);
+        const pessoa = funcionario ? localData.pessoas.find(p => p.id === funcionario.pessoaId) : null;
         return pessoa?.nome || 'Médico não encontrado';
       },
     },
@@ -599,21 +637,29 @@ const ListarAgenda = React.memo(({
           return (
             <Select
               showSearch
-              value={filtros.paciente}
-              onChange={(value, option) => handleSelectOption('pacienteNome', 'pacienteId', option.children, value)}
-              onSearch={value => handleChange(value, 'paciente', 'pacienteId')}
+              value={linhaEditada.pacienteId || undefined}
+              placeholder="Buscar paciente"
+              onSearch={value => setFiltros(prev => ({ ...prev, paciente: value }))}
+              onChange={(value, option) => {
+                setLinhaEditada(prev => ({ ...prev, pacienteId: value }));
+                setFiltros(prev => ({ ...prev, paciente: option.children }));
+              }}
               filterOption={false}
-              style={{ width: '100%' }}
-              placeholder="Selecione o paciente"
+              style={{ width: 180 }}
             >
-              {filteredPacientes.map(p => (
-                <Select.Option key={p.id} value={p.id}>{p.nome}</Select.Option>
-              ))}
+              {filteredPacientes.length > 0 ? (
+                filteredPacientes.map(pac => (
+                  <Select.Option key={pac.id} value={pac.id}>{pac.nome}</Select.Option>
+                ))
+              ) : (
+                <Select.Option disabled>Nenhum paciente encontrado</Select.Option>
+              )}
             </Select>
           );
         }
-        const paciente = localData.pacientes.find(p => p.id === pacienteId);
-        return paciente?.nome || 'Paciente não encontrado';
+        const paciente = localData.pacientes.find(p => p.id === Number(pacienteId));
+        const pessoa = paciente ? localData.pessoas.find(p => p.id === paciente.pessoaId) : null;
+        return pessoa?.nome || 'Paciente não encontrado';
       },
     },
     {
@@ -621,23 +667,6 @@ const ListarAgenda = React.memo(({
       dataIndex: 'consultaId',
       key: 'consulta',
       render: (consultaId, linha) => {
-        if (editandoLinhaId === linha.id) {
-          return (
-            <Select
-              showSearch
-              value={filtros.consulta}
-              onChange={(value, option) => handleSelectOption('consultaMotivo', 'consultaId', option.children, value)}
-              onSearch={value => handleChange(value, 'consulta', 'consultaMotivo')}
-              filterOption={false}
-              style={{ width: '100%' }}
-              placeholder="Selecione a consulta"
-            >
-              {filteredConsultas.map(c => (
-                <Select.Option key={c.id} value={c.id}>{c.productDescription}</Select.Option>
-              ))}
-            </Select>
-          );
-        }
         const consulta = consultasCarregadas.find(c => c.id === Number(consultaId));
         return consulta?.productDescription || '';
       },
@@ -647,18 +676,6 @@ const ListarAgenda = React.memo(({
       dataIndex: 'dataRealizacao',
       key: 'data',
       render: (data, linha) => {
-        if (editandoLinhaId === linha.id) {
-          return (
-            <DatePicker
-              showTime
-              value={linhaEditada.dataRealizacao ? (typeof linhaEditada.dataRealizacao === 'string' ? (window.moment ? window.moment(linhaEditada.dataRealizacao) : null) : linhaEditada.dataRealizacao) : null}
-              onChange={value => setLinhaEditada(prev => ({ ...prev, dataRealizacao: value ? value.format('YYYY-MM-DD HH:mm:ss') : '' }))}
-              format="YYYY-MM-DD HH:mm"
-              style={{ width: '100%' }}
-              placeholder="Selecione data e hora"
-            />
-          );
-        }
         return new Date(data).toLocaleString();
       },
     },
@@ -667,25 +684,8 @@ const ListarAgenda = React.memo(({
       dataIndex: 'funcionarioId',
       key: 'nome',
       render: (funcionarioId, linha) => {
-        if (editandoLinhaId === linha.id) {
-          return (
-            <Select
-              showSearch
-              value={filtros.usuario}
-              onChange={(value, option) => handleSelectOption('usuarioNome', 'funcionarioId', option.children, value)}
-              onSearch={value => handleChange(value, 'usuario', 'funcionarioId')}
-              filterOption={false}
-              style={{ width: '100%' }}
-              placeholder="Selecione o Responsavel"
-            >
-              {filteredPessoas.map(p => (
-                <Select.Option key={p.id} value={p.id}>{p.nome}</Select.Option>
-              ))}
-            </Select>
-          );
-        }
         const funcionario = localData.funcionarios.find(f => f.id === Number(funcionarioId));
-        const pessoa = localData.pessoas.find(p => p.id === funcionario?.pessoaId);
+        const pessoa = funcionario ? localData.pessoas.find(p => p.id === funcionario.pessoaId) : null;
         return pessoa?.nome || 'Responsavel não encontrado';
       },
     },
@@ -754,6 +754,53 @@ const ListarAgenda = React.memo(({
 
   return (
     <div className="listar-agenda-container">
+      <h2>Lista de Agendas</h2>
+      <div className="filtros-status" style={{ alignItems: 'center' }}>
+        {renderExtraButtons}
+        <Button
+          type={filtroAtivo === 'todos' ? 'primary' : 'default'}
+          onClick={() => setFiltroAtivo('todos')}
+          style={{ marginRight: 8, marginBottom: 8 }}
+        >
+          Todas Agendas
+        </Button>
+        <Button
+          type={filtroAtivo === 'emProcesso' ? 'primary' : 'default'}
+          onClick={() => setFiltroAtivo('emProcesso')}
+          style={{ marginRight: 8, marginBottom: 8 }}
+        >
+          Em Processo
+        </Button>
+        <Button
+          type={filtroAtivo === 'jaPassaram' ? 'primary' : 'default'}
+          onClick={() => setFiltroAtivo('jaPassaram')}
+          style={{ marginRight: 8, marginBottom: 8 }}
+        >
+          Passadas
+        </Button>
+        <Button
+          type={filtroAtivo === 'confirmadaFutura' ? 'primary' : 'default'}
+          onClick={() => setFiltroAtivo('confirmadaFutura')}
+          style={{ marginRight: 8, marginBottom: 8 }}
+        >
+          Confirmadas Futuras
+        </Button>
+        <Button
+          type={filtroAtivo === 'confirmadaPassada' ? 'primary' : 'default'}
+          onClick={() => setFiltroAtivo('confirmadaPassada')}
+          style={{ marginBottom: 8 }}
+        >
+          Confirmadas Passadas
+        </Button>
+      </div>
+      <div className="filter-container">
+        <Input
+          placeholder="Filtrar por consulta..."
+          value={filtroConsulta}
+          onChange={e => setFiltroConsulta(e.target.value)}
+          style={{ width: 200, marginBottom: 16 }}
+        />
+      </div>
       {isLoading ? (
         <Spin tip="Carregando dados..." className="spinner" />
       ) : (
@@ -776,52 +823,6 @@ const ListarAgenda = React.memo(({
               style={{ marginBottom: 16 }}
             />
           )}
-          <h2>Lista de Agendas</h2>
-          <div className="filtros-status">
-            <Button
-              type={filtroAtivo === 'todos' ? 'primary' : 'default'}
-              onClick={() => setFiltroAtivo('todos')}
-              style={{ marginRight: 8, marginBottom: 8 }}
-            >
-              Todas Agendas
-            </Button>
-            <Button
-              type={filtroAtivo === 'emProcesso' ? 'primary' : 'default'}
-              onClick={() => setFiltroAtivo('emProcesso')}
-              style={{ marginRight: 8, marginBottom: 8 }}
-            >
-              Em Processo
-            </Button>
-            <Button
-              type={filtroAtivo === 'jaPassaram' ? 'primary' : 'default'}
-              onClick={() => setFiltroAtivo('jaPassaram')}
-              style={{ marginRight: 8, marginBottom: 8 }}
-            >
-              Passadas
-            </Button>
-            <Button
-              type={filtroAtivo === 'confirmadaFutura' ? 'primary' : 'default'}
-              onClick={() => setFiltroAtivo('confirmadaFutura')}
-              style={{ marginRight: 8, marginBottom: 8 }}
-            >
-              Confirmadas Futuras
-            </Button>
-            <Button
-              type={filtroAtivo === 'confirmadaPassada' ? 'primary' : 'default'}
-              onClick={() => setFiltroAtivo('confirmadaPassada')}
-              style={{ marginBottom: 8 }}
-            >
-              Confirmadas Passadas
-            </Button>
-          </div>
-          <div className="filter-container">
-            <Input
-              placeholder="Filtrar por consulta..."
-              value={filtroConsulta}
-              onChange={e => setFiltroConsulta(e.target.value)}
-              style={{ width: 200, marginBottom: 16 }}
-            />
-          </div>
           <Table
             columns={columns}
             dataSource={linhasFiltradas}

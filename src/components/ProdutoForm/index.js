@@ -8,6 +8,7 @@ import { api } from "../../service/api";
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import ProdutoGroupForm from '../ProdutoGroupForm';
 import DynamicTable from '../DynamicTable';
+import { toast } from 'react-toastify';
 
 // Definindo o esquema de validação com Zod
 const schema = z.object({
@@ -68,7 +69,7 @@ const ProdutoForm = () => {
   const buscarProdutos = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('produto/all'); // Chamada para a rota 'produto/all'
+      const result = await api.get('/produto/all'); // Chamada para a rota '/produto/all'
       setProduto(result.data); // Armazena os produtos recebidos da API
     } catch (error) {
       console.log('Erro ao efetuar a chamada da API', error);
@@ -82,7 +83,7 @@ const ProdutoForm = () => {
   const buscarProdutosGrupos = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('productgroup/all');
+      const result = await api.get('/productgroup/all');
       const grupos = [...new Set(result.data.map(produto => produto.designacaoProduto))];
       setIdGroup([...new Set(result.data.map(produto => produto.id))]);
 
@@ -99,7 +100,7 @@ const ProdutoForm = () => {
   const buscarTiposProduto = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('producttype/all');
+      const result = await api.get('/producttype/all');
       const tipos = [...new Set(result.data.map(produto => produto.designacaoTipoProduto))];
       setIdType([...new Set(result.data.map(produto => produto.id))]);
       setTipoProduto(tipos);
@@ -132,30 +133,33 @@ const ProdutoForm = () => {
     console.log("Dados a serem enviados para o backend:", dataToSubmit);  // Verifique os dados enviados
 
     if (statusSendEdit == false) {
-      const response = await api.post('produto/add', dataToSubmit)
+      const response = await api.post('/produto/add', dataToSubmit)
         .then((result) => {
           buscarProdutos();
           setModalIsOpen(false);
+          toast.success('Produto Cadastrado com Sucesso', { autoClose: 2000 });
         })
         .catch((error) => {
           console.log("Erro ao salvar o produto")
           erros.push("Erro ao salvar o produto")
           setErrosNoFront(erros);
+          toast.error('Erro ao Cadastrar Produto', { autoClose: 2000 });
         })
     } else {
       const dataSubmit = { ...{}, status: true, id: id, productType: t, productGroup: g, preco: p, taxIva: i, productNumberCode: nc, productDescription: d, productCode: c };
-      const response = await api.put('produto/edit', dataSubmit)
+      const response = await api.put(`/produto/${dataSubmit.id}`, dataSubmit)
         .then((result) => {
           console.log('Dados Editados com sucess!...');
           buscarProdutos();
           setModalIsOpen(false);
           setStatusSendEdit(false)
-          alert("Produto Editado com Sucesso")
+          toast.success('Produto Editado com Sucesso', { autoClose: 2000 });
         })
         .catch((error) => {
           console.log("Erro ao Editar o produto", error);
           erros.push("Erro ao Editar o produto");
           setErrosNoFront(erros);
+          toast.error('Erro ao Editar Produto', { autoClose: 2000 });
         })
     }
   };
@@ -209,19 +213,20 @@ const ProdutoForm = () => {
 
   const onConfirmar = async (data) => {
     const dataSubmit = { ...produtoRemover, status: false, id: produtoRemover.id };
-    const response = await api.put('produto/del', dataSubmit)
+    const response = await api.patch(`/produto/${dataSubmit.id}/status`, null, { params: { status: false } })
       .then((result) => {
         console.log('O produto removido com sucesso!...', dataSubmit);
         buscarProdutos();
         setModalIsOpen(false);
         setStatusSendEdit(false)
         setModalIsOpenRemove(false);
+        toast.success('Produto Removido com Sucesso', { autoClose: 2000 });
 
 
       }).catch((error) => {
         console.log("Erro ao remover o produto ")
         erros.push("Erro ao remover o produto")
-        alert("ERRO ao Deletar Produto!")
+        toast.error('Erro ao Remover Produto', { autoClose: 2000 });
 
       })
   }
