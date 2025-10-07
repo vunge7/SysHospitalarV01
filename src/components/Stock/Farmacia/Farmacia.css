@@ -1,32 +1,390 @@
-.monitoramento-container {
+/* Estilos principais para o componente Farmacia */
+.farmacia-container {
+  background: #f5f7fa;
+  min-height: 100vh;
   padding: 20px;
 }
 
-.page-title {
-  font-size: 24px;
+/* Estilos para as abas */
+.farmacia-container .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px 8px 0 0;
+  margin-right: 8px;
+  transition: all 0.3s ease;
+}
+
+.farmacia-container .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover {
+  background: #f0f8ff;
+  border-color: #1890ff;
+}
+
+.farmacia-container .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+  background: #1890ff;
+  border-color: #1890ff;
+  color: #fff;
+}
+
+/* Estilos para o conteúdo das seções */
+.section-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 16px;
+}
+
+/* Estilos para formulários */
+.operation-form {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
   margin-bottom: 20px;
 }
 
-.table-section {
-  margin-bottom: 32px;
+.form-item {
+  margin-bottom: 0;
 }
 
-.section-title {
-  font-size: 18px;
+/* Estilos para tabelas */
+.stock-table {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stock-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  color: #262626;
+  border-bottom: 2px solid #e8e8e8;
+}
+
+.stock-table .ant-table-tbody > tr:hover > td {
+  background: #f0f8ff;
+}
+
+/* Estilos para botões de ação */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-buttons .ant-btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.action-buttons .ant-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Estilos para filtros */
+.filter-container {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-input {
+  min-width: 200px;
+  border-radius: 6px;
+}
+
+/* Estilos para alertas e notificações */
+.alert-container {
+  margin-bottom: 20px;
+}
+
+.alert-container .ant-alert {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para modais */
+.modal-content {
+  padding: 20px;
+}
+
+.modal-content .ant-form-item {
   margin-bottom: 16px;
 }
 
-.custom-table {
-  background: #fff;
-  border-radius: 8px;
+/* Estilos para tags */
+.custom-tag {
+  border-radius: 6px;
+  font-weight: 500;
+  padding: 4px 8px;
 }
 
-.custom-table .ant-table-thead > tr > th {
-  background: #fafafa;
+/* Estilos para loading states */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Estilos para cards de estatísticas */
+.stats-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.stats-card .stats-value {
+  font-size: 32px;
   font-weight: bold;
+  margin: 0;
 }
 
-.custom-table .ant-table-tbody > tr:hover > td {
-  background: #f5f5f5;
+/* Estilos para tooltips personalizados */
+.custom-tooltip {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+/* Estilos para responsividade */
+@media (max-width: 768px) {
+  .farmacia-container {
+    padding: 12px;
+  }
+  
+  .section-content {
+    padding: 16px;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .filter-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-input {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .action-buttons .ant-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .farmacia-container {
+    padding: 8px;
+  }
+  
+  .section-content {
+    padding: 12px;
+  }
+  
+  .operation-form {
+    padding: 16px;
+  }
+}
+
+/* Estilos para animações */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para scrollbars personalizados */
+.section-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.section-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.section-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.section-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Estilos para estados de erro */
+.error-state {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.error-state .ant-alert {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Estilos para estados vazios */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #8c8c8c;
+}
+
+.empty-state .ant-empty {
+  margin-bottom: 16px;
+}
+
+/* Estilos para badges de status */
+.status-badge {
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+  background: #f6ffed;
+  color: #52c41a;
+  border: 1px solid #b7eb8f;
+}
+
+.status-badge.inactive {
+  background: #fff2f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+}
+
+/* Estilos para progress bars */
+.progress-container {
+  margin: 16px 0;
+}
+
+.progress-container .ant-progress-text {
+  font-weight: 600;
+}
+
+/* Estilos para dropdowns personalizados */
+.custom-select .ant-select-selector {
+  border-radius: 6px;
+  border: 1px solid #d9d9d9;
+  transition: all 0.3s ease;
+}
+
+.custom-select .ant-select-selector:hover {
+  border-color: #40a9ff;
+}
+
+.custom-select.ant-select-focused .ant-select-selector {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Estilos para inputs personalizados */
+.custom-input .ant-input {
+  border-radius: 6px;
+  border: 1px solid #d9d9d9;
+  transition: all 0.3s ease;
+}
+
+.custom-input .ant-input:hover {
+  border-color: #40a9ff;
+}
+
+.custom-input .ant-input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Estilos para botões personalizados */
+.custom-button {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  height: 36px;
+  padding: 0 16px;
+}
+
+.custom-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.custom-button.primary {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  border: none;
+  color: white;
+}
+
+.custom-button.primary:hover {
+  background: linear-gradient(135deg, #40a9ff 0%, #1890ff 100%);
+}
+
+.custom-button.secondary {
+  background: white;
+  border: 1px solid #d9d9d9;
+  color: #595959;
+}
+
+.custom-button.secondary:hover {
+  border-color: #40a9ff;
+  color: #40a9ff;
+}
+
+.custom-button.danger {
+  background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%);
+  border: none;
+  color: white;
+}
+
+.custom-button.danger:hover {
+  background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
 }
 

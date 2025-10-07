@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
 import { api } from '../../service/api';
@@ -20,6 +20,8 @@ import {
     PoweroffOutlined,
 } from '@ant-design/icons';
 
+import { AuthContext } from '../../contexts/auth';
+
 function PainelAgenda() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [agendas, setAgendas] = useState([]);
@@ -31,6 +33,7 @@ function PainelAgenda() {
     const [consultas, setConsultas] = useState([]);
     const [menu, setMenu] = useState([]);
     const navigate = useNavigate();
+    const { logout } = useContext(AuthContext);
 
     // Funções de busca de dados (mantidas iguais)
     const fetchAgendas = async () => {
@@ -141,7 +144,7 @@ function PainelAgenda() {
             setFormularios([]);
         }
         if (key === 'sair') {
-            navigate('/logout'); // Ajuste conforme sua lógica de logout
+            logout();
         }
     };
 

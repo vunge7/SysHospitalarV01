@@ -1,25 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Button,
-    Modal,
-    Form,
-    Input,
-    Select,
-    Checkbox,
-    Card,
-    notification,
+import { 
+    Button, 
+    Modal, 
+    Form, 
+    Input, 
+    Select, 
+    Checkbox, 
+    Card, 
+    notification, 
     DatePicker,
-    Table,
-    Space,
-    Popconfirm,
-    Typography,
+    Table, 
+    Space, 
+    Popconfirm, 
+    Typography, 
+    Row, 
+    Col, 
+    Tag, 
+    Tooltip, 
+    Alert,
+    Divider,
+    InputNumber,
+    Switch,
+    Upload,
+    message
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined } from '@ant-design/icons';
+import { 
+    PlusOutlined, 
+    EditOutlined, 
+    DeleteOutlined, 
+    EyeOutlined, 
+    CopyOutlined, 
+    NodeExpandOutlined,
+    SearchOutlined,
+    FilterOutlined,
+    DownloadOutlined,
+    UploadOutlined,
+    InfoCircleOutlined,
+    ExclamationCircleOutlined,
+    CheckCircleOutlined,
+    ClockCircleOutlined
+} from '@ant-design/icons';
 import moment from 'moment';
 import { api } from '../../service/api';
+import modalProduto from '../../pages/PainelProduto/NovoProduto/index';
+import NovoProduto from '../../pages/PainelProduto/NovoProduto';
+import { toast } from 'react-toastify';
 
 const { Option } = Select;
-const { Text } = Typography;
+const { Text, Title } = Typography;
+const { TextArea } = Input;
+const { Dragger } = Upload;
 
 function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateExame, deleteExame }) {
     const [form] = Form.useForm();
@@ -34,58 +64,232 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     const [pacientes, setPacientes] = useState([]);
     const [tiposExame, setTiposExame] = useState([]);
     const [unidades, setUnidades] = useState([]);
+    const [showNovoProdutoModal, setShowNovoProdutoModal] = useState(false);
+    const [produtosExame, setProdutosExame] = useState([]);
+    const [showProdutoDetails, setShowProdutoDetails] = useState(false);
+    const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+    const [produtoParaEditar, setProdutoParaEditar] = useState(null);
+    const [modalFilhosVisible, setModalFilhosVisible] = useState(false);
+    const [filhosProduto, setFilhosProduto] = useState([]);
+    const [produtoPaiSelecionado, setProdutoPaiSelecionado] = useState(null);
+    
+    // Novos estados para funcionalidades avançadas
+    const [searchText, setSearchText] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterType, setFilterType] = useState('all');
+    const [sortField, setSortField] = useState('designacao');
+    const [sortOrder, setSortOrder] = useState('ascend');
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [bulkActionLoading, setBulkActionLoading] = useState(false);
+    const [importModalVisible, setImportModalVisible] = useState(false);
+    const [exportModalVisible, setExportModalVisible] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
 
-    // Log exames prop to debug
+    // Log da prop exames para o  debug
     useEffect(() => {
         console.log('Exames prop:', exames);
     }, [exames]);
 
-    // Fetch pacientes from GET /paciente/all
+    // Funções de validação
+    const validateExame = (values) => {
+        const errors = {};
+        
+        if (!values.designacao || values.designacao.trim().length < 3) {
+            errors.designacao = 'A designação deve ter pelo menos 3 caracteres';
+        }
+        
+        if (!values.productType) {
+            errors.productType = 'O tipo de produto é obrigatório';
+        }
+        
+        if (values.preco && values.preco < 0) {
+            errors.preco = 'O preço não pode ser negativo';
+        }
+        
+        if (values.stock && values.stock < 0) {
+            errors.stock = 'O stock não pode ser negativo';
+        }
+        
+        if (isComposto && (!referencias || referencias.length === 0)) {
+            errors.referencias = 'Exames compostos devem ter pelo menos uma referência';
+        }
+        
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    // Funções de filtro e busca
+    const getFilteredExames = () => {
+        let filtered = produtosExame || [];
+        
+        // Filtro por texto de busca
+        if (searchText) {
+            filtered = filtered.filter(exame => 
+                exame.designacao?.toLowerCase().includes(searchText.toLowerCase()) ||
+                exame.productType?.toLowerCase().includes(searchText.toLowerCase()) ||
+                exame.descricao?.toLowerCase().includes(searchText.toLowerCase())
+            );
+        }
+        
+        // Filtro por status
+        if (filterStatus !== 'all') {
+            filtered = filtered.filter(exame => {
+                if (filterStatus === 'active') return exame.status === true;
+                if (filterStatus === 'inactive') return exame.status === false;
+                return true;
+            });
+        }
+        
+        // Filtro por tipo
+        if (filterType !== 'all') {
+            filtered = filtered.filter(exame => exame.productType === filterType);
+        }
+        
+        // Ordenação
+        filtered.sort((a, b) => {
+            const aValue = a[sortField] || '';
+            const bValue = b[sortField] || '';
+            
+            if (sortOrder === 'ascend') {
+                return aValue.toString().localeCompare(bValue.toString());
+            } else {
+                return bValue.toString().localeCompare(aValue.toString());
+            }
+        });
+        
+        return filtered;
+    };
+
+    // Funções de importação/exportação
+    const handleExport = () => {
+        const data = getFilteredExames();
+        const csvContent = [
+            ['Designação', 'Tipo', 'Preço', 'Stock', 'Status', 'Data Criação'],
+            ...data.map(exame => [
+                exame.designacao || '',
+                exame.productType || '',
+                exame.preco || '',
+                exame.stock || '',
+                exame.status ? 'Ativo' : 'Inativo',
+                moment(exame.createdAt).format('DD/MM/YYYY')
+            ])
+        ].map(row => row.join(',')).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `exames_${moment().format('YYYY-MM-DD')}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('Exportação realizada com sucesso!', { autoClose: 2000 });
+    };
+
+    const handleBulkAction = async (action) => {
+        if (selectedRowKeys.length === 0) {
+            toast.warning('Selecione pelo menos um exame!', { autoClose: 2000 });
+            return;
+        }
+        
+        setBulkActionLoading(true);
+        try {
+            for (const id of selectedRowKeys) {
+                if (action === 'activate') {
+                    await updateExame(id, { status: true });
+                } else if (action === 'deactivate') {
+                    await updateExame(id, { status: false });
+                } else if (action === 'delete') {
+                    await deleteExame(id);
+                }
+            }
+            
+            setSelectedRowKeys([]);
+            toast.success(`Ação em lote realizada com sucesso!`, { autoClose: 2000 });
+            fetchProdutosExame();
+        } catch (error) {
+            toast.error('Erro ao executar ação em lote!', { autoClose: 2000 });
+        } finally {
+            setBulkActionLoading(false);
+        }
+    };
+
+    // Fetch pacientes de GET /paciente/all
     useEffect(() => {
         const fetchPacientes = async () => {
             try {
-                const response = await api.get('paciente/all');
+                const response = await api.get('/paciente/all');
                 console.log('Fetched pacientes:', response.data);
                 setPacientes(response.data);
             } catch (error) {
                 console.error('Error fetching pacientes:', error);
-                notification.error({ message: 'Erro ao buscar pacientes!' });
+                toast.error('Erro ao buscar pacientes!', { autoClose: 2000 });
                 setPacientes([]);
             }
         };
         fetchPacientes();
     }, []);
 
-    // Fetch tiposExame from GET /tipo-exame/all
+    // Fetch tiposExame de GET /tipo-exame/all
     useEffect(() => {
         const fetchTiposExame = async () => {
             try {
-                const response = await api.get('tipo-exame/all');
+                const response = await api.get('/tipo-exame/all');
                 console.log('Fetched tiposExame:', response.data);
                 setTiposExame(response.data);
             } catch (error) {
                 console.error('Error fetching tiposExame:', error);
-                notification.error({ message: 'Erro ao buscar tipos de exame!' });
+                // Se a API de tipo-exame não existir, usar produtos como tipos
+                try {
+                    const produtosRes = await api.get('/produto/all');
+                    const produtos = Array.isArray(produtosRes.data) ? produtosRes.data : [];
+                    const tiposUnicos = [...new Set(produtos.map(p => p.productType || p.tipo).filter(Boolean))];
+                    setTiposExame(tiposUnicos.map((tipo, index) => ({ id: index + 1, nome: tipo })));
+                } catch (produtoError) {
+                    console.error('Error fetching produtos as tipos:', produtoError);
                 setTiposExame([]);
+                }
             }
         };
         fetchTiposExame();
     }, []);
 
-    // Fetch unidades from GET /unidade/all
+    // Fetch unidades de GET /unidade/all
     useEffect(() => {
         const fetchUnidades = async () => {
             try {
-                const response = await api.get('unidade/all');
+                const response = await api.get('/unidade/all');
                 console.log('Fetched unidades:', response.data);
                 setUnidades(response.data);
             } catch (error) {
                 console.error('Error fetching unidades:', error);
-                notification.error({ message: 'Erro ao buscar unidades de medida!' });
+                toast.error('Erro ao buscar unidades de medida!', { autoClose: 2000 });
                 setUnidades([]);
             }
         };
         fetchUnidades();
+    }, []);
+
+    // Função para buscar produtos do tipo exame (usada para atualizar a tabela após add/edit)
+    const fetchProdutosExame = async () => {
+        try {
+            const res = await api.get('/produto/all');
+            console.log('Produtos retornados da API:', res.data); // Log para debug
+            // Filtro flexível: inclui todos os produtos cujo tipo contenha 'exame' (case-insensitive)
+            const produtos = Array.isArray(res.data)
+                ? res.data.filter(p => {
+                    const tipo = (p.productType || p.tipo || '').toString().toLowerCase();
+                    return tipo.includes('exame');
+                })
+                : [];
+            setProdutosExame(produtos);
+        } catch (error) {
+            setProdutosExame([]);
+        }
+    };
+
+    useEffect(() => {
+        fetchProdutosExame();
     }, []);
 
     const showModal = (exame = null) => {
@@ -152,6 +356,12 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     };
 
     const onFinish = async (values) => {
+        // Validação antes de submeter
+        if (!validateExame(values)) {
+            toast.error('Por favor, corrija os erros de validação!', { autoClose: 3000 });
+            return;
+        }
+
         setLoading(true);
         try {
             const referenciasObj = {};
@@ -175,12 +385,15 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 designacao: values.designacao,
                 unidade: values.unidade || 'N/A',
                 composto: values.composto || false,
-                referencias: referenciasObj, // Always an object
+                referencias: referenciasObj,
                 pacienteId: values.pacienteId,
                 medicoId: values.medicoId,
                 status: 'PENDENTE',
                 dataSolicitacao: new Date().toISOString(),
                 dataColeta: values.dataColeta ? values.dataColeta.toISOString() : null,
+                preco: values.preco ? parseFloat(values.preco) : 0,
+                stock: values.stock ? parseInt(values.stock) : 0,
+                dataCriacao: new Date().toISOString(),
             };
 
             let exameResponse;
@@ -198,14 +411,13 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                     ? exames.map((e) => (e.id === editingExame.id ? exameResponse.data : e))
                     : [...exames, exameResponse.data]
             );
-            notification.success({ message: isEditMode ? 'Exame atualizado com sucesso!' : 'Exame criado com sucesso!' });
+            toast.success(isEditMode ? 'Exame atualizado com sucesso!' : 'Exame criado com sucesso!', { autoClose: 2000 });
             handleCancel();
-            fetchAllData(); // Trigger parent state update
+            fetchAllData();
+            setValidationErrors({});
         } catch (error) {
             console.error('Error saving exame:', error);
-            notification.error({
-                message: error.response?.data || error.message || 'Erro ao salvar exame!',
-            });
+            toast.error(error.response?.data || error.message || 'Erro ao salvar exame!', { autoClose: 2000 });
         } finally {
             setLoading(false);
         }
@@ -216,13 +428,11 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             console.log('Deleting exame ID:', id);
             const response = await deleteExame(id);
             console.log('Delete response:', response.data);
-            notification.success({ message: 'Exame excluído com sucesso!' });
+            toast.success('Exame excluído com sucesso!', { autoClose: 2000 });
             fetchAllData();
         } catch (error) {
             console.error('Error deleting exame:', error);
-            notification.error({
-                message: error.response?.data || 'Erro ao excluir exame!',
-            });
+            toast.error(error.response?.data || 'Erro ao excluir exame!', { autoClose: 2000 });
         }
     };
 
@@ -278,181 +488,170 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         },
     ];
 
+    const handleViewProduto = (produto) => {
+        setProdutoSelecionado(produto);
+        setShowProdutoDetails(true);
+    };
+    const handleEditProduto = (produto) => {
+        setProdutoParaEditar(produto);
+        setIsEditMode(true);
+        setShowNovoProdutoModal(true);
+    };
+    const handleCloseNovoProduto = () => {
+        setShowNovoProdutoModal(false);
+        setProdutoParaEditar(null);
+        setIsEditMode(false);
+    };
+    const handleDeleteProduto = async (produto) => {
+        try {
+            await api.patch(`produto/${produto.id}/status?status=false`);
+            toast.success('Produto excluído com sucesso!', { autoClose: 2000 });
+            fetchProdutosExame();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || error?.response?.data || error.message || 'Erro ao excluir produto!', { autoClose: 2000 });
+        }
+    };
+
+    // Função para buscar filhos de um produto
+    const handleVerFilhos = async (produto) => {
+      setProdutoPaiSelecionado(produto);
+      try {
+        const res = await api.get(`produto/${produto.id}/arvore`);
+        setFilhosProduto(res.data.filhos || []);
+      } catch {
+        setFilhosProduto([]);
+      }
+      setModalFilhosVisible(true);
+    };
+
+    // Função para renderizar filhos em árvore
+    const renderFilhosArvore = (filhosArr, nivel = 1) => (
+      <ul style={{ marginLeft: nivel * 16 }}>
+        {filhosArr.map(filho => (
+          <li key={filho.id}>
+            <b>Produto Filho:</b> {filho.productDescription}
+            {filho.filhos && filho.filhos.length > 0 && renderFilhosArvore(filho.filhos, nivel + 1)}
+          </li>
+        ))}
+      </ul>
+    );
+
     return (
         <div>
             <h2 className="section-title">Gestão de Exames</h2>
             <Card className="card-custom">
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()} style={{ marginBottom: 16 }}>
-                    Adicionar Exame
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => { setShowNovoProdutoModal(true); setProdutoParaEditar(null); setIsEditMode(false); }} style={{ marginBottom: 16 }}>
+                    Novo Exame
                 </Button>
-                <Table columns={columns} dataSource={exames} rowKey="id" className="table-custom" />
+                <NovoProduto
+                    visible={showNovoProdutoModal}
+                    onClose={handleCloseNovoProduto}
+                    modalTitle={isEditMode ? "Editar Exame" : "Novo Exame"}
+                    submitButtonText={isEditMode ? "Salvar Alterações" : "Adicionar Exame"}
+                    produtoParaEditar={produtoParaEditar}
+                    onSuccess={fetchProdutosExame}
+                />
+                <Table
+                    columns={[
+                        {
+                            title: 'Imagem',
+                            dataIndex: 'imagem',
+                            key: 'imagem',
+                            render: (img) => {
+                                console.log('Valor do campo imagem:', img); // Log para debug
+                                if (!img) return <span>Sem Imagem</span>;
+                                const isFullUrl = img.startsWith('http') || img.startsWith('data:');
+                                // Ajuste a URL base conforme seu backend
+                                const src = isFullUrl ? img : `http://localhost:8081/produto/imagens/${img}`;
+                                return (
+                                    <img
+                                        src={src}
+                                        alt="Produto"
+                                        style={{ maxWidth: 50, borderRadius: 4 }}
+                                        onError={e => { e.target.onerror = null; e.target.src = 'https://placehold.co/50x50'; }}
+                                    />
+                                );
+                            },
+                        },
+                        { title: 'Descrição', dataIndex: 'productDescription', key: 'productDescription' },
+                        { title: 'Grupo', dataIndex: 'productGroup', key: 'productGroup' },
+                        { title: 'Tipo', dataIndex: 'productType', key: 'productType' },
+                        { title: 'Código', dataIndex: 'productCode', key: 'productCode' },
+                        { title: 'Preço', dataIndex: 'preco', key: 'preco' },
+                        { title: 'Taxa IVA (%)', dataIndex: 'taxIva', key: 'taxIva' },
+                        { title: 'Preço Final', dataIndex: 'finalPrice', key: 'finalPrice' },
+                        {
+                            title: 'Unidade',
+                            dataIndex: 'unidadeMedida',
+                            key: 'unidadeMedida',
+                            render: (unidadeMedida) => unidadeMedida || 'N/A',
+                        },
+                        { title: 'Status', dataIndex: 'status', key: 'status', render: s => (s === true || s === '1' || s === 1 || s === 'true' || s === 'ATIVO') ? 'Ativo' : 'Inativo' },
+                        {
+                            title: 'Ações',
+                            key: 'acoes',
+                            render: (_, record) => (
+                                <Space>
+                                    <Button icon={<EyeOutlined />} onClick={() => handleViewProduto(record)} />
+                                    <Button icon={<EditOutlined />} onClick={() => handleEditProduto(record)} />
+                                    <Button icon={<NodeExpandOutlined />} onClick={() => handleVerFilhos(record)}>
+                                        Ver Filhos
+                                    </Button>
+                                    <Button icon={<DeleteOutlined />} danger
+                                        // Adicionar Popconfirm para confirmação
+                                        overlay={
+                                            <Popconfirm
+                                                title="Deseja realmente excluir este produto?"
+                                                onConfirm={() => handleDeleteProduto(record)}
+                                                okText="Sim"
+                                                cancelText="Não"
+                                            >
+                                                <span>Excluir</span>
+                                            </Popconfirm>
+                                        }
+                                    />
+                                </Space>
+                            ),
+                        },
+                    ]}
+                    dataSource={produtosExame.filter(p => !p.produtoPaiId)}
+                    rowKey="id"
+                    pagination={{ pageSize: 10 }}
+                    style={{ marginBottom: 32 }}
+                    title={() => <span>Produtos do Tipo Exame</span>}
+                />
+                <Modal
+                    title={`Filhos de ${produtoPaiSelecionado?.productDescription || ''}`}
+                    open={modalFilhosVisible}
+                    onCancel={() => setModalFilhosVisible(false)}
+                    footer={<Button onClick={() => setModalFilhosVisible(false)}>Fechar</Button>}
+                >
+                    {filhosProduto.length === 0 ? (
+                        <div>Nenhum filho cadastrado.</div>
+                    ) : (
+                        renderFilhosArvore(filhosProduto)
+                    )}
+                </Modal>
             </Card>
             <Modal
-                title={isEditMode ? 'Editar Exame' : 'Criar Novo Exame'}
-                open={isModalVisible}
-                onCancel={handleCancel}
-                footer={null}
-                className="modal-custom"
+                title="Detalhes do Produto"
+                open={showProdutoDetails}
+                onCancel={() => setShowProdutoDetails(false)}
+                footer={<Button onClick={() => setShowProdutoDetails(false)}>Fechar</Button>}
             >
-                <Form form={form} layout="vertical" onFinish={onFinish}>
-                    <Form.Item
-                        name="tipoExameId"
-                        label="Tipo de Exame"
-                        rules={[{ required: true, message: 'Selecione um tipo de exame' }]}
-                    >
-                        <Select placeholder="Selecione um tipo de exame" loading={tiposExame.length === 0}>
-                            {tiposExame.map((tipo) => (
-                                <Option key={tipo.id} value={tipo.id}>
-                                    {tipo.nome}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="pacienteId"
-                        label="Paciente"
-                        rules={[{ required: true, message: 'Selecione um paciente' }]}
-                    >
-                        <Select placeholder="Selecione um paciente" loading={pacientes.length === 0}>
-                            {pacientes.map((paciente) => (
-                                <Option key={paciente.id} value={paciente.id}>
-                                    {paciente.nome}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="estado"
-                        label="Estado"
-                        rules={[{ required: true, message: 'Selecione o estado' }]}
-                    >
-                        <Select placeholder="Selecione o estado">
-                            <Option value="ATIVO">Ativo</Option>
-                            <Option value="INATIVO">Inativo</Option>
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="designacao"
-                        label="Designação"
-                        rules={[{ required: true, message: 'Insira a designação' }]}
-                    >
-                        <Input placeholder="Nome do exame" />
-                    </Form.Item>
-                    <Form.Item
-                        name="unidade"
-                        label="Unidade"
-                        rules={[{ required: true, message: 'Selecione a unidade' }]}
-                    >
-                        <Select placeholder="Selecione a unidade" loading={unidades.length === 0}>
-                            {unidades.map((unidade) => (
-                                <Option key={unidade.id} value={unidade.abrevicao}>
-                                    {unidade.abrevicao} ({unidade.descricao})
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item name="composto" valuePropName="checked">
-                        <Checkbox onChange={(e) => setIsComposto(e.target.checked)}>Exame Composto</Checkbox>
-                    </Form.Item>
-                    {isComposto && (
-                        <div>
-                            <Text strong>Referências Médicas</Text>
-                            {referencias.map((ref, index) => (
-                                <Card key={index} style={{ marginBottom: 16 }} size="small">
-                                    <Space style={{ width: '100%' }}>
-                                        <Input
-                                            placeholder="Nome do componente (ex.: Hemácias)"
-                                            value={ref.nome}
-                                            onChange={(e) => updateReferencia(index, 'nome', e.target.value)}
-                                            style={{ width: 200 }}
-                                        />
-                                        <Input
-                                            placeholder="Intervalo (ex.: 4.5-5.9)"
-                                            value={ref.intervalo}
-                                            onChange={(e) => updateReferencia(index, 'intervalo', e.target.value)}
-                                            style={{ width: 150 }}
-                                        />
-                                        <Select
-                                            placeholder="Unidade"
-                                            value={ref.unidade}
-                                            onChange={(value) => updateReferencia(index, 'unidade', value)}
-                                            style={{ width: 150 }}
-                                        >
-                                            {unidades.map((unidade) => (
-                                                <Option key={unidade.id} value={unidade.abrevicao}>
-                                                    {unidade.abrevicao} ({unidade.descricao})
-                                                </Option>
-                                            ))}
-                                        </Select>
-                                        <Button danger onClick={() => removeReferencia(index)}>
-                                            Remover
-                                        </Button>
-                                    </Space>
-                                </Card>
-                            ))}
-                            <Button type="dashed" onClick={addReferencia} block>
-                                Adicionar Referência
-                            </Button>
-                        </div>
-                    )}
-                    <Form.Item style={{ marginTop: 16 }}>
-                        <Button type="primary" htmlType="submit" loading={loading}>
-                            {isEditMode ? 'Atualizar Exame' : 'Criar Exame'}
-                        </Button>
-                        <Button style={{ marginLeft: 8 }} onClick={handleCancel}>
-                            Cancelar
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Modal>
-            <Modal
-                title="Detalhes do Exame"
-                open={isDetailsModalVisible}
-                onCancel={handleDetailsCancel}
-                footer={[
-                    <Button key="close" onClick={handleDetailsCancel}>
-                        Fechar
-                    </Button>,
-                ]}
-                className="modal-custom"
-            >
-                {selectedExame && (
+                {produtoSelecionado && (
                     <div>
-                        <Text strong>Designação:</Text> <Text>{selectedExame.designacao}</Text>
-                        <br />
-                        <Text strong>Tipo:</Text>{' '}
-                        <Text>
-                            {tiposExame.find((t) => t.id === selectedExame.tipoExameId)?.nome || 'N/A'}
-                        </Text>
-                        <br />
-                        <Text strong>Unidade:</Text> <Text>{selectedExame.unidade || 'N/A'}</Text>
-                        <br />
-                        <Text strong>Composto:</Text> <Text>{selectedExame.composto ? 'Sim' : 'Não'}</Text>
-                        <br />
-                        <Text strong>Referências Médicas:</Text>
-                        {selectedExame.composto && selectedExame.referencias && Object.keys(selectedExame.referencias).length > 0 ? (
-                            <Table
-                                dataSource={Object.entries(selectedExame.referencias).map(([nome, ref]) => ({
-                                    nome,
-                                    intervalo: ref.valor,
-                                    unidade: ref.unidade,
-                                }))}
-                                columns={[
-                                    { title: 'Componente', dataIndex: 'nome', key: 'nome' },
-                                    { title: 'Intervalo', dataIndex: 'intervalo', key: 'intervalo' },
-                                    { title: 'Unidade', dataIndex: 'unidade', key: 'unidade' },
-                                ]}
-                                pagination={false}
-                                size="small"
-                                className="table-custom"
-                            />
-                        ) : selectedExame.referencias && Object.keys(selectedExame.referencias).length > 0 ? (
-                            <Text>
-                                {Object.values(selectedExame.referencias)[0]?.valor || 'N/A'} (
-                                {Object.values(selectedExame.referencias)[0]?.unidade || 'N/A'})
-                            </Text>
-                        ) : (
-                            <Text>N/A</Text>
+                        <p><b>Descrição:</b> {produtoSelecionado.productDescription}</p>
+                        <p><b>Grupo:</b> {produtoSelecionado.productGroup}</p>
+                        <p><b>Tipo:</b> {produtoSelecionado.productType}</p>
+                        <p><b>Código:</b> {produtoSelecionado.productCode}</p>
+                        <p><b>Preço:</b> {produtoSelecionado.preco}</p>
+                        <p><b>Taxa IVA (%):</b> {produtoSelecionado.taxIva}</p>
+                        <p><b>Preço Final:</b> {produtoSelecionado.finalPrice}</p>
+                        <p><b>Unidade:</b> {produtoSelecionado.unidadeMedida}</p>
+                        <p><b>Status:</b> {produtoSelecionado.status ? 'Ativo' : 'Inativo'}</p>
+                        {produtoSelecionado.imagem && (
+                            <img src={produtoSelecionado.imagem.startsWith('http') ? produtoSelecionado.imagem : `/produto/imagens/${produtoSelecionado.imagem}`} alt="Produto" style={{ maxWidth: 100, borderRadius: 4 }} onError={e => e.target.style.display='none'} />
                         )}
                     </div>
                 )}

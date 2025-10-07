@@ -28,161 +28,195 @@ import FormularioQRCode from '../util/FormularioQRCode';
 import Html5QrcodeScanner from '../util/Html5QrcodeScanner';
 import RotaTest from '../util/RotaTest';
 import GraficoTriagem from '../components/GraficoTriagem';
+import RoleRoute from '../contexts/RoleRoute.js';
+import SelecionarFilial from "../pages/SelecionarFilial"
 
 function RoutesApp() {
     return (
         <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/tts" element={<TextToSpeech />} />
-            <Route path="/gt" element={<GraficoTriagem />} />
-            <Route path="/tm" element={<TriagemManchester />} />
-            <Route path="/formqrcode" element={<FormularioQRCode />} />
-            <Route path="/qrcode" element={<Html5QrcodeScanner />} />
-            <Route path="/rota" element={<RotaTest />} />
-            <Route path="/admissao/home" element={<PainelAdmissao />} />
+            { /*Outras rotas comentadas para depuração*/ }
+            { <Route path="/tts" element={<TextToSpeech />} /> }
+            { <Route path="/gt" element={<GraficoTriagem />} /> }
+            { <Route path="/tm" element={<TriagemManchester />} /> }
+            { <Route path="/formqrcode" element={<FormularioQRCode />} />}
+            { <Route path="/qrcode" element={<Html5QrcodeScanner />} />}
+            { <Route path="/rota" element={<RotaTest />} />}
+            { <Route path="/admissao/home" element={<PainelAdmissao />} />}
+            
 
-            <Route
+            { <Route
                 path="/admin"
                 element={
                     <Private>
-                        <PainelPrincipal />
+                        <RoleRoute allowed={['administrativo', "medico", "analista"]}>
+                            <PainelPrincipal />
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/admin/dashboard"
                 element={
                     <Private>
-                        <PainelAdmissao page="admin">
-                            <Dashboard />
-                        </PainelAdmissao>
+                        <RoleRoute allowed={['administrativo']}>
+                            <PainelAdmissao page="admin">
+                                <Dashboard />
+                            </PainelAdmissao>
+                        </RoleRoute>
                     </Private>
                 }
-            />
-            <Route
+            />}
+            { <Route
                 path="/admin/paciente"
                 element={
                     <Private>
-                        <PainelAdmissao page="admin">
-                            <PacienteForm />
-                        </PainelAdmissao>
+                        <RoleRoute allowed={['administrativo', "medico", "enfermeiro"]}>
+                            <PainelAdmissao page="admin">
+                                <PacienteForm />
+                            </PainelAdmissao>
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/enf"
                 element={
                     <Private>
-                        <PainelEnfermeiro />
+                        <RoleRoute allowed={['administrativo', 'enfermeiro', "medico", "ADMINISTRATIVO", "admin"]}>
+                            <PainelEnfermeiro />
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/enf/triagem"
                 element={
                     <Private>
-                        <PainelEnfermeiro>
-                            <Triagem />
-                        </PainelEnfermeiro>
+                        <RoleRoute allowed={['administrativo', 'enfermeiro', "medico", "ADMINISTRATIVO", "admin"]}>
+                            <PainelEnfermeiro>
+                                <Triagem />
+                            </PainelEnfermeiro>
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/medico/home"
                 element={
                     <Private>
-                        <PainelMedico>
-                            <DashboardMedico />
-                        </PainelMedico>
+                        <RoleRoute allowed={['administrativo', 'medico']}>
+                            <PainelMedico>
+                                <DashboardMedico />
+                            </PainelMedico>
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/medico/consulta"
                 element={
                     <Private>
-                        <PainelMedico>
-                            <Consulta />
-                        </PainelMedico>
+                        <RoleRoute allowed={['administrativo', 'medico']}>
+                            <PainelMedico>
+                                <Consulta />
+                            </PainelMedico>
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/facturacao"
                 element={
                     <Private>
-                        <PainelFacturacao></PainelFacturacao>
+                        <RoleRoute allowed={['administrativo']}>
+                            <PainelFacturacao></PainelFacturacao>
+                        </RoleRoute>
                     </Private>
                 }
-            />
-            <Route
+            />}
+            { <Route
                 path="/facturacao/criar"
                 element={
                     <Private>
-                        <PainelFacturacao>
-                            <Facturacao />
-                        </PainelFacturacao>
+                        <RoleRoute allowed={['administrativo']}>
+                            <PainelFacturacao>
+                                <Facturacao />
+                            </PainelFacturacao>
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/agenda"
                 element={
                     <Private>
-                        <Agenda />
+                        <RoleRoute allowed={['administrativo', 'enfermeiro', "medico"]}>
+                            <Agenda />
+                        </RoleRoute>
                     </Private>
                 }
-            />
-            <Route
+            />}
+            { <Route
                 path="/artigo"
                 element={
                     <Private>
-                        <PainelProduto />
+                        <RoleRoute allowed={['administrativo', "analista"]}>
+                            <PainelProduto />
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route
+            { <Route
                 path="/stock"
                 element={
                     <Private>
-                        <Stock />
+                        <RoleRoute allowed={['administrativo']}>
+                            <Stock />
+                        </RoleRoute>
                     </Private>
                 }
-            />
-            <Route
+            />}
+            { <Route
                 path="admin/usuario"
                 element={
                     <Private>
-                        <Usuarios />
+                        <RoleRoute allowed={['administrativo']}>
+                            <Usuarios />
+                        </RoleRoute>
                     </Private>
                 }
-            />
-            <Route
+            />}
+            { <Route
                 path="/lab"
                 element={
                     <Private>
-                        <Laboratorio />
+                        <RoleRoute allowed={['administrativo', "analista"]}>
+                            <Laboratorio />
+                        </RoleRoute>
                     </Private>
                 }
-            />
-            <Route
+            />}
+            { <Route
                 path="/rh"
                 element={
                     <Private>
-                        <PainelRecursos />
+                        <RoleRoute allowed={['administrativo']}>
+                            <PainelRecursos />
+                        </RoleRoute>
                     </Private>
                 }
-            />
+            />}
 
-            <Route path="*" element={<div>Página não existente</div>} />
+            { <Route path="*" element={<div>Página não existente</div>} />}
         </Routes>
     );
 }

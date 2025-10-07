@@ -24,6 +24,8 @@ const ExameRequisitado = (props) => {
         borderRadius: token.borderRadiusLG,
         border: 'none',
     };
+    // Remover Tree e examesTree
+    const [selectedKeys, setSelectedKeys] = useState([]);
 
     useEffect(() => {
         carregarExames();
@@ -33,26 +35,32 @@ const ExameRequisitado = (props) => {
         carrgarItens();
     }, [props.listaExamesRequisitado]);
 
+    // Função para buscar árvore de filhos recursivamente
+    const fetchFilhos = async (produtoId) => {
+        try {
+            const res = await api.get(`produto/${produtoId}/arvore`);
+            return res.data;
+        } catch {
+            return null;
+        }
+    };
+
     const carregarExames = async () => {
-        await api
-            .get('produto/all/grupo/2')
-            .then((r) => {
-                let data = r.data;
-                let newData = data.map((item) => {
-                    let linha = {
+        try {
+            const res = await api.get('produto/all');
+            const produtos = res.data || [];
+            // Filtrar apenas exames pai (produtoPaiId == null)
+            const pais = produtos.filter(p => p.produtoPaiId == null);
+            const newData = pais.map(item => ({
                         id: item.id,
                         designacao: item.productDescription,
                         grupo: item.productGroup,
                         obs: '',
-                    };
-                    return linha;
-                });
-
-                setListaFonteExame([...newData]);
-            })
-            .catch((e) => {
-                console.log('Falha ao carregar os dados');
-            });
+            }));
+            setListaFonteExame(newData);
+        } catch (e) {
+            setListaFonteExame([]);
+        }
     };
 
     const carrgarItens = () => {
@@ -103,12 +111,10 @@ const ExameRequisitado = (props) => {
         console.log('adicionar', row);
         props.setListaExamesRequisitado([...data]);
     };
+
+    // Remover também funções relacionadas a onSelect, onAddSelected, findLeafNodes, etc.
     return (
-        <div
-            style={{
-                flexDirection: 'row',
-            }}
-        >
+        <div style={{ flexDirection: 'row' }}>
             <form>
                 <div style={{ marginBottom: 10 }}>
                     <button
@@ -119,7 +125,6 @@ const ExameRequisitado = (props) => {
                     >
                         Adicionar
                     </button>
-
                     {props.listaExamesRequisitado.length > 0 && (
                         <button
                             onClick={(e) => {
@@ -132,19 +137,15 @@ const ExameRequisitado = (props) => {
                     )}
                 </div>
             </form>
-
             <Collapse
                 bordered={false}
                 defaultActiveKey={['1']}
                 expandIcon={({ isActive }) => (
                     <CaretRightOutlined rotate={isActive ? 90 : 0} />
                 )}
-                style={{
-                    background: token.colorBgContainer,
-                }}
+                style={{ background: token.colorBgContainer }}
                 items={itens}
             />
-
             <Modal
                 isOpen={modalOpen}
                 onAfterClose={onAfterClose}
@@ -166,7 +167,7 @@ const ExameRequisitado = (props) => {
                     isCrud={false}
                     onAdd={onAdd}
                 />
-                <button onClick={onAfterClose}>Close</button>
+                <button onClick={onAfterClose} style={{ marginLeft: 8 }}>Fechar</button>
             </Modal>
         </div>
     );

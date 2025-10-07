@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu, Input, Select, Radio, Modal, Form, Table } from 'antd';
 import { SearchOutlined, UserAddOutlined } from '@ant-design/icons';
@@ -18,6 +18,7 @@ import {
   UserOutlined,
   PoweroffOutlined,
 } from '@ant-design/icons';
+import { AuthContext } from '../../contexts/auth';
 
 const { Option } = Select;
 
@@ -53,6 +54,7 @@ function Usuario() {
   const [usuarioId, setUsuarioId] = useState(1); // Ajuste conforme o usuário logado
   const [funcionarios, setFuncionarios] = useState([]);
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
 
   const generos = [
     { value: 'M', label: 'Masculino' },
@@ -72,7 +74,7 @@ function Usuario() {
   // Funções de busca de dados
   const fetchUsuarios = async () => {
     try {
-      const response = await api.get('api/usuarios/listar');
+      const response = await api.get('usuario/all');
       setUsuarios(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
@@ -166,7 +168,7 @@ function Usuario() {
   const handleTabClick = ({ key }) => {
     setActiveTab(key);
     if (key === 'sair') {
-      navigate('/logout');
+      logout();
     }
   };
 

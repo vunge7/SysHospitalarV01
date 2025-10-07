@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Menu, Layout, notification } from 'antd';
+import { Button, Menu, Layout, notification, Drawer } from 'antd';
 import { StockContext } from '../../contexts/StockContext';
 import Dashboard from './Dashboard';
 import Exame from './Exame';
 import Relatorio from './Relatorio';
 import AvaliacaoExameRequisitado from './AvaliacaoExameRequisitado';
 import './Laboratorio.css';
+import './responsive.css';
 import Cabecario from '../Cabecario';
 import Rodape from '../Rodape';
 import { api } from '../../service/api';
@@ -287,44 +288,76 @@ function Laboratorio() {
     const [examesRequisitados, setExamesRequisitados] = useState([]);
     const [collapsed, setCollapsed] = useState(false);
     const navigate = useNavigate();
+    const [examesProdutos, setExamesProdutos] = useState([]);
+    const [resultadosExames, setResultadosExames] = useState([]);
+    const [resultadoExames, setResultadoExames] = useState([]);
+    const [drawerVisible, setDrawerVisible] = useState(false);
+    const [requisicoesExame, setRequisicoesExame] = useState([]);
+    const [linhasRequisicaoExame, setLinhasRequisicaoExame] = useState([]);
 
+    // Consolidar todas as chamadas de API em um único useEffect
     useEffect(() => {
-        const fetchRequisicoes = async () => {
-            await api
-                .get('requisicaoexame/all/composto')
-                .then((r) => {
-                       console.log(r.data)
-                    setExamesRequisitados([...r.data]);
-                 
-                })
-                .catch((e) => console.error(e));
+        const fetchAllInitialData = async () => {
+            try {
+                // Buscar requisições de exame
+                const requisicoesRes = await api.get('/requisicaoexame/all/composto');
+                setExamesRequisitados(Array.isArray(requisicoesRes.data) ? requisicoesRes.data : []);
+                setRequisicoesExame(Array.isArray(requisicoesRes.data) ? requisicoesRes.data : []);
+
+                // Buscar produtos de exame
+                const produtosRes = await api.get('/produto/all');
+                const produtos = Array.isArray(produtosRes.data)
+                    ? produtosRes.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
+                    : [];
+                setExamesProdutos(produtos);
+
+                // Buscar resultados de exames
+                const resultadosRes = await api.get('/linharesultado/all');
+                setResultadosExames(Array.isArray(resultadosRes.data) ? resultadosRes.data : []);
+
+                // Buscar resultado de exames
+                const resultadoExamesRes = await api.get('/resultado/all');
+                setResultadoExames(Array.isArray(resultadoExamesRes.data) ? resultadoExamesRes.data : []);
+
+                // Buscar linhas de requisição de exame
+                const linhasRes = await api.get('/linharequisicaoexame/all');
+                setLinhasRequisicaoExame(Array.isArray(linhasRes.data) ? linhasRes.data : []);
+
+            } catch (error) {
+                console.error('Erro ao buscar dados iniciais:', error);
+                notification.error({
+                    message: 'Erro ao carregar dados iniciais',
+                    description: error.message,
+                });
+            }
         };
 
-        fetchRequisicoes();
-    }, []);
-    // Persistir exames no localStorage
+        fetchAllInitialData();
+    }, []); // Executar apenas uma vez na montagem do componente
+    
+    // Persistir exames no localStorage apenas quando necessário
     useEffect(() => {
-        localStorage.setItem('exames', JSON.stringify(exames));
+        if (exames.length > 0) {
+            localStorage.setItem('exames', JSON.stringify(exames));
+        }
     }, [exames]);
+
+
 
     // Funções de simulação da API
     const fetchExames = async () => {
-        console.log('Buscando exames...');
         return { data: exames };
     };
 
     const fetchPacientes = async () => {
-        console.log('Buscando pacientes...');
         return { data: pacientes };
     };
 
     const fetchTiposExame = async () => {
-        console.log('Buscando tipos de exame...');
         return { data: tiposExame };
     };
 
     const fetchMedicos = async () => {
-        console.log('Buscando médicos...');
         return { data: medicos };
     };
 
@@ -369,7 +402,6 @@ function Laboratorio() {
     };
 
     const fetchAllData = async () => {
-        console.log('Iniciando fetchAllData...');
         try {
             await Promise.all([
                 fetchExames(),
@@ -379,7 +411,6 @@ function Laboratorio() {
                 fetchArtigos(),
                 fetchArmazens(),
             ]);
-            console.log('fetchAllData concluído com sucesso');
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
             notification.error({
@@ -389,6 +420,7 @@ function Laboratorio() {
         }
     };
 
+    // Executar fetchAllData apenas uma vez na montagem
     useEffect(() => {
         fetchAllData();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -422,88 +454,131 @@ function Laboratorio() {
         }
     };
 
+    // Otimizar o filtro de exames requisitados para evitar re-renderizações desnecessárias
+    const examesRequisitadosFiltrados = useMemo(() => {
+        return examesRequisitados.filter(r => !r.finalizado);
+    }, [examesRequisitados]);
+
+    const isMobile = window.innerWidth <= 768;
+
+    // Deixar fetchExamesProdutos disponível para ser chamado após adicionar/editar exame
+    const fetchExamesProdutos = async () => {
+        try {
+            const res = await api.get('/produto/all');
+            const produtos = Array.isArray(res.data)
+                ? res.data.filter(p => (p.productType || '').toLowerCase().includes('exame'))
+                : [];
+            setExamesProdutos(produtos);
+        } catch (error) {
+            console.error('Erro ao buscar produtos de exame:', error);
+            setExamesProdutos([]);
+        }
+    };
+
     return (
-        <Layout className="laboratorio-container">
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100vh' }}>
             <Cabecario />
-            <Layout className="inner-layout">
-                <Sider
-                    trigger={null}
-                    collapsible
-                    collapsed={collapsed}
-                    className="sider-custom"
-                    width={250}
-                    collapsedWidth={80}
-                >
-                    <Button
-                        type="primary"
-                        onClick={() => setCollapsed(!collapsed)}
-                        className="collapse-button"
-                    >
-                        {collapsed ? (
-                            <MenuUnfoldOutlined />
-                        ) : (
-                            <MenuFoldOutlined />
-                        )}
-                    </Button>
-                    <Menu
-                        mode="inline"
-                        defaultSelectedKeys={['dashboard']}
-                        items={menuItems}
-                        onClick={handleTabClick}
-                        className="menu-custom"
-                    />
-                </Sider>
-                <Layout>
-                    <Content className="content-custom">
-                        {activeTab === 'dashboard' && (
-                            <Dashboard
-                                exames={exames}
-                                tiposExame={tiposExame}
-                                artigos={artigos}
-                            />
-                        )}
-                        {activeTab === 'exame' && (
-                            <Exame
-                                exames={exames}
-                                tiposExame={tiposExame}
-                                pacientes={pacientes}
-                                medicos={medicos}
-                                setExames={setExames}
-                                fetchAllData={fetchAllData}
-                                createExame={createExame}
-                                updateExame={updateExame}
-                                deleteExame={deleteExame}
-                            />
-                        )}
-                        {activeTab === 'avaliacao' && (
-                            <AvaliacaoExameRequisitado
-                                examesRequisitados={examesRequisitados}
-                                setExamesRequisitados={setExamesRequisitados}
-                                exames={exames}
-                                pacientes={pacientes}
-                                medicos={medicos}
-                                tiposExame={tiposExame}
-                                setExames={setExames}
-                                fetchAllData={fetchAllData}
-                                updateExame={updateExame}
-                                deleteExame={deleteExame}
-                            />
-                        )}
-                        {activeTab === 'relatorio' && (
-                            <Relatorio
-                                exames={exames}
-                                pacientes={pacientes}
-                                tiposExame={tiposExame}
-                                artigos={artigos}
-                                medicos={medicos}
-                            />
-                        )}
-                    </Content>
-                </Layout>
-            </Layout>
+            <div style={{ width: 'auto', display: 'flex', flexDirection: 'row', flex: 1 }}>
+                <SideMenu menu={menuItems} onClick={handleTabClick} />
+                <MainContent>
+                    {activeTab === 'dashboard' && (
+                        <Dashboard
+                            examesProdutos={examesProdutos}
+                            examesRequisitados={examesRequisitados}
+                            resultadosExames={resultadosExames}
+                            linhasRequisicaoExame={linhasRequisicaoExame}
+                        />
+                    )}
+                    {activeTab === 'exame' && (
+                        <Exame
+                            exames={exames}
+                            tiposExame={tiposExame}
+                            pacientes={pacientes}
+                            medicos={medicos}
+                            setExames={setExames}
+                            fetchAllData={fetchAllData}
+                            createExame={createExame}
+                            updateExame={updateExame}
+                            deleteExame={deleteExame}
+                            fetchExamesProdutos={fetchExamesProdutos}
+                        />
+                    )}
+                    {activeTab === 'avaliacao' && (
+                        <AvaliacaoExameRequisitado
+                            examesRequisitados={examesRequisitadosFiltrados}
+                            setExamesRequisitados={setExamesRequisitados}
+                            exames={exames}
+                            pacientes={pacientes}
+                            medicos={medicos}
+                            tiposExame={tiposExame}
+                            setExames={setExames}
+                            fetchAllData={fetchAllData}
+                            updateExame={updateExame}
+                            deleteExame={deleteExame}
+                        />
+                    )}
+                    {activeTab === 'relatorio' && (
+                        <Relatorio
+                            examesProdutos={examesProdutos}
+                            resultadosExames={resultadosExames}
+                            resultadoExames={resultadoExames}
+                            requisicoesExame={requisicoesExame}
+                            linhasRequisicaoExame={linhasRequisicaoExame}
+                            pacientes={pacientes}
+                            tiposExame={tiposExame}
+                            artigos={artigos}
+                            medicos={medicos}
+                        />
+                    )}
+                </MainContent>
+            </div>
             <Rodape />
-        </Layout>
+        </div>
     );
+}
+
+function SideMenu({ menu, onClick }) {
+    const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setCollapsed(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const toggleCollapsed = () => {
+        setCollapsed(!collapsed);
+    };
+
+    return (
+        <div style={{ width: collapsed ? 80 : 250, transition: 'width 0.3s ease-in-out', padding: 10, height: 'auto', overflow: 'hidden' }}>
+            <Button
+                type="primary"
+                onClick={toggleCollapsed}
+                style={{
+                    marginBottom: 16,
+                }}
+            >
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </Button>
+
+            <Menu
+                onClick={onClick}
+                defaultSelectedKeys={['dashboard']}
+                defaultOpenKeys={['sub1']}
+                mode="inline"
+                theme="light"
+                inlineCollapsed={collapsed}
+                items={menu}
+            />
+        </div>
+    );
+}
+
+function MainContent({ children }) {
+    return <div style={{ marginTop: 10, marginLeft: 50, width: '100%' }}>{children}</div>;
 }
 
 export default Laboratorio;

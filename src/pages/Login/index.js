@@ -1,14 +1,43 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, Flex } from 'antd';
 import { AuthContext } from '../../contexts/auth';
 import { api } from '../../service/api';
 import fundoLogo from '../../assets/images/fundo_logo.jpg';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const { signIn } = useContext(AuthContext);
+    const { signIn, signed, user } = useContext(AuthContext);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (signed) {
+            // Se o usuário já tem filial selecionada, redirecionar para o painel
+            if (user?.filialSelecionada) {
+                switch (user.tipo) {
+                    case 'administrativo':
+                        navigate('/admin');
+                        break;
+                    case 'medico':
+                        navigate('/medico/home');
+                        break;
+                    case 'enfermeiro':
+                        navigate('/enf');
+                        break;
+                    case 'analista':
+                        navigate('/admin');
+                        break;
+                    default:
+                        navigate('/admin');
+                }
+            } else {
+                // Se não tem filial selecionada, ir para seleção de filial
+                navigate('/selecionar-filial');
+            }
+        }
+    }, [signed, user, navigate]);
 
     const onFinish = async (values) => {
         setError('');
@@ -18,7 +47,6 @@ const Login = () => {
                 username: values.username,
                 password: values.password,
             });
-            // Salva token e dados do usuário
             localStorage.setItem('token', response.data.token);
             const user = {
                 id: response.data.id,
@@ -32,9 +60,9 @@ const Login = () => {
             setLoading(false);
         }
     };
+
     return (
         <div
-            id="container"
             style={{
                 display: 'flex',
                 flexDirection: 'row',
@@ -44,7 +72,7 @@ const Login = () => {
                 marginLeft: -255,
             }}
         >
-            <div id="image" style={{ width: '50%' }}>
+            <div style={{ width: '50%' }}>
                 <img
                     src={fundoLogo}
                     style={{ width: '100%', height: '100vh' }}
@@ -71,7 +99,7 @@ const Login = () => {
                     rules={[
                         {
                             required: true,
-                            message: 'Por favor  digite seu Username!',
+                            message: 'Por favor digite seu Username!',
                         },
                     ]}
                 >
@@ -101,7 +129,7 @@ const Login = () => {
                         >
                             <Checkbox>Lembra-me</Checkbox>
                         </Form.Item>
-                        <a href="">Esqueceu a password</a>
+                        <a href="#" onClick={(e) => e.preventDefault()}>Esqueceu a password</a>
                     </Flex>
                 </Form.Item>
 
@@ -115,4 +143,5 @@ const Login = () => {
         </div>
     );
 };
+
 export default Login;
