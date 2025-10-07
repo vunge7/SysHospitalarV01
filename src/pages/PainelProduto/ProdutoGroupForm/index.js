@@ -32,10 +32,10 @@ function ProdutoGroupForm({ buscarProdutosGrupos }) {
     console.log('Dados a serem enviados para o backend:', dataToSubmit);
     try {
       if (statusSendEdit) {
-        await api.put('/productgroup/edit', dataToSubmit);
+        await api.put('productgroup/edit', dataToSubmit);
         Modal.success({ content: 'Grupo do Produto Editado com Sucesso' });
       } else {
-        await api.post('/productgroup/add', { designacaoProduto: data.designacaoProduto });
+        await api.post('productgroup/add', { designacaoProduto: data.designacaoProduto });
         Modal.success({ content: 'Grupo do Produto Salvo com Sucesso' });
       }
       setValue('designacaoProduto', '');
@@ -66,7 +66,7 @@ function ProdutoGroupForm({ buscarProdutosGrupos }) {
   const buscarProdutosGrupo = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('/productgroup/all');
+      const result = await api.get('productgroup/all');
       setProduto(result.data);
     } catch (error) {
       console.error('Erro ao buscar grupos:', error);
@@ -93,7 +93,7 @@ function ProdutoGroupForm({ buscarProdutosGrupos }) {
   const onConfirmar = async () => {
     setCarregar(true);
     try {
-      await api.delete(`/productgroup/${produtoRemover.id}`);
+      await api.delete(`productgroup/${produtoRemover.id}`);
       console.log('Grupo removido com sucesso:', produtoRemover.id);
       buscarProdutosGrupo();
       setModalIsOpenRemove(false);

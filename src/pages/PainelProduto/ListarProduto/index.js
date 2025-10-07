@@ -8,12 +8,8 @@ import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import UnidadeMedidaForm from '../UnidadeMedidaForm';
 import DynamicTable from '../DynamicTable';
-<<<<<<< HEAD
 import { AuthContext } from '../../../contexts/auth';
 import { isFieldVisible, filterSchemaByUserType, FIELD_PERMISSIONS } from '../../../config/fieldAccess';
-=======
-import { toast } from 'react-toastify';
->>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
 
 // Substitua o schema fixo pelo schema dinâmico igual ao NovoProduto
 const baseSchema = {
@@ -152,10 +148,10 @@ const ListarProduto = () => {
     setCarregar(true);
     try {
       const [unidadesRes, gruposRes, tiposRes, produtosRes] = await Promise.all([
-        api.get('/unidade/all'),
-        api.get('/productgroup/all'),
-        api.get('/producttype/all'),
-        api.get('/produto/all'),
+        api.get('unidade/all'),
+        api.get('productgroup/all'),
+        api.get('producttype/all'),
+        api.get('produto/all'),
       ]);
       setUnidades(unidadesRes.data);
       const newGruposMap = {};
@@ -233,7 +229,6 @@ const ListarProduto = () => {
         formData.append('imagem', data.imagem[0].originFileObj);
       }
 
-<<<<<<< HEAD
       await api.put('produto/edit', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -244,17 +239,6 @@ const ListarProduto = () => {
         placement: 'topRight',
         className: 'custom-message',
       });
-=======
-      console.log('Enviando FormData para /produto/edit:');
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value instanceof File ? value.name : value}`);
-      }
-
-      await api.put(`/produto/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      toast.success('Produto editado com sucesso!', { autoClose: 2000 });
->>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
 
       reset();
       setModalIsOpen(false);
@@ -307,7 +291,12 @@ const ListarProduto = () => {
       }
 
       setErrosNoFront(prev => [...prev, errorMessage]);
-      toast.error(errorMessage, { autoClose: 2000 });
+      notification.error({
+        message: 'Erro',
+        description: errorMessage,
+        placement: 'topRight',
+        className: 'custom-message',
+      });
     } finally {
       setCarregar(false);
     }
@@ -358,15 +347,25 @@ const ListarProduto = () => {
   const onConfirmar = async () => {
     setCarregar(true);
     try {
-      await api.patch(`/produto/${produtoRemover.id}/status`, null, { params: { status: false } });
-      toast.success('Produto removido com sucesso!', { autoClose: 2000 });
+      await api.put('produto/del', { id: produtoRemover.id, status: false });
+      notification.success({
+        message: 'Sucesso',
+        description: 'Produto removido com sucesso!',
+        placement: 'topRight',
+        className: 'custom-message',
+      });
       fetchData();
       setModalIsOpenRemove(false);
     } catch (error) {
       console.error('Erro ao remover:', error);
       const errorMessage = error.response?.data?.message || 'Erro ao remover produto';
       setErrosNoFront([...errosNoFront, errorMessage]);
-      toast.error(errorMessage, { autoClose: 2000 });
+      notification.error({
+        message: 'Erro',
+        description: errorMessage,
+        placement: 'topRight',
+        className: 'custom-message',
+      });
     } finally {
       setCarregar(false);
     }
@@ -416,11 +415,21 @@ const ListarProduto = () => {
       const isImage = ['image/jpeg', 'image/png'].includes(file.type);
       const isLt2M = file.size / 1024 / 1024 < 2;
       if (!isImage) {
-        toast.error('Apenas imagens JPEG ou PNG.', { autoClose: 2000 });
+        notification.error({
+          message: 'Erro',
+          description: 'Apenas imagens JPEG ou PNG.',
+          placement: 'topRight',
+          className: 'custom-message',
+        });
         return Upload.LIST_IGNORE;
       }
       if (!isLt2M) {
-        toast.error('A imagem deve ter no máximo 2MB!', { autoClose: 2000 });
+        notification.error({
+          message: 'Erro',
+          description: 'A imagem deve ter no máximo 2MB!',
+          placement: 'topRight',
+          className: 'custom-message',
+        });
         return Upload.LIST_IGNORE;
       }
       setPreview(URL.createObjectURL(file));

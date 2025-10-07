@@ -215,7 +215,7 @@ function RoutesApp() {
                 }
             />}
 
-            { <Route path="*" element={<div>Página não existente</div>} />}
+            { <Route path="/*" element={<div>Página não existente</div>} />}
         </Routes>
     );
 }
