@@ -288,7 +288,6 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
       {isLoading ? (
         <Spin tip="Carregando dados..." className="spinner" />
       ) : (
-<<<<<<< HEAD
         <>
           <Button
             type="primary"
@@ -327,24 +326,6 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
             </Form>
           </Modal>
         </>
-=======
-        <Form form={form} layout="vertical" className="agenda-form">
-          {formularios.map((formItem, index) => (
-            <FormRow
-              key={formItem.uniqueKey}
-              form={formItem}
-              index={index}
-              funcionarios={funcionarios}
-              pessoas={pessoas}
-              pacientes={pacientes}
-              consultas={consultas}
-              agendas={agendas}
-              linhasAgenda={linhasAgenda}
-              handleInputChange={handleInputChange}
-            />
-          ))}
-        </Form>
->>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
       )}
     </Modal>
   );
