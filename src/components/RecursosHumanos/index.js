@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
 import { api } from '../../service/api';
@@ -17,6 +17,7 @@ import {
     UserOutlined,
     PoweroffOutlined,
 } from '@ant-design/icons';
+import { AuthContext } from '../../contexts/auth';
 
 function RecursosHumanos() {
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -25,6 +26,7 @@ function RecursosHumanos() {
     const [pessoas, setPessoas] = useState([]);
     const [menu, setMenu] = useState([]);
     const navigate = useNavigate();
+    const { logout } = useContext(AuthContext);
 
     // Funções de busca de dados
     const fetchRecursosHumanos = async () => {
@@ -104,7 +106,7 @@ function RecursosHumanos() {
     const handleTabClick = ({ key }) => {
         setActiveTab(key);
         if (key === 'sair') {
-            navigate('/logout'); // Ajuste conforme sua lógica de logout
+            logout();
         }
     };
 

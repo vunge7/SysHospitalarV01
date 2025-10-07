@@ -107,8 +107,13 @@ const ListarUsuario = () => {
     try {
       const [usuariosRes, funcionariosRes, funcoesRes] = await Promise.all([
         api.get('/api/usuarios/listar'),
+<<<<<<< HEAD
+        api.get('funcionario/all'),
+        api.get('funcao/all'),
+=======
         api.get('/funcionario/all'),
         api.get('/funcao/all'),
+>>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
       ]);
       const usuariosData = Array.isArray(usuariosRes.data) ? usuariosRes.data : [];
       const funcionariosData = Array.isArray(funcionariosRes.data) ? funcionariosRes.data : [];

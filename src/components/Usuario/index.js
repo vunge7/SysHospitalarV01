@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu, Input, Select, Radio, Modal, Form, Table } from 'antd';
 import { SearchOutlined, UserAddOutlined } from '@ant-design/icons';
@@ -18,6 +18,7 @@ import {
   UserOutlined,
   PoweroffOutlined,
 } from '@ant-design/icons';
+import { AuthContext } from '../../contexts/auth';
 
 const { Option } = Select;
 
@@ -53,6 +54,7 @@ function Usuario() {
   const [usuarioId, setUsuarioId] = useState(1); // Ajuste conforme o usuário logado
   const [funcionarios, setFuncionarios] = useState([]);
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
 
   const generos = [
     { value: 'M', label: 'Masculino' },
@@ -166,7 +168,7 @@ function Usuario() {
   const handleTabClick = ({ key }) => {
     setActiveTab(key);
     if (key === 'sair') {
-      navigate('/logout');
+      logout();
     }
   };
 
@@ -320,7 +322,7 @@ function Usuario() {
         ip,
       };
       console.log('Payload enviado para cadastro de usuário:', usuarioData);
-      const response = await api.post('usuario/add', usuarioData);
+      const response = await api.post('api/auth/usuarios/cadastrar', usuarioData);
       setUsuarios((prev) => [...prev, response.data]);
       alert('Usuário cadastrado com sucesso!');
       // Limpar campos do formulário
@@ -372,7 +374,7 @@ function Usuario() {
           {activeTab === 'dashboard' && <h2 className="section-title">Dashboard</h2>}
           {activeTab === 'novo-usuario' && (
             <div className="novo-usuario-container">
-              <h2>Cadastrar Usuário</h2>
+              <h2>Cadastrar Usuário Teste Novo</h2>
               <div className="tipo-usuario-container">
                 <h3>Tipo de Usuário</h3>
                 <Radio.Group

@@ -288,6 +288,46 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
       {isLoading ? (
         <Spin tip="Carregando dados..." className="spinner" />
       ) : (
+<<<<<<< HEAD
+        <>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={adicionarFormulario}
+            className="add-btn"
+          >
+            Adicionar Novo Agendamento
+          </Button> 
+          <Modal
+            title="Novo Agendamento"
+            open={isModalVisible}
+            onOk={handleOk}
+            onCancel={handleCancel}
+            okText="Salvar"
+            cancelText="Cancelar"
+            confirmLoading={isSaving}
+            width={800}
+            className="agenda-modal"
+          >
+            <Form form={form} layout="vertical" className="agenda-form">
+              {formularios.map((formItem, index) => (
+                <FormRow
+                  key={formItem.uniqueKey}
+                  form={formItem}
+                  index={index}
+                  funcionarios={funcionarios}
+                  pessoas={pessoas}
+                  pacientes={pacientes}
+                  consultas={consultas}
+                  agendas={agendas}
+                  linhasAgenda={linhasAgenda}
+                  handleInputChange={handleInputChange}
+                />
+              ))}
+            </Form>
+          </Modal>
+        </>
+=======
         <Form form={form} layout="vertical" className="agenda-form">
           {formularios.map((formItem, index) => (
             <FormRow
@@ -304,6 +344,7 @@ const NovaAgenda = ({ isModalVisible, setIsModalVisible, tipoAgendamento = 'cons
             />
           ))}
         </Form>
+>>>>>>> cf342109e49c7208f7b28aa53f82d80c56a6d4b7
       )}
     </Modal>
   );

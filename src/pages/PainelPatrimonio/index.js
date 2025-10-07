@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
 import BemPatrimonialList from './bens-patrimoniais/components/BemPatrimonialList';
@@ -30,11 +30,13 @@ import {
     PoweroffOutlined,
 } from '@ant-design/icons';
 import './style.css';
+import { AuthContext } from '../../contexts/auth';
 
 function PainelPatrimonio() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [menu, setMenu] = useState([]);
     const navigate = useNavigate();
+    const { logout } = useContext(AuthContext);
 
     // Configuração do menu com ícones
     useEffect(() => {
@@ -92,7 +94,7 @@ function PainelPatrimonio() {
     const handleTabClick = ({ key }) => {
         setActiveTab(key);
         if (key === 'sair') {
-            navigate('/logout'); // Ajuste conforme sua lógica de logout
+            logout();
         }
     };
 

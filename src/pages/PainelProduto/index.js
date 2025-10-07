@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
 import NovoProduto from './NovoProduto';
 import ListarProduto from './ListarProduto';
 import Cabecario from '../../components/Cabecario';
 import Rodape from '../../components/Rodape';
+import { AuthContext } from '../../contexts/auth';
 
 
 import {
@@ -22,6 +23,7 @@ function PainelProduto() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [menu, setMenu] = useState([]);
     const navigate = useNavigate();
+    const { logout } = useContext(AuthContext);
 
     // Configuração do menu com ícones
     useEffect(() => {
@@ -61,7 +63,7 @@ function PainelProduto() {
         if (key !== 'novo-produto') {
         }
         if (key === 'sair') {
-            navigate('/logout'); // Ajuste conforme sua lógica de logout
+            logout();
         }
     };
 

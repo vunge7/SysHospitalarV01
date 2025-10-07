@@ -1,6 +1,64 @@
 body {
     margin: 0;
     padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Estilos básicos para garantir que o formulário seja visível */
+.ant-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.ant-form-item {
+    margin-bottom: 16px;
+}
+
+.ant-input {
+    padding: 8px 12px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+}
+
+.ant-btn {
+    padding: 8px 16px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #fff;
+}
+
+.ant-btn-primary {
+    background: #1890ff;
+    border-color: #1890ff;
+    color: #fff;
+}
+
+.ant-checkbox {
+    margin-right: 8px;
+}
+
+.ant-flex {
+    display: flex;
+}
+
+.ant-flex-space-between {
+    justify-content: space-between;
+}
+
+.ant-flex-center {
+    align-items: center;
 }
 
 /* Responsividade global - sem alterar layout ou cores */

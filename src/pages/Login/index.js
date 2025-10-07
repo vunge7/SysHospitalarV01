@@ -1,49 +1,69 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, Flex } from 'antd';
 import { AuthContext } from '../../contexts/auth';
-import { users } from '../../util/db';
-import { blue } from '@mui/material/colors';
-
+import { api } from '../../service/api';
 import fundoLogo from '../../assets/images/fundo_logo.jpg';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const { signIn } = useContext(AuthContext);
+    const { signIn, signed, user } = useContext(AuthContext);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
-    const onFinish = (values) => {
-        let userName = values.username;
-        let password = values.password;
-        console.log('Username ' + values.username);
-        console.log('Password ' + values.password);
-        //signIn(1, values.username);
-
-        let user = {
-            id: 0,
-            username: '',
-            tipo: '',
-        };
-        users.map(
-            (item, index) => {
-                if (item.username === userName && item.password === password) {
-                    user = item;
-                    return;
+    useEffect(() => {
+        if (signed) {
+            // Se o usuário já tem filial selecionada, redirecionar para o painel
+            if (user?.filialSelecionada) {
+                switch (user.tipo) {
+                    case 'administrativo':
+                        navigate('/admin');
+                        break;
+                    case 'medico':
+                        navigate('/medico/home');
+                        break;
+                    case 'enfermeiro':
+                        navigate('/enf');
+                        break;
+                    case 'analista':
+                        navigate('/admin');
+                        break;
+                    default:
+                        navigate('/admin');
                 }
-            },
-            userName,
-            password,
-            user
-        );
-        console.log('User  ', user);
+            } else {
+                // Se não tem filial selecionada, ir para seleção de filial
+                navigate('/selecionar-filial');
+            }
+        }
+    }, [signed, user, navigate]);
 
-        if (user.id !== 0) {
+    const onFinish = async (values) => {
+        setError('');
+        setLoading(true);
+        try {
+            const response = await api.post('/api/auth/login', {
+                username: values.username,
+                password: values.password,
+            });
+            localStorage.setItem('token', response.data.token);
+            const user = {
+                id: response.data.id,
+                username: response.data.username,
+                tipo: response.data.tipo,
+            };
             signIn(user);
+        } catch (err) {
+            setError('Usuário ou senha inválidos');
+        } finally {
+            setLoading(false);
         }
     };
+
     return (
         <div
-            id="container"
             style={{
-                //marginTop: '30vh',
                 display: 'flex',
                 flexDirection: 'row',
                 justifyContent: 'center',
@@ -52,10 +72,10 @@ const Login = () => {
                 marginLeft: -255,
             }}
         >
-            <div id="image" style={{ width: 50 + '%' }}>
+            <div style={{ width: '50%' }}>
                 <img
                     src={fundoLogo}
-                    style={{ width: 100 + '%', height: '100vh' }}
+                    style={{ width: '100%', height: '100vh' }}
                     alt=""
                 />
             </div>
@@ -69,7 +89,7 @@ const Login = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'start',
-                    marginLeft: 15 + '%',
+                    marginLeft: '15%',
                     marginTop: '35vh',
                 }}
                 onFinish={onFinish}
@@ -79,7 +99,7 @@ const Login = () => {
                     rules={[
                         {
                             required: true,
-                            message: 'Por favor  digite seu Username!',
+                            message: 'Por favor digite seu Username!',
                         },
                     ]}
                 >
@@ -109,17 +129,19 @@ const Login = () => {
                         >
                             <Checkbox>Lembra-me</Checkbox>
                         </Form.Item>
-                        <a href="">Esqueceu a password</a>
+                        <a href="#" onClick={(e) => e.preventDefault()}>Esqueceu a password</a>
                     </Flex>
                 </Form.Item>
 
                 <Form.Item>
-                    <Button block type="primary" htmlType="submit">
+                    <Button block type="primary" htmlType="submit" loading={loading}>
                         Log in
                     </Button>
                 </Form.Item>
+                {error && <p style={{ color: 'red' }}>{error}</p>}
             </Form>
         </div>
     );
 };
+
 export default Login;
