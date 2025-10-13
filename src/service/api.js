@@ -1,5 +1,9 @@
 import axios from 'axios';
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b53b4fd5814c6911b9058f4902b4a9dc64fbefe2
 const ip = 'localhost';
 
 export const api = axios.create({

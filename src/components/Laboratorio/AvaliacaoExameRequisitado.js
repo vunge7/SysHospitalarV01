@@ -1,12 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { remove as removeDiacritics } from 'diacritics';
-import { Table, Button, Modal, Form, Input, Card, Typography, InputNumber, Space, Popconfirm } from 'antd';
+import { Table, Button, Modal, Form, Input, Card, Typography, InputNumber, Space, Popconfirm, Tag } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, PlusCircleOutlined, MedicineBoxOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { api } from '../../service/api';
 
 const { Title, Text } = Typography;
+
+// Função auxiliar para validar e ajustar o valor de referência
+const validateAndAdjustValue = (value, intervaloReferencia) => {
+  if (!intervaloReferencia || !/^\d+(\.\d+)?-\d+(\.\d+)?$/.test(intervaloReferencia)) {
+    return { adjustedValue: Number(value), error: null };
+  }
+  const [min, max] = intervaloReferencia.split('-').map(Number);
+  if (isNaN(value) || value === null || value === undefined) {
+    return { adjustedValue: null, error: 'Valor de referência deve ser numérico' };
+  }
+  if (value < min) {
+    return { adjustedValue: min, error: `O valor deve estar entre ${min} e ${max}. Ajustado para ${min}.` };
+  }
+  if (value > max) {
+    return { adjustedValue: max, error: `O valor deve estar entre ${min} e ${max}. Ajustado para ${max}.` };
+  }
+  return { adjustedValue: Number(value), error: null };
+};
 
 function AvaliacaoExameRequisitado({
   examesRequisitados,
@@ -180,6 +198,7 @@ function AvaliacaoExameRequisitado({
             finalizado: item.finalizado !== undefined ? item.finalizado : false,
             isComposto: false,
             level: 0,
+            intervaloReferencia: '',
           }];
         }
 
@@ -197,6 +216,7 @@ function AvaliacaoExameRequisitado({
             isComposto: produtos.some((p) => p.produtoPaiId === prod.id),
             parentId: parentId,
             level: level,
+            intervaloReferencia: prod.intervaloReferencia || '',
           };
 
           const filhos = produtos
@@ -304,6 +324,16 @@ function AvaliacaoExameRequisitado({
       const horaMoment = moment();
       const horaString = horaMoment.format('YYYY-MM-DDTHH:mm:ss');
 
+      // Validar e ajustar valorReferencia
+      const { adjustedValue, error } = validateAndAdjustValue(values.valorReferencia, exameToReopen.intervaloReferencia);
+      if (error) {
+        toast.info(error, { autoClose: 3000 });
+      }
+      if (adjustedValue === null || isNaN(adjustedValue)) {
+        toast.error('Valor de referência inválido!', { autoClose: 2000 });
+        return;
+      }
+
       const updatedExame = {
         id: getBaseId(exameToReopen.id),
         produtoId: exameToReopen.produtoId ?? null,
@@ -339,14 +369,14 @@ function AvaliacaoExameRequisitado({
         await api.delete(`/linharesultado/${linhaResultado.id}`);
       }
 
-      if (isLeafNode(exameToReopen.produtoId) && values.valorReferencia !== null && values.valorReferencia !== undefined) {
+      if (isLeafNode(exameToReopen.produtoId) && adjustedValue !== null && !isNaN(adjustedValue)) {
         const unidadeId = getUnidadeId(exameToReopen);
         if (!unidadeId) {
           throw new Error('Unidade ID não encontrada');
         }
         const linhaResultadoCache = {
           exameId: getBaseId(exameToReopen.id),
-          valorReferencia: Number(values.valorReferencia),
+          valorReferencia: adjustedValue,
           unidadeId: unidadeId,
           observacao: values.observacao || '',
           requisicaoExameId: exameToReopen.requisicaoExameId ?? selectedRequisicao.id,
@@ -461,8 +491,13 @@ function AvaliacaoExameRequisitado({
       toast.error('Valor de referência é obrigatório!', { autoClose: 2000 });
       return;
     }
-    if (isNaN(values.valorReferencia)) {
-      toast.error('Valor de referência deve ser numérico!', { autoClose: 2000 });
+    // Validar e ajustar valorReferencia
+    const { adjustedValue, error } = validateAndAdjustValue(values.valorReferencia, selectedExame.intervaloReferencia);
+    if (error) {
+      toast.info(error, { autoClose: 3000 });
+    }
+    if (adjustedValue === null || isNaN(adjustedValue)) {
+      toast.error('Valor de referência inválido!', { autoClose: 2000 });
       return;
     }
     const unidadeId = getUnidadeId(selectedExame);
@@ -471,7 +506,7 @@ function AvaliacaoExameRequisitado({
     }
     const linhaResultadoCache = {
       exameId: getBaseId(selectedExame.id),
-      valorReferencia: Number(values.valorReferencia),
+      valorReferencia: adjustedValue,
       unidadeId: unidadeId,
       observacao: values.observacao || '',
       requisicaoExameId: selectedRequisicao.id,
@@ -680,6 +715,14 @@ function AvaliacaoExameRequisitado({
         const unidade = unidades.find((u) => u.id === unidadeId);
         return unidade ? `${unidade.descricao} (${unidade.abrevicao})` : unidadeId || 'Sem unidade';
       },
+    },
+    {
+      title: 'Intervalo de Referência',
+      key: 'intervaloReferencia',
+      width: 150,
+      render: (_, record) => (
+        <span>{record.intervaloReferencia || 'N/A'}</span>
+      ),
     },
     {
       title: 'Status',
@@ -1067,14 +1110,22 @@ function AvaliacaoExameRequisitado({
             onFinish={handleFinishResult}
             style={{ padding: '8px 0' }}
           >
+            <Form.Item label="Intervalo de Referência">
+              <Tag color="blue">{selectedExame.intervaloReferencia || 'N/A'}</Tag>
+            </Form.Item>
             <Form.Item
               name="valorReferencia"
               label="Valor de Referência"
               rules={[
                 { required: true, message: 'Insira o valor de referência' },
                 {
-                  validator: (_, value) =>
-                    !value || !isNaN(value) ? Promise.resolve() : Promise.reject('Valor deve ser numérico'),
+                  validator: (_, value) => {
+                    const { error } = validateAndAdjustValue(value, selectedExame.intervaloReferencia);
+                    if (error) {
+                      return Promise.reject(error);
+                    }
+                    return Promise.resolve();
+                  },
                 },
               ]}
             >
@@ -1087,6 +1138,7 @@ function AvaliacaoExameRequisitado({
                   fontSize: '14px',
                   boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)',
                 }}
+                step={0.01}
               />
             </Form.Item>
             <Form.Item name="observacao" label="Observação">
@@ -1243,14 +1295,22 @@ function AvaliacaoExameRequisitado({
                 }}
               />
             </Form.Item>
+            <Form.Item label="Intervalo de Referência">
+              <Tag color="blue">{exameToReopen.intervaloReferencia || 'N/A'}</Tag>
+            </Form.Item>
             <Form.Item
               name="valorReferencia"
               label="Valor de Referência"
               rules={[
                 { required: true, message: 'Insira o valor de referência' },
                 {
-                  validator: (_, value) =>
-                    !value || !isNaN(value) ? Promise.resolve() : Promise.reject('Valor deve ser numérico'),
+                  validator: (_, value) => {
+                    const { error } = validateAndAdjustValue(value, exameToReopen.intervaloReferencia);
+                    if (error) {
+                      return Promise.reject(error);
+                    }
+                    return Promise.resolve();
+                  },
                 },
               ]}
             >
@@ -1263,6 +1323,7 @@ function AvaliacaoExameRequisitado({
                   fontSize: '14px',
                   boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)',
                 }}
+                step={0.01}
               />
             </Form.Item>
             <Form.Item name="observacao" label="Observação">
@@ -1357,23 +1418,23 @@ function AvaliacaoExameRequisitado({
         .ant-table-thead > tr > th {
           background: linear-gradient(90deg, #e6f0fa 0%, #d6e6ff 100%) !important;
           color: #0052cc !important;
-          font-weight: 600 !important;
-          font-size: 14px !important;
+          fontWeight: 600 !important;
+          fontSize: 14px !important;
           padding: 12px 16px !important;
-          border-bottom: 2px solid #007bff !important;
+          borderBottom: 2px solid #007bff !important;
         }
         .ant-table-tbody > tr > td {
           padding: 12px 16px !important;
-          font-size: 14px !important;
+          fontSize: 14px !important;
           color: #4b5e77 !important;
-          border-bottom: 1px solid #e6f0fa !important;
+          borderBottom: 1px solid #e6f0fa !important;
           transition: background-color 0.3s ease !important;
         }
         .ant-table-tbody > tr:hover > td {
           background-color: #e6f0fa !important;
         }
         .ant-table-container {
-          border-radius: 12px !important;
+          borderRadius: 12px !important;
           overflow: hidden !important;
         }
         .ant-table {
@@ -1385,19 +1446,19 @@ function AvaliacaoExameRequisitado({
         @media (max-width: 768px) {
           .ant-table-tbody > tr > td {
             padding: 8px !important;
-            font-size: 12px !important;
+            fontSize: 12px !important;
           }
           .ant-table-thead > tr > th {
-            font-size: 12px !important;
+            fontSize: 12px !important;
             padding: 8px !important;
           }
           .ant-btn {
             padding: 4px 12px !important;
-            font-size: 12px !important;
+            fontSize: 12px !important;
           }
           .ant-card-extra {
-            font-size: 12px !important;
-            line-height: 1.4 !important;
+            fontSize: 12px !important;
+            lineHeight: 1.4 !important;
           }
         }
       `}</style>

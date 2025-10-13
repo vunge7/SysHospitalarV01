@@ -42,7 +42,6 @@ import {
 } from '@ant-design/icons';
 import moment from 'moment';
 import { api } from '../../service/api';
-import modalProduto from '../../pages/PainelProduto/NovoProduto/index';
 import NovoProduto from '../../pages/PainelProduto/NovoProduto';
 import { toast } from 'react-toastify';
 
@@ -73,7 +72,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     const [filhosProduto, setFilhosProduto] = useState([]);
     const [produtoPaiSelecionado, setProdutoPaiSelecionado] = useState(null);
     
-    // Novos estados para funcionalidades avançadas
     const [searchText, setSearchText] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [filterType, setFilterType] = useState('all');
@@ -85,12 +83,10 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     const [exportModalVisible, setExportModalVisible] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
 
-    // Log da prop exames para o  debug
     useEffect(() => {
         console.log('Exames prop:', exames);
     }, [exames]);
 
-    // Funções de validação
     const validateExame = (values) => {
         const errors = {};
         
@@ -118,11 +114,9 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         return Object.keys(errors).length === 0;
     };
 
-    // Funções de filtro e busca
     const getFilteredExames = () => {
         let filtered = produtosExame || [];
         
-        // Filtro por texto de busca
         if (searchText) {
             filtered = filtered.filter(exame => 
                 exame.designacao?.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -131,7 +125,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             );
         }
         
-        // Filtro por status
         if (filterStatus !== 'all') {
             filtered = filtered.filter(exame => {
                 if (filterStatus === 'active') return exame.status === true;
@@ -140,12 +133,10 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             });
         }
         
-        // Filtro por tipo
         if (filterType !== 'all') {
             filtered = filtered.filter(exame => exame.productType === filterType);
         }
         
-        // Ordenação
         filtered.sort((a, b) => {
             const aValue = a[sortField] || '';
             const bValue = b[sortField] || '';
@@ -160,7 +151,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         return filtered;
     };
 
-    // Funções de importação/exportação
     const handleExport = () => {
         const data = getFilteredExames();
         const csvContent = [
@@ -214,7 +204,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         }
     };
 
-    // Fetch pacientes de GET /paciente/all
     useEffect(() => {
         const fetchPacientes = async () => {
             try {
@@ -230,7 +219,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         fetchPacientes();
     }, []);
 
-    // Fetch tiposExame de GET /tipo-exame/all
     useEffect(() => {
         const fetchTiposExame = async () => {
             try {
@@ -247,14 +235,13 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                     setTiposExame(tiposUnicos.map((tipo, index) => ({ id: index + 1, nome: tipo })));
                 } catch (produtoError) {
                     console.error('Error fetching produtos as tipos:', produtoError);
-                setTiposExame([]);
+                    setTiposExame([]);
                 }
             }
         };
         fetchTiposExame();
     }, []);
 
-    // Fetch unidades de GET /unidade/all
     useEffect(() => {
         const fetchUnidades = async () => {
             try {
@@ -270,12 +257,10 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         fetchUnidades();
     }, []);
 
-    // Função para buscar produtos do tipo exame (usada para atualizar a tabela após add/edit)
     const fetchProdutosExame = async () => {
         try {
             const res = await api.get('/produto/all');
-            console.log('Produtos retornados da API:', res.data); // Log para debug
-            // Filtro flexível: inclui todos os produtos cujo tipo contenha 'exame' (case-insensitive)
+            console.log('Produtos retornados da API:', res.data);
             const produtos = Array.isArray(res.data)
                 ? res.data.filter(p => {
                     const tipo = (p.productType || p.tipo || '').toString().toLowerCase();
@@ -356,7 +341,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
     };
 
     const onFinish = async (values) => {
-        // Validação antes de submeter
         if (!validateExame(values)) {
             toast.error('Por favor, corrija os erros de validação!', { autoClose: 3000 });
             return;
@@ -492,16 +476,19 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         setProdutoSelecionado(produto);
         setShowProdutoDetails(true);
     };
+
     const handleEditProduto = (produto) => {
         setProdutoParaEditar(produto);
         setIsEditMode(true);
         setShowNovoProdutoModal(true);
     };
+
     const handleCloseNovoProduto = () => {
         setShowNovoProdutoModal(false);
         setProdutoParaEditar(null);
         setIsEditMode(false);
     };
+
     const handleDeleteProduto = async (produto) => {
         try {
             await api.patch(`produto/${produto.id}/status?status=false`);
@@ -512,35 +499,42 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         }
     };
 
-    // Função para buscar filhos de um produto
     const handleVerFilhos = async (produto) => {
-      setProdutoPaiSelecionado(produto);
-      try {
-        const res = await api.get(`produto/${produto.id}/arvore`);
-        setFilhosProduto(res.data.filhos || []);
-      } catch {
-        setFilhosProduto([]);
-      }
-      setModalFilhosVisible(true);
+        setProdutoPaiSelecionado(produto);
+        try {
+            const res = await api.get(`produto/${produto.id}/arvore`);
+            setFilhosProduto(res.data.filhos || []);
+        } catch {
+            setFilhosProduto([]);
+        }
+        setModalFilhosVisible(true);
     };
 
-    // Função para renderizar filhos em árvore
     const renderFilhosArvore = (filhosArr, nivel = 1) => (
-      <ul style={{ marginLeft: nivel * 16 }}>
-        {filhosArr.map(filho => (
-          <li key={filho.id}>
-            <b>Produto Filho:</b> {filho.productDescription}
-            {filho.filhos && filho.filhos.length > 0 && renderFilhosArvore(filho.filhos, nivel + 1)}
-          </li>
-        ))}
-      </ul>
+        <ul style={{ marginLeft: nivel * 16 }}>
+            {filhosArr.map(filho => (
+                <li key={filho.id}>
+                    <b>Produto Filho:</b> {filho.productDescription}
+                    {filho.filhos && filho.filhos.length > 0 && renderFilhosArvore(filho.filhos, nivel + 1)}
+                </li>
+            ))}
+        </ul>
     );
 
     return (
         <div>
-            <h2 className="section-title">Gestão de Exames</h2>
+            <h1 className="section-title">Gestão de Exames</h1>
             <Card className="card-custom">
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => { setShowNovoProdutoModal(true); setProdutoParaEditar(null); setIsEditMode(false); }} style={{ marginBottom: 16 }}>
+                <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />} 
+                    onClick={() => { 
+                        setShowNovoProdutoModal(true); 
+                        setProdutoParaEditar(null); 
+                        setIsEditMode(false); 
+                    }} 
+                    style={{ marginBottom: 16 }}
+                >
                     Novo Exame
                 </Button>
                 <NovoProduto
@@ -550,6 +544,8 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                     submitButtonText={isEditMode ? "Salvar Alterações" : "Adicionar Exame"}
                     produtoParaEditar={produtoParaEditar}
                     onSuccess={fetchProdutosExame}
+                    initialValues={isEditMode ? {} : { productGroup: 'exame' }}
+                    isFromExame={true}
                 />
                 <Table
                     columns={[
@@ -558,10 +554,9 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                             dataIndex: 'imagem',
                             key: 'imagem',
                             render: (img) => {
-                                console.log('Valor do campo imagem:', img); // Log para debug
+                                console.log('Valor do campo imagem:', img);
                                 if (!img) return <span>Sem Imagem</span>;
                                 const isFullUrl = img.startsWith('http') || img.startsWith('data:');
-                                // Ajuste a URL base conforme seu backend
                                 const src = isFullUrl ? img : `http://localhost:8081/produto/imagens/${img}`;
                                 return (
                                     <img
@@ -597,19 +592,14 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                                     <Button icon={<NodeExpandOutlined />} onClick={() => handleVerFilhos(record)}>
                                         Ver Filhos
                                     </Button>
-                                    <Button icon={<DeleteOutlined />} danger
-                                        // Adicionar Popconfirm para confirmação
-                                        overlay={
-                                            <Popconfirm
-                                                title="Deseja realmente excluir este produto?"
-                                                onConfirm={() => handleDeleteProduto(record)}
-                                                okText="Sim"
-                                                cancelText="Não"
-                                            >
-                                                <span>Excluir</span>
-                                            </Popconfirm>
-                                        }
-                                    />
+                                    <Popconfirm
+                                        title="Deseja realmente excluir este produto?"
+                                        onConfirm={() => handleDeleteProduto(record)}
+                                        okText="Sim"
+                                        cancelText="Não"
+                                    >
+                                        <Button icon={<DeleteOutlined />} danger />
+                                    </Popconfirm>
                                 </Space>
                             ),
                         },

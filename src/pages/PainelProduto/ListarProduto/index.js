@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,11 +8,10 @@ import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import UnidadeMedidaForm from '../UnidadeMedidaForm';
 import DynamicTable from '../DynamicTable';
-import { AuthContext } from '../../../contexts/auth';
-import { isFieldVisible, filterSchemaByUserType, FIELD_PERMISSIONS } from '../../../config/fieldAccess';
+import { toast } from 'react-toastify';
 
-// Substitua o schema fixo pelo schema dinâmico igual ao NovoProduto
-const baseSchema = {
+// Esquema de validação com Zod
+const schema = z.object({
   productType: z.string().min(1, { message: 'Selecione um tipo de produto.' }).max(200),
   productCode: z
     .string()
@@ -21,16 +20,6 @@ const baseSchema = {
     .regex(/^[A-Za-z0-9]+$/, { message: 'O código deve ser alfanumérico.' }),
   productGroup: z.string().min(1, { message: 'Selecione um grupo de produto.' }).max(200),
   productDescription: z.string().min(3, { message: 'A descrição do produto deve ter entre 3 e 200 caracteres.' }).max(200),
-  unidadeMedida: z.string().min(1, { message: 'Selecione uma unidade de medida.' }),
-  status: z.boolean().default(true),
-  imagem: z
-    .any()
-    .optional()
-    .refine((file) => !file || file.length === 0 || file?.[0]?.size <= 2 * 1024 * 1024, 'A imagem deve ter no máximo 2MB')
-    .refine(
-      (file) => !file || file.length === 0 || ['image/jpeg', 'image/png'].includes(file?.[0]?.type),
-      'Apenas imagens JPEG ou PNG são permitidas'
-    ),
   taxIva: z.string().optional().transform(val => {
     if (!val) return 0;
     const taxNumber = parseFloat(val);
@@ -45,8 +34,18 @@ const baseSchema = {
     if (!val) return 0;
     const priceNumber = parseFloat(val);
     return isNaN(priceNumber) || priceNumber < 0 ? 0 : priceNumber;
-  })
-};
+  }),
+  unidadeMedida: z.string().min(1, { message: 'Selecione uma unidade de medida.' }),
+  status: z.boolean().default(true),
+  imagem: z
+    .any()
+    .optional()
+    .refine((file) => !file || file.length === 0 || file[0].size <= 2 * 1024 * 1024, 'A imagem deve ter no máximo 2MB')
+    .refine(
+      (file) => !file || file.length === 0 || ['image/jpeg', 'image/png'].includes(file[0].type),
+      'Apenas imagens JPEG ou PNG são permitidas'
+    ),
+});
 
 // Função utilitária para extrair a descrição da unidade
 function extrairDescricaoUnidade(str) {
@@ -73,59 +72,22 @@ const ListarProduto = () => {
   const [tiposMap, setTiposMap] = useState({});
   const [preview, setPreview] = useState(null);
   const [existingImage, setExistingImage] = useState(null);
-  const { user } = useContext(AuthContext);
-  const userType = user?.tipo || '';
-
-  // Schema dinâmico conforme tipo de usuário
-  const schema = useMemo(() => {
-    const filteredSchema = filterSchemaByUserType(baseSchema, userType);
-    return z.object(filteredSchema);
-  }, [userType]);
-
-  // Valores padrão conforme tipo de usuário
-  const defaultProductGroup = useMemo(() => {
-    const fieldConfig = FIELD_PERMISSIONS.productGroup;
-    return fieldConfig?.getDefaultValue ? fieldConfig.getDefaultValue(userType) : '';
-  }, [userType]);
-
-  const isProductGroupReadOnly = useMemo(() => {
-    const fieldConfig = FIELD_PERMISSIONS.productGroup;
-    return fieldConfig?.isReadOnly ? fieldConfig.isReadOnly(userType) : false;
-  }, [userType]);
-
-  const defaultValues = useMemo(() => ({
-    productType: '',
-    productCode: '',
-    productGroup: defaultProductGroup,
-    productDescription: '',
-    unidadeMedida: '',
-    status: true,
-    imagem: null,
-    taxIva: '0',
-    preco: '0',
-    finalPrice: '0.00'
-  }), [defaultProductGroup]);
-
-  const filteredDefaultValues = useMemo(() => {
-    const values = { ...defaultValues };
-    Object.keys(values).forEach(key => {
-      if (!isFieldVisible(key, userType)) {
-        if (key === 'taxIva' || key === 'preco' || key === 'finalPrice') {
-          values[key] = '0';
-        } else if (key === 'status') {
-          values[key] = true;
-        } else {
-          values[key] = '';
-        }
-      }
-    });
-    return values;
-  }, [defaultValues, userType]);
 
   const { control, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm({
     resolver: zodResolver(schema),
     mode: 'onChange',
-    defaultValues: filteredDefaultValues,
+    defaultValues: {
+      productType: '',
+      productCode: '',
+      productGroup: '',
+      productDescription: '',
+      taxIva: '',
+      preco: '',
+      finalPrice: '0.00',
+      unidadeMedida: '',
+      status: true,
+      imagem: null,
+    },
   });
 
   const watchedPreco = watch('preco');
@@ -148,10 +110,10 @@ const ListarProduto = () => {
     setCarregar(true);
     try {
       const [unidadesRes, gruposRes, tiposRes, produtosRes] = await Promise.all([
-        api.get('unidade/all'),
-        api.get('productgroup/all'),
-        api.get('producttype/all'),
-        api.get('produto/all'),
+        api.get('/unidade/all'),
+        api.get('/productgroup/all'),
+        api.get('/producttype/all'),
+        api.get('/produto/all'),
       ]);
       setUnidades(unidadesRes.data);
       const newGruposMap = {};
@@ -206,11 +168,6 @@ const ListarProduto = () => {
         throw new Error(`Unidade de medida inválida: ${data.unidadeMedida}`);
       }
 
-      // Garante que campos numéricos nunca sejam nulos ou vazios
-      const preco = data.preco === '' || data.preco === null || isNaN(Number(data.preco)) ? '0.0' : data.preco.toString();
-      const taxIva = data.taxIva === '' || data.taxIva === null || isNaN(Number(data.taxIva)) ? '0.0' : data.taxIva.toString();
-      const finalPrice = data.finalPrice === '' || data.finalPrice === null || isNaN(Number(data.finalPrice)) ? '0.0' : data.finalPrice.toString();
-
       const formData = new FormData();
       formData.append('id', id);
       formData.append('productType', data.productType);
@@ -221,24 +178,23 @@ const ListarProduto = () => {
       formData.append('productDescription', data.productDescription);
       formData.append('unidadeMedida', data.unidadeMedida);
       formData.append('unidadeMedidaId', unidadeMedidaId);
-      formData.append('preco', preco);
-      formData.append('taxIva', taxIva);
-      formData.append('finalPrice', finalPrice);
+      formData.append('preco', data.preco.toString());
+      formData.append('taxIva', data.taxIva.toString());
+      formData.append('finalPrice', data.finalPrice.toString());
       formData.append('status', data.status ? '1' : '0');
       if (data.imagem && data.imagem.length > 0) {
         formData.append('imagem', data.imagem[0].originFileObj);
       }
 
-      await api.put('produto/edit', formData, {
+      console.log('Enviando FormData para /produto/edit:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value instanceof File ? value.name : value}`);
+      }
+
+      await api.put(`/produto/${id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      notification.success({
-        message: 'Sucesso',
-        description: 'Produto editado com sucesso!',
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.success('Produto editado com sucesso!', { autoClose: 2000 });
 
       reset();
       setModalIsOpen(false);
@@ -248,55 +204,11 @@ const ListarProduto = () => {
       setExistingImage(null);
       fetchData();
     } catch (error) {
-      // Mostra mensagem detalhada do backend, se houver, mesmo para status 400
-      let errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        'Erro ao editar produto';
-
-      // Exibe o corpo da resposta do backend se não houver mensagem clara
-      if (
-        error.response?.status === 400 &&
-        !error.response?.data?.message &&
-        !error.response?.data?.error
-      ) {
-        if (typeof error.response?.data === 'string') {
-          errorMessage = error.response.data;
-        } else if (typeof error.response?.data === 'object') {
-          errorMessage = JSON.stringify(error.response.data);
-        }
-      }
-      if (
-        error.response?.status === 400 &&
-        (error.response?.data?.message || error.response?.data?.error)
-      ) {
-        errorMessage = error.response.data.message || error.response.data.error;
-        if (
-          errorMessage.toLowerCase().includes('descrição') &&
-          errorMessage.toLowerCase().includes('existe')
-        ) {
-          errorMessage = 'Já existe um produto com esta descrição!';
-        }
-        if (
-          errorMessage.toLowerCase().includes('description') &&
-          errorMessage.toLowerCase().includes('exists')
-        ) {
-          errorMessage = 'Já existe um produto com esta descrição!';
-        }
-      }
-
-      if (error.response?.status === 403) {
-        errorMessage = 'Acesso negado (403). Verifique se você tem permissão para editar produtos ou se está autenticado.';
-      }
-
+      console.error('Erro ao processar o formulário:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data || error.message;
+      console.log('Detalhes do erro:', error.response); // Depuração
       setErrosNoFront(prev => [...prev, errorMessage]);
-      notification.error({
-        message: 'Erro',
-        description: errorMessage,
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.error(errorMessage, { autoClose: 2000 });
     } finally {
       setCarregar(false);
     }
@@ -319,24 +231,24 @@ const ListarProduto = () => {
     setValue('preco', prod.preco ? prod.preco.toString() : '0');
     setValue('finalPrice', prod.finalPrice ? prod.finalPrice.toString() : '0.00');
     setValue('unidadeMedida', unidade?.descricao || extrairDescricaoUnidade(prod.unidadeMedida) || '');
-    setValue('status', prod.status !== undefined ? prod.status : true); // Corrigido para manter status real
+    setValue('status', true);
     setFinalPrice(prod.finalPrice ? prod.finalPrice.toString() : '0.00');
 
     // Corrigir URL da imagem
     let imageUrl = null;
     if (prod.imagem) {
+      // Verificar se prod.imagem já contém a URL completa
       if (prod.imagem.startsWith('http')) {
         imageUrl = prod.imagem;
       } else {
-        // Remove possíveis barras iniciais
-        let imgPath = prod.imagem.startsWith('/') ? prod.imagem.slice(1) : prod.imagem;
-        imageUrl = `${api.defaults.baseURL.replace(/\/$/, '')}/produto/imagens/${imgPath}`;
+        imageUrl = `${api.defaults.baseURL}produto/imagens/${prod.imagem}`;
       }
     }
+    console.log('Imagem existente para edição:', imageUrl); // Depuração
     setExistingImage(imageUrl);
     setPreview(null);
     setModalIsOpen(true);
-    setErrosNoFront([]); // Limpa erros antigos ao abrir modal
+    setErrosNoFront([]);
   };
 
   const onRemover = (data) => {
@@ -347,25 +259,15 @@ const ListarProduto = () => {
   const onConfirmar = async () => {
     setCarregar(true);
     try {
-      await api.put('produto/del', { id: produtoRemover.id, status: false });
-      notification.success({
-        message: 'Sucesso',
-        description: 'Produto removido com sucesso!',
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      await api.patch(`/produto/${produtoRemover.id}/status`, null, { params: { status: false } });
+      toast.success('Produto removido com sucesso!', { autoClose: 2000 });
       fetchData();
       setModalIsOpenRemove(false);
     } catch (error) {
       console.error('Erro ao remover:', error);
       const errorMessage = error.response?.data?.message || 'Erro ao remover produto';
       setErrosNoFront([...errosNoFront, errorMessage]);
-      notification.error({
-        message: 'Erro',
-        description: errorMessage,
-        placement: 'topRight',
-        className: 'custom-message',
-      });
+      toast.error(errorMessage, { autoClose: 2000 });
     } finally {
       setCarregar(false);
     }
@@ -393,15 +295,14 @@ const ListarProduto = () => {
       } else if (key === 'imagem') {
         let imagemUrl = 'Sem Imagem';
         if (item.imagem) {
-          // Corrige para garantir URL absoluta
+          // Verificar se item.imagem já contém a URL completa
           if (item.imagem.startsWith('http')) {
             imagemUrl = item.imagem;
           } else {
-            // Remove possíveis barras iniciais
-            let imgPath = item.imagem.startsWith('/') ? item.imagem.slice(1) : item.imagem;
-            imagemUrl = `${api.defaults.baseURL.replace(/\/$/, '')}produto/imagens/${imgPath}`;
+            imagemUrl = `${api.defaults.baseURL}produto/imagens/${item.imagem}`;
           }
         }
+        console.log(`Produto ID ${item.id} - Imagem: ${item.imagem} - URL: ${imagemUrl}`); // Depuração
         orderedItem[key] = imagemUrl;
       } else {
         orderedItem[key] = item[key];
@@ -415,21 +316,11 @@ const ListarProduto = () => {
       const isImage = ['image/jpeg', 'image/png'].includes(file.type);
       const isLt2M = file.size / 1024 / 1024 < 2;
       if (!isImage) {
-        notification.error({
-          message: 'Erro',
-          description: 'Apenas imagens JPEG ou PNG.',
-          placement: 'topRight',
-          className: 'custom-message',
-        });
+        toast.error('Apenas imagens JPEG ou PNG.', { autoClose: 2000 });
         return Upload.LIST_IGNORE;
       }
       if (!isLt2M) {
-        notification.error({
-          message: 'Erro',
-          description: 'A imagem deve ter no máximo 2MB!',
-          placement: 'topRight',
-          className: 'custom-message',
-        });
+        toast.error('A imagem deve ter no máximo 2MB!', { autoClose: 2000 });
         return Upload.LIST_IGNORE;
       }
       setPreview(URL.createObjectURL(file));
@@ -470,6 +361,7 @@ const ListarProduto = () => {
                 alt="Produto"
                 style={{ maxWidth: '100px', borderRadius: '4px' }}
                 onError={(e) => {
+                  console.error('Erro ao carregar imagem em selectedRow:', selectedRow.imagem);
                   e.target.src = 'https://placehold.co/100x100';
                 }}
               />
@@ -501,11 +393,7 @@ const ListarProduto = () => {
               {btnEnviar}
             </Button>
             <Button
-              onClick={() => {
-                reset();
-                setPreview(null); // Limpa preview da imagem ao limpar
-                setExistingImage(null); // Limpa imagem existente ao limpar
-              }}
+              onClick={() => reset()}
               disabled={carregar}
               className="form-button"
             >
@@ -623,46 +511,34 @@ const ListarProduto = () => {
                   <Controller
                     name="productGroup"
                     control={control}
-                    render={({ field }) => {
-                      if (isProductGroupReadOnly) {
-                        return (
-                          <Input
-                            value={field.value}
-                            readOnly
-                            className="form-input"
-                            style={{ background: '#f5f5f5', cursor: 'not-allowed' }}
-                          />
-                        );
-                      }
-                      return (
-                        <Select
-                          {...field}
-                          placeholder="Selecione um Grupo"
-                          className="form-select"
-                          showSearch
-                          allowClear={!isProductGroupReadOnly}
-                          optionFilterProp="children"
-                          filterOption={(input, option) =>
-                            option.children.toLowerCase().includes(input.toLowerCase())
-                          }
-                          value={field.value || undefined}
-                          disabled={isProductGroupReadOnly}
-                        >
-                          {gruposDeProduto.length > 0 ? (
-                            gruposDeProduto.map((grupo) => (
-                              <Select.Option key={grupo} value={grupo}>
-                                {grupo}
-                              </Select.Option>
-                            ))
-                          ) : (
-                            <Select.Option value="" disabled>
-                              Nenhum grupo disponível
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        placeholder="Selecione um Grupo"
+                        className="form-select"
+                        showSearch
+                        allowClear
+                        optionFilterProp="children"
+                        filterOption={(input, option) =>
+                          option.children.toLowerCase().includes(input.toLowerCase())
+                        }
+                        value={field.value || undefined}
+                      >
+                        {gruposDeProduto.length > 0 ? (
+                          gruposDeProduto.map((grupo) => (
+                            <Select.Option key={grupo} value={grupo}>
+                              {grupo}
                             </Select.Option>
-                          )}
-                        </Select>
-                      );
-                    }}
+                          ))
+                        ) : (
+                          <Select.Option value="" disabled>
+                            Nenhum grupo disponível
+                          </Select.Option>
+                        )}
+                      </Select>
+                    )}
                   />
+                  
                 </Space>
               </Form.Item>
             </div>
@@ -732,73 +608,44 @@ const ListarProduto = () => {
                 render={({ field }) => <Input {...field} placeholder="Descrição do Produto" className="form-input" />}
               />
             </Form.Item>
-            {isFieldVisible('preco', userType) && (
-              <div className="form-row">
-                <Form.Item
-                  label="Preço"
-                  validateStatus={errors.preco ? 'error' : ''}
-                  help={errors.preco?.message}
-                  className="form-item"
-                >
-                  <Controller
-                    name="preco"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="Digite o preço"
-                        className="form-input"
-                      />
-                    )}
-                  />
-                </Form.Item>
-                {isFieldVisible('taxIva', userType) && (
-                  <Form.Item
-                    label="Taxa de IVA (%)"
-                    validateStatus={errors.taxIva ? 'error' : ''}
-                    help={errors.taxIva?.message}
-                    className="form-item"
-                  >
-                    <Controller
-                      name="taxIva"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="Digite a taxa de IVA"
-                          className="form-input"
-                        />
-                      )}
-                    />
-                  </Form.Item>
-                )}
-                {isFieldVisible('finalPrice', userType) && (
-                  <Form.Item
-                    label="Preço Final"
-                    className="form-item"
-                  >
-                    <Controller
-                      name="finalPrice"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          value={finalPrice}
-                          disabled
-                          className="form-input"
-                        />
-                      )}
-                    />
-                  </Form.Item>
-                )}
-              </div>
-            )}
+            <div className="form-row">
+              <Form.Item
+                label="Preço"
+                validateStatus={errors.preco ? 'error' : ''}
+                help={errors.preco?.message}
+                className="form-item"
+              >
+                <Controller
+                  name="preco"
+                  control={control}
+                  render={({ field }) => <Input {...field} placeholder="Preço" type="number" step="0.01" className="form-input" />}
+                />
+              </Form.Item>
+              <Form.Item
+                label="Taxa de IVA (%)"
+                validateStatus={errors.taxIva ? 'error' : ''}
+                help={errors.taxIva?.message}
+                className="form-item"
+              >
+                <Controller
+                  name="taxIva"
+                  control={control}
+                  render={({ field }) => <Input {...field} placeholder="Taxa de IVA" type="number" step="0.01" className="form-input" />}
+                />
+              </Form.Item>
+              <Form.Item
+                label="Preço Final"
+                validateStatus={errors.finalPrice ? 'error' : ''}
+                help={errors.finalPrice?.message}
+                className="form-item"
+              >
+                <Controller
+                  name="finalPrice"
+                  control={control}
+                  render={({ field }) => <Input {...field} readOnly value={finalPrice} className="form-input" />}
+                />
+              </Form.Item>
+            </div>
             <Form.Item>
               <Controller
                 name="status"

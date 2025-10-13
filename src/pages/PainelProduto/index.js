@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
 import NovoProduto from './NovoProduto';
 import ListarProduto from './ListarProduto';
 import Cabecario from '../../components/Cabecario';
 import Rodape from '../../components/Rodape';
-import { AuthContext } from '../../contexts/auth';
 
 
 import {
@@ -23,7 +22,6 @@ function PainelProduto() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [menu, setMenu] = useState([]);
     const navigate = useNavigate();
-    const { logout } = useContext(AuthContext);
 
     // Configuração do menu com ícones
     useEffect(() => {
@@ -63,7 +61,7 @@ function PainelProduto() {
         if (key !== 'novo-produto') {
         }
         if (key === 'sair') {
-            logout();
+            navigate('/logout'); // Ajuste conforme sua lógica de logout
         }
     };
 
@@ -94,29 +92,40 @@ function PainelProduto() {
 }
 
 function SideMenu({ menu, onClick }) {
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setCollapsed(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const toggleCollapsed = () => {
         setCollapsed(!collapsed);
     };
 
     return (
-        <div className="sidebar">
+        <div style={{ width: collapsed ? 80 : 250, transition: 'width 0.3s ease-in-out', padding: 10, height: 'auto', overflow: 'hidden' }}>
             <Button
                 type="primary"
                 onClick={toggleCollapsed}
-                style={{ marginBottom: 16 }}
+                style={{
+                    marginBottom: 16,
+                }}
             >
                 {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             </Button>
+
             <Menu
                 onClick={onClick}
                 defaultSelectedKeys={['dashboard']}
+                defaultOpenKeys={['sub1']}
                 mode="inline"
                 theme="light"
                 inlineCollapsed={collapsed}
                 items={menu}
-                className="sidebar-menu"
             />
         </div>
     );
