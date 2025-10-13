@@ -30,7 +30,7 @@ const UnidadeMedidaForm = ({ buscarUnidades }) => {
   const fetchUnidades = async () => {
     setCarregar(true);
     try {
-      const result = await api.get('unidade/all');
+      const result = await api.get('/unidade/all');
       setUnidadesInternas(result.data);
     } catch (error) {
       console.error('Erro ao buscar unidades:', error);
@@ -48,14 +48,14 @@ const UnidadeMedidaForm = ({ buscarUnidades }) => {
     setCarregar(true);
     try {
       if (statusSendEdit) {
-        await api.put('unidade/edit', { ...data, id });
+        await api.put('/unidade/edit', { ...data, id });
         notification.success({
           message: 'Sucesso',
           description: 'Unidade de Medida Editada com Sucesso',
           placement: 'topRight',
         });
       } else {
-        await api.post('unidade/add', data);
+        await api.post('/unidade/add', data);
         notification.success({
           message: 'Sucesso',
           description: 'Unidade de Medida Salva com Sucesso',
@@ -100,7 +100,7 @@ const UnidadeMedidaForm = ({ buscarUnidades }) => {
   const onConfirmar = async () => {
     setCarregar(true);
     try {
-      await api.delete(`unidade/${unidadeRemover.id}`);
+      await api.delete(`/unidade/${unidadeRemover.id}`);
       notification.success({
         message: 'Sucesso',
         description: 'Unidade Removida com Sucesso',
