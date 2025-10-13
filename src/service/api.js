@@ -1,12 +1,6 @@
 import axios from 'axios';
 
-<<<<<<< HEAD
-const ip = ' 192.168.8.198';
-=======
-//const ip = '10.187.230.78';
-
 const ip = 'localhost';
->>>>>>> 5f370fa149c09235cd69adb61018f5bbe037183f
 
 export const api = axios.create({
     baseURL: `http://${ip}:8081/`,
