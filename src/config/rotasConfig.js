@@ -7,75 +7,55 @@ export const ROTAS_CONFIG = {
     // 🏥 Processos Clínicos
     'admissao': {
         path: '/admissao/home',
-        painelId: 1, // Administrativo
-        descricaoPainel: 'Administrativo',
-        tipoPainel: 'administrativo',
-        permissao: 'acesso_admissao'
+        painelId: 4, // Admissao
+        descricaoPainel: 'Admissao',
     },
     'enfermaria': {
         path: '/enf',
-        painelId: 6, // Enfermaria
+        painelId: 5, // Enfermaria
         descricaoPainel: 'Enfermaria',
-        tipoPainel: 'ADMINISTRATIVO',
-        permissao: 'acesso_enfermaria'
     },
     'consultorio': {
         path: '/medico/consulta',
-        painelId: 2, // Médico
-        descricaoPainel: 'Médico',
-        tipoPainel: 'medico',
-        permissao: 'acesso_consultorio'
+        painelId: 6, // Consultorio
+        descricaoPainel: 'Consultorio',
     },
-    'agenda': {
+    'agendamento': {
         path: '/agenda',
-        painelId: 1, // Administrativo
-        descricaoPainel: 'Administrativo',
-        tipoPainel: 'administrativo',
-        permissao: 'acesso_agenda'
+        painelId: 13, // Agendamento
+        descricaoPainel: 'Agendamento',
     },
     'laboratorio': {
         path: '/lab',
-        painelId: 5, // Laboratório
-        descricaoPainel: 'Laboratório',
-        tipoPainel: 'analista',
-        permissao: 'acesso_laboratorio'
+        painelId: 7, // Laboratorio
+        descricaoPainel: 'Laboratorio',
     },
 
     // 🏢 Processos Administrativos
     'facturacao': {
         path: '/facturacao',
-        painelId: 1, // Administrativo
-        descricaoPainel: 'Administrativo',
-        tipoPainel: 'administrativo',
-        permissao: 'acesso_facturacao'
+        painelId: 8, // Facturacao
+        descricaoPainel: 'Facturacao',
     },
     'servicos': {
         path: '/artigo',
-        painelId: 1, // Administrativo
-        descricaoPainel: 'admin',
-        tipoPainel: 'administrativo',
-        permissao: 'gerenciar_produtos'
+        painelId: 9, // Servicos
+        descricaoPainel: 'Servicos',
     },
     'usuarios': {
         path: '/admin/usuario',
-        painelId: 1, // Administrativo
-        descricaoPainel: 'Administrativo',
-        tipoPainel: 'administrativo',
-        permissao: 'gerenciar_usuarios'
+        painelId: 11, // Usuarios
+        descricaoPainel: 'Usuarios',
     },
     'stock': {
         path: '/stock',
-        painelId: 1, // Administrativo
-        descricaoPainel: 'Administrativo',
-        tipoPainel: 'administrativo',
-        permissao: 'gerenciar_stock'
+        painelId: 10, // Stock
+        descricaoPainel: 'Stock',
     },
     'rh': {
         path: '/rh',
-        painelId: 1, // Administrativo
-        descricaoPainel: 'Administrativo',
-        tipoPainel: 'administrativo',
-        permissao: 'acesso_rh'
+        painelId: 12, // RH
+        descricaoPainel: 'RH',
     }
 };
 
@@ -86,32 +66,19 @@ export const getRotaConfig = (chave) => {
 
 // 📋 Lista de painéis disponíveis
 export const PAINEIS_DISPONIVEIS = {
-    1: { id: 1, descricao: 'Administrativo', tipo: 'administrativo' },
-    2: { id: 2, descricao: 'Médico', tipo: 'medico' },
-    3: { id: 3, descricao: 'Enfermeiro', tipo: 'enfermeiro' },
-    4: { id: 4, descricao: 'Analista', tipo: 'analista' },
-    5: { id: 5, descricao: 'Laboratório', tipo: 'analista' },
-    6: { id: 6, descricao: 'Enfermaria', tipo: 'enfermeiro' }
+    4:  { id: 4,  descricao: 'Admissao' },
+    5:  { id: 5,  descricao: 'Enfermaria' },
+    6:  { id: 6,  descricao: 'Consultorio' },
+    7:  { id: 7,  descricao: 'Laboratorio' },
+    8:  { id: 8,  descricao: 'Facturacao' },
+    9:  { id: 9,  descricao: 'Servicos' },
+    10: { id: 10, descricao: 'Stock' },
+    11: { id: 11, descricao: 'Usuarios' },
+    12: { id: 12, descricao: 'RH' },
+    13: { id: 13, descricao: 'Agendamento' }
 };
 
-// 🔍 Função para verificar se um usuário tem acesso a uma rota
-export const verificarAcessoRota = (chave, user, permissoes) => {
-    const config = getRotaConfig(chave);
-    if (!config) return false;
-
-    // Verificar por tipo de usuário
-    const tiposPermitidos = {
-        'administrativo': ['administrativo', 'admin'],
-        'medico': ['medico', 'administrativo', 'admin'],
-        'enfermeiro': ['enfermeiro', 'administrativo', 'admin'],
-        'analista': ['analista', 'administrativo', 'admin']
-    };
-
-    const tipoUsuario = user?.tipo;
-    const tiposAceitos = tiposPermitidos[config.tipoPainel] || [];
-    
-    return tiposAceitos.includes(tipoUsuario);
-};
+// (Removido) Verificação por tipo de usuário deixou de ser utilizada.
 
 // 📊 Exemplo de uso no componente de rotas
 export const criarRotaProtegida = (chave, componente) => {
@@ -124,7 +91,6 @@ export const criarRotaProtegida = (chave, componente) => {
             <PermissaoRoute 
                 painelId={config.painelId}
                 descricaoPainel={config.descricaoPainel}
-                tipoPainel={config.tipoPainel}
                 permissao={config.permissao}
             >
                 {componente}

@@ -368,7 +368,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
     </div>
   );
 
-  const cadastrarProdutoComFilhos = async (produtoData, filhosArr, produtoPaiId = null) => {
+  const cadastrarProdutoComFilhos = async (produtoData, filhosArr, produtoPaiId = null, produtoIdExistente = null) => {
     console.log('Dados do produto recebidos:', produtoData); // Log para depuração
     const productTypeId = tiposMap[produtoData.productType];
     // Normaliza o productGroup para minúsculas para corresponder ao gruposMap
@@ -406,12 +406,18 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
 
     let produtoId = null;
     try {
-      const res = await api.post('/produto/add', payload);
-      const busca = await api.get('/produto/all');
-      const produtoSalvo = (busca.data || []).find(p => p.productDescription === produtoData.productDescription);
-      produtoId = produtoSalvo?.id;
+      if (produtoIdExistente) {
+        await api.put(`/produto/${produtoIdExistente}`, { ...payload, produtoPaiId });
+        produtoId = produtoIdExistente;
+      } else {
+        await api.post('/produto/add', payload);
+        const busca = await api.get('/produto/all');
+        const produtoSalvo = (busca.data || []).find(p => p.productDescription === produtoData.productDescription);
+        produtoId = produtoSalvo?.id;
+      }
     } catch (e) {
-      const errorMessage = 'Erro ao cadastrar produto: ' + (e.response?.data?.message || e.message);
+      const action = produtoIdExistente ? 'atualizar' : 'cadastrar';
+      const errorMessage = `Erro ao ${action} produto: ` + (e.response?.data?.message || e.message);
       console.error(errorMessage);
       toast.error(errorMessage, { autoClose: 2000 });
       throw e;
@@ -426,7 +432,8 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
             intervaloReferencia: filho.data.intervaloReferencia,
           },
           filho.filhos,
-          produtoId
+          produtoId,
+          null
         );
       } else {
         if (filho.id && produtoId) {
@@ -437,7 +444,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
           }
         }
         if (filho.filhos && filho.filhos.length > 0) {
-          await cadastrarProdutoComFilhos(filho.data, filho.filhos, filho.id);
+          await cadastrarProdutoComFilhos(filho.data, filho.filhos, filho.id, filho.id);
         }
       }
     }
@@ -448,13 +455,21 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
     setCarregar(true);
     try {
       console.log('Dados do formulário enviados:', data); // Log para verificar os dados do formulário
-      await cadastrarProdutoComFilhos(data, isComposto ? filhos : [], null);
-      toast.success('Produto e filhos cadastrados com sucesso!', { autoClose: 2000 });
+      const isEdicao = !!produtoParaEditar?.id;
+      await cadastrarProdutoComFilhos(
+        data,
+        isComposto ? filhos : [],
+        null,
+        isEdicao ? produtoParaEditar.id : null
+      );
+      toast.success(isEdicao ? 'Produto atualizado com sucesso!' : 'Produto e filhos cadastrados com sucesso!', { autoClose: 2000 });
+      // Recarrega imediatamente a listagem quando vier do Exame
+      if (onSuccess) onSuccess();
       reset();
       setFilhos([]);
       setIsComposto(false);
+      if (onSuccess) await onSuccess();
       if (onClose) onClose();
-      if (onSuccess) onSuccess();
       setErrosNoFront([]);
       setPreview(null);
       setModalIsOpen(false);
@@ -501,9 +516,11 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
 
   return (
     <div className="product-container">
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalIsOpen(true)} style={{ marginBottom: 16 }}>
-        Novo Produto
-      </Button>
+      {(!isFromExame) && (
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalIsOpen(true)} style={{ marginBottom: 16 }}>
+          Novo Produto
+        </Button>
+      )}
       <Modal
         title={modalTitle || "Novo Produto"}
         open={visible !== undefined ? visible : modalIsOpen}

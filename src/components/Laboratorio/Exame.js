@@ -487,15 +487,28 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         setShowNovoProdutoModal(false);
         setProdutoParaEditar(null);
         setIsEditMode(false);
+        // Garante atualização imediata da tabela após operações no modal
+        fetchProdutosExame();
     };
 
     const handleDeleteProduto = async (produto) => {
         try {
-            await api.patch(`produto/${produto.id}/status?status=false`);
+            await api.patch(`/produto/${produto.id}/status`, null, { params: { status: false } });
             toast.success('Produto excluído com sucesso!', { autoClose: 2000 });
             fetchProdutosExame();
         } catch (error) {
-            toast.error(error?.response?.data?.message || error?.response?.data || error.message || 'Erro ao excluir produto!', { autoClose: 2000 });
+            console.warn('PATCH status falhou, tentando fallback via PUT...', error);
+            try {
+                const { data } = await api.get(`/produto/${produto.id}`);
+                const dto = { ...data, status: false };
+                await api.put(`/produto/${produto.id}`, dto);
+                toast.success('Produto excluído com sucesso!', { autoClose: 2000 });
+                fetchProdutosExame();
+            } catch (err2) {
+                const msg2 = err2?.response?.data?.message || err2?.response?.data || err2?.message || 'Erro ao excluir produto!';
+                console.error('Erro ao excluir produto (fallback PUT):', err2);
+                toast.error(msg2, { autoClose: 3000 });
+            }
         }
     };
 
@@ -523,7 +536,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
 
     return (
         <div>
-            <h1 className="section-title">Gestão de Exames</h1>
+            <h2 className="section-title">Gestão de Exames</h2>
             <Card className="card-custom">
                 <Button 
                     type="primary" 
@@ -543,7 +556,10 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                     modalTitle={isEditMode ? "Editar Exame" : "Novo Exame"}
                     submitButtonText={isEditMode ? "Salvar Alterações" : "Adicionar Exame"}
                     produtoParaEditar={produtoParaEditar}
-                    onSuccess={fetchProdutosExame}
+                    onSuccess={async () => {
+                        await fetchProdutosExame();
+                        setShowNovoProdutoModal(false);
+                    }}
                     initialValues={isEditMode ? {} : { productGroup: 'exame' }}
                     isFromExame={true}
                 />
