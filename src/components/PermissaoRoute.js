@@ -8,7 +8,6 @@ const PermissaoRoute = ({
     children, 
     permissao, 
     modulo, 
-    tipoPainel,
     painelId,
     descricaoPainel,
     fallback = null,
@@ -19,7 +18,6 @@ const PermissaoRoute = ({
         temPermissaoPorModulo, 
         temAcessoAoPainel, 
         temAcessoAoPainelPorDescricao,
-        temAcessoPorTipo,
         loading, 
         error 
     } = usePermissoes();
@@ -62,62 +60,25 @@ const PermissaoRoute = ({
         );
     }
 
-    // Verificar permissão específica
-    if (permissao && !temPermissao(permissao)) {
-        if (fallback) return fallback;
-        
-        return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100vh',
-                flexDirection: 'column'
-            }}>
-                <Alert
-                    message="Acesso Negado"
-                    description={`Você não tem permissão para acessar esta funcionalidade. (${permissao})`}
-                    type="warning"
-                    showIcon
-                    style={{ maxWidth: 500, marginBottom: 16 }}
-                />
-                <Button type="primary" onClick={() => navigate(redirectTo)}>
-                    Voltar
-                </Button>
-            </div>
-        );
-    }
+    // Novo fluxo: concede acesso se QUALQUER critério for verdadeiro
+    const allowedByPermissao = permissao ? temPermissao(permissao) : false;
+    const allowedByModulo = modulo ? temPermissaoPorModulo(modulo) : false;
+    const allowedByPainelId = painelId ? temAcessoAoPainel(painelId) : false;
+    const allowedByPainelDesc = descricaoPainel ? temAcessoAoPainelPorDescricao(descricaoPainel) : false;
+    const isAllowed = allowedByPermissao || allowedByModulo || allowedByPainelId || allowedByPainelDesc;
 
-    // Verificar permissão por módulo
-    if (modulo && !temPermissaoPorModulo(modulo)) {
+    if (!isAllowed) {
         if (fallback) return fallback;
-        
-        return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100vh',
-                flexDirection: 'column'
-            }}>
-                <Alert
-                    message="Acesso Negado"
-                    description={`Você não tem permissão para acessar o módulo ${modulo}.`}
-                    type="warning"
-                    showIcon
-                    style={{ maxWidth: 500, marginBottom: 16 }}
-                />
-                <Button type="primary" onClick={() => navigate(redirectTo)}>
-                    Voltar
-                </Button>
-            </div>
-        );
-    }
+        const motivo = permissao
+            ? `Você não tem permissão para acessar esta funcionalidade. (${permissao})`
+            : modulo
+                ? `Você não tem permissão para acessar o módulo ${modulo}.`
+                : painelId
+                    ? `Você não tem permissão para acessar este painel. (ID: ${painelId})`
+                    : descricaoPainel
+                        ? `Você não tem permissão para acessar o painel: ${descricaoPainel}`
+                        : `Você não tem permissão para acessar.`;
 
-    // Verificar acesso ao painel por ID
-    if (painelId && !temAcessoAoPainel(painelId)) {
-        if (fallback) return fallback;
-        
         return (
             <div style={{ 
                 display: 'flex', 
@@ -128,59 +89,7 @@ const PermissaoRoute = ({
             }}>
                 <Alert
                     message="Acesso Negado"
-                    description={`Você não tem permissão para acessar este painel. (ID: ${painelId})`}
-                    type="warning"
-                    showIcon
-                    style={{ maxWidth: 500, marginBottom: 16 }}
-                />
-                <Button type="primary" onClick={() => navigate(redirectTo)}>
-                    Voltar
-                </Button>
-            </div>
-        );
-    }
-
-    // Verificar acesso ao painel por descrição
-    if (descricaoPainel && !temAcessoAoPainelPorDescricao(descricaoPainel)) {
-        if (fallback) return fallback;
-        
-        return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100vh',
-                flexDirection: 'column'
-            }}>
-                <Alert
-                    message="Acesso Negado"
-                    description={`Você não tem permissão para acessar o painel: ${descricaoPainel}`}
-                    type="warning"
-                    showIcon
-                    style={{ maxWidth: 500, marginBottom: 16 }}
-                />
-                <Button type="primary" onClick={() => navigate(redirectTo)}>
-                    Voltar
-                </Button>
-            </div>
-        );
-    }
-
-    // Verificar acesso ao painel baseado no tipo de usuário (fallback)
-    if (tipoPainel && !temAcessoPorTipo(tipoPainel)) {
-        if (fallback) return fallback;
-        
-        return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100vh',
-                flexDirection: 'column'
-            }}>
-                <Alert
-                    message="Acesso Negado"
-                    description={`Você não tem permissão para acessar o painel ${tipoPainel}. Seu tipo: ${user?.tipo}`}
+                    description={motivo}
                     type="warning"
                     showIcon
                     style={{ maxWidth: 500, marginBottom: 16 }}

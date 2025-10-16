@@ -29,6 +29,29 @@ import Html5QrcodeScanner from '../util/Html5QrcodeScanner';
 import RotaTest from '../util/RotaTest';
 import GraficoTriagem from '../components/GraficoTriagem';
 import RoleRoute from '../contexts/RoleRoute';
+import PermissaoRoute from '../components/PermissaoRoute';
+import { getRotaConfig } from '../config/rotasConfig';
+
+const RotaProtegidaPorChave = ({ chave, children }) => {
+    const config = getRotaConfig(chave);
+    // Se a chave não existir na configuração, NEGAR acesso (em vez de liberar)
+    if (!config) {
+        return (
+            <PermissaoRoute>
+                {children}
+            </PermissaoRoute>
+        );
+    }
+    return (
+        <PermissaoRoute 
+            painelId={config.painelId}
+            descricaoPainel={config.descricaoPainel}
+            permissao={config.permissao}
+        >
+            {children}
+        </PermissaoRoute>
+    );
+};
 
 function RoutesApp() {
     return (
@@ -41,16 +64,23 @@ function RoutesApp() {
             { <Route path="/formqrcode" element={<FormularioQRCode />} />}
             { <Route path="/qrcode" element={<Html5QrcodeScanner />} />}
             { <Route path="/rota" element={<RotaTest />} />}
-            { <Route path="/admissao/home" element={<PainelAdmissao />} />}
+            { <Route
+                path="/admissao/home"
+                element={
+                    <Private>
+                        <RotaProtegidaPorChave chave="admissao">
+                            <PainelAdmissao />
+                        </RotaProtegidaPorChave>
+                    </Private>
+                }
+            />}
             
 
             { <Route
                 path="/admin"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo', "medico", "analista"]}>
-                            <PainelPrincipal />
-                        </RoleRoute>
+                        <PainelPrincipal />
                     </Private>
                 }
             />}
@@ -84,9 +114,9 @@ function RoutesApp() {
                 path="/enf"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo', 'enfermeiro', "medico", "ADMINISTRATIVO", "admin"]}>
+                        <RotaProtegidaPorChave chave="enfermaria">
                             <PainelEnfermeiro />
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -95,11 +125,11 @@ function RoutesApp() {
                 path="/enf/triagem"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo', 'enfermeiro', "medico", "ADMINISTRATIVO", "admin"]}>
+                        <RotaProtegidaPorChave chave="enfermaria">
                             <PainelEnfermeiro>
                                 <Triagem />
                             </PainelEnfermeiro>
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -121,11 +151,11 @@ function RoutesApp() {
                 path="/medico/consulta"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo', 'medico']}>
+                        <RotaProtegidaPorChave chave="consultorio">
                             <PainelMedico>
                                 <Consulta />
                             </PainelMedico>
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -134,9 +164,9 @@ function RoutesApp() {
                 path="/facturacao"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo']}>
+                        <RotaProtegidaPorChave chave="facturacao">
                             <PainelFacturacao></PainelFacturacao>
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -144,11 +174,11 @@ function RoutesApp() {
                 path="/facturacao/criar"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo']}>
+                        <RotaProtegidaPorChave chave="facturacao">
                             <PainelFacturacao>
                                 <Facturacao />
                             </PainelFacturacao>
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -157,9 +187,9 @@ function RoutesApp() {
                 path="/agenda"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo', 'enfermeiro', "medico"]}>
+                        <RotaProtegidaPorChave chave="agenda">
                             <Agenda />
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -167,9 +197,9 @@ function RoutesApp() {
                 path="/artigo"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo', "analista"]}>
+                        <RotaProtegidaPorChave chave="servicos">
                             <PainelProduto />
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -178,9 +208,9 @@ function RoutesApp() {
                 path="/stock"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo']}>
+                        <RotaProtegidaPorChave chave="stock">
                             <Stock />
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -188,9 +218,9 @@ function RoutesApp() {
                 path="admin/usuario"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo']}>
+                        <RotaProtegidaPorChave chave="usuarios">
                             <Usuarios />
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -198,9 +228,9 @@ function RoutesApp() {
                 path="/lab"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo', "analista"]}>
+                        <RotaProtegidaPorChave chave="laboratorio">
                             <Laboratorio />
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
@@ -208,9 +238,9 @@ function RoutesApp() {
                 path="/rh"
                 element={
                     <Private>
-                        <RoleRoute allowed={['administrativo']}>
+                        <RotaProtegidaPorChave chave="rh">
                             <PainelRecursos />
-                        </RoleRoute>
+                        </RotaProtegidaPorChave>
                     </Private>
                 }
             />}
