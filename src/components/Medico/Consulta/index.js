@@ -170,7 +170,9 @@ function Consulta() {
         await api
             .get('inscricao/all/consulta')
             .then((r) => {
-                let data = r.data.map((item, index) => {
+                let listaFiltrada = (r.data || []).filter((item) => item !== null && typeof item === 'object');
+    
+                let data = listaFiltrada.map((item) => {
                     Object.defineProperty(item, 'tempo', {
                         value: item.dataCriacao,
                         writable: true,
@@ -179,6 +181,7 @@ function Consulta() {
                     });
                     return item;
                 });
+    
                 setData(data);
                 console.log(data);
             })
@@ -186,6 +189,7 @@ function Consulta() {
                 console.log('Falha na busca', e);
             });
     };
+    
 
     const prepararConsulta = (values) => {
         console.log(values.receita);

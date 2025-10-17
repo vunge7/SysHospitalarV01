@@ -20,24 +20,39 @@ const Armazem = () => {
   const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
+    const fetchData = async () => {
+      if (contextLoading) return; // Avoid fetching if context is already loading
+      setLoading(true);
+      try {
+        const armazensRes = await api.get('/armazem/all');
+        setArmazens(Array.isArray(armazensRes.data) ? armazensRes.data : []);
+        setErrorMessage(null);
+      } catch (error) {
+        const errorMsg = error.response?.data?.message || `Erro ao carregar armazéns: ${error.message}`;
+        setErrorMessage(errorMsg);
+        toast.error(errorMsg, { autoClose: 2000 });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Only fetch if armazens is empty and context is not loading
     if (!armazens.length && !contextLoading) {
-      const fetchData = async () => {
-        setLoading(true);
-        try {
-          const armazensRes = await api.get('/armazem/all');
-          setArmazens(Array.isArray(armazensRes.data) ? armazensRes.data : []);
-          setErrorMessage(null);
-        } catch (error) {
-          const errorMsg = error.response?.data?.message || `Erro ao carregar armazéns: ${error.message}`;
-          setErrorMessage(errorMsg);
-          toast.error(errorMsg, { autoClose: 2000 });
-        } finally {
-          setLoading(false);
-        }
-      };
       fetchData();
     }
-  }, [armazens, contextLoading, setArmazens]);
+  }, [contextLoading, setArmazens]);
+
+  useEffect(() => {
+    if (contextError) {
+      setErrorMessage(contextError);
+    } else if (!armazens.length && !contextLoading) {
+      setErrorMessage('Nenhum armazém encontrado. Cadastre armazéns ou verifique o banco de dados.');
+    } else if (!filiais.length && !contextLoading) {
+      setErrorMessage('Nenhuma filial encontrada. Cadastre filiais antes de criar armazéns.');
+    } else {
+      setErrorMessage(null);
+    }
+  }, [armazens, filiais, contextError, contextLoading]);
 
   const enrichedArmazens = useMemo(() => {
     return armazens.map((armazem) => {
@@ -60,7 +75,7 @@ const Armazem = () => {
   const logAudit = useCallback(async (action, armazemId, armazemName) => {
     try {
       await api.post('/audit/log', {
-        userId: 'SYSTEM', // Ajustar conforme autenticação
+        userId: 'SYSTEM', // Adjust based on authentication
         action,
         entity: 'ARMAZEM',
         entityId: armazemId,
@@ -116,7 +131,7 @@ const Armazem = () => {
           designacao: values.designacao.trim(),
           filialId: Number(values.filialId),
         };
-        const response = await api.put('/armazem/edit', armazemData);
+        const response = await api.put(`/armazem/${selectedArmazem.id}`, armazemData); // Corrigido: URL com ID correto
         const filial = filiais.find((f) => f.id === response.data.filialId);
         setArmazens((prev) =>
           prev
@@ -190,18 +205,6 @@ const Armazem = () => {
       toast.error('Falha ao exportar armazéns', { autoClose: 2000 });
     }
   }, [filteredArmazens]);
-
-  useEffect(() => {
-    if (contextError) {
-      setErrorMessage(contextError);
-    } else if (!armazens.length && !contextLoading) {
-      setErrorMessage('Nenhum armazém encontrado. Cadastre armazéns ou verifique o banco de dados.');
-    } else if (!filiais.length && !contextLoading) {
-      setErrorMessage('Nenhuma filial encontrada. Cadastre filiais antes de criar armazéns.');
-    } else {
-      setErrorMessage(null);
-    }
-  }, [armazens, filiais, contextError, contextLoading]);
 
   const armazemColumns = useMemo(
     () => [
@@ -300,7 +303,8 @@ const Armazem = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => { form.resetFields();
+                  onClick={() => {
+                    form.resetFields();
                     setSelectedArmazem(null);
                     setShowArmazemModal(true);
                   }}

@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { StockContext } from '../../../contexts/StockContext';
-import { Table, Button, Modal, Form, Input, Select, Spin, notification, Popconfirm, Space, Tooltip, Alert } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Spin, Popconfirm, Space, Tooltip, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import './Fornecedores.css';
@@ -20,12 +20,14 @@ const Fornecedores = () => {
     setLoading(true);
     try {
       const fornecedorData = {
+        id: editingFornecedor ? editingFornecedor.id : null,
         nome: values.nome?.trim(),
         contacto: values.contacto?.trim(),
         nif: values.nif?.trim(),
         endereco: values.endereco?.trim(),
         regimeTributario: values.regimeTributario || 'GERAL',
         estadoFornecedor: values.estadoFornecedor || 'ATIVO',
+        empresaId: values.empresaId || null,
       };
 
       console.log('Payload enviado para cadastro/edição:', fornecedorData);
@@ -33,7 +35,8 @@ const Fornecedores = () => {
       let response;
       if (editingFornecedor) {
         // Edição de fornecedor
-        response = await axios.put(`${API_BASE_URL}/fornecedor/edit`, { ...fornecedorData, id: editingFornecedor.id });
+        console.log(`Enviando PUT para: ${API_BASE_URL}/fornecedor/${editingFornecedor.id}`);
+        response = await axios.put(`${API_BASE_URL}/fornecedor/${editingFornecedor.id}`, fornecedorData);
         const updatedFornecedor = {
           id: editingFornecedor.id,
           nome: response.data.nome || fornecedorData.nome,
@@ -42,6 +45,7 @@ const Fornecedores = () => {
           endereco: response.data.endereco || fornecedorData.endereco,
           regimeTributario: response.data.regimeTributario || fornecedorData.regimeTributario,
           estadoFornecedor: response.data.estadoFornecedor || fornecedorData.estadoFornecedor,
+          empresaId: response.data.empresaId || fornecedorData.empresaId,
         };
         console.log('Resposta da API (edição):', response.data);
         setFornecedores((prev) =>
@@ -50,6 +54,7 @@ const Fornecedores = () => {
         toast.success('Fornecedor atualizado com sucesso!');
       } else {
         // Cadastro de novo fornecedor
+        console.log(`Enviando POST para: ${API_BASE_URL}/fornecedor/add`);
         response = await axios.post(`${API_BASE_URL}/fornecedor/add`, fornecedorData);
         if (!response.data || typeof response.data !== 'object' || !response.data.id) {
           throw new Error('Resposta da API inválida: fornecedor não retornado corretamente.');
@@ -62,6 +67,7 @@ const Fornecedores = () => {
           endereco: response.data.endereco || fornecedorData.endereco,
           regimeTributario: response.data.regimeTributario || fornecedorData.regimeTributario,
           estadoFornecedor: response.data.estadoFornecedor || fornecedorData.estadoFornecedor,
+          empresaId: response.data.empresaId || fornecedorData.empresaId,
         };
         console.log('Resposta da API (cadastro):', response.data);
         setFornecedores((prev) => {
@@ -78,8 +84,12 @@ const Fornecedores = () => {
       const errorMessage =
         err.response?.status === 401
           ? 'Sessão expirada. Faça login novamente.'
+          : err.response?.status === 400
+          ? err.response.data || 'Erro de validação nos dados do fornecedor. Verifique os campos e tente novamente.'
+          : err.response?.status === 404
+          ? 'Fornecedor não encontrado.'
           : err.response?.data?.message ||
-            err.response?.data?.error ||
+            err.response?.data ||
             err.message ||
             'Erro interno no servidor. Contate o administrador.';
       console.error('Erro ao cadastrar/editar fornecedor:', {
@@ -88,6 +98,7 @@ const Fornecedores = () => {
         status: err.response?.status,
         url: err.config?.url,
         headers: err.config?.headers,
+        payload: fornecedorData,
       });
       toast.error(`${errorMessage} (Código: ${err.response?.status || 'desconhecido'})`);
     } finally {
@@ -104,6 +115,7 @@ const Fornecedores = () => {
       endereco: fornecedor.endereco || '',
       regimeTributario: fornecedor.regimeTributario || 'GERAL',
       estadoFornecedor: fornecedor.estadoFornecedor || 'ATIVO',
+      empresaId: fornecedor.empresaId || null,
     });
     setIsModalOpen(true);
   };
@@ -119,8 +131,10 @@ const Fornecedores = () => {
       const errorMessage =
         err.response?.status === 401
           ? 'Sessão expirada. Faça login novamente.'
+          : err.response?.status === 404
+          ? 'Fornecedor não encontrado.'
           : err.response?.data?.message ||
-            err.response?.data?.error ||
+            err.response?.data ||
             err.message ||
             'Erro ao excluir fornecedor.';
       console.error('Erro ao excluir fornecedor:', {
@@ -269,7 +283,7 @@ const Fornecedores = () => {
             rules={[
               { required: true, message: 'Contacto é obrigatório' },
               {
-                pattern: /^(\+?[0-9]{7,15}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/,
+                pattern: /^(\+?[0-9]{9,15}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/,
                 message: 'Insira um telefone válido (ex.: +123456789) ou email (ex.: exemplo@dominio.com)',
               },
             ]}
@@ -317,6 +331,13 @@ const Fornecedores = () => {
               <Select.Option value="ATIVO">Ativo</Select.Option>
               <Select.Option value="INATIVO">Inativo</Select.Option>
             </Select>
+          </Form.Item>
+          <Form.Item
+            name="empresaId"
+            label="Empresa ID"
+            rules={[{ type: 'number', message: 'Empresa ID deve ser um número' }]}
+          >
+            <Input type="number" disabled={loading} />
           </Form.Item>
           <Form.Item>
             <Space>

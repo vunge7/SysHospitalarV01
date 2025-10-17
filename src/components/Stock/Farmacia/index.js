@@ -934,8 +934,9 @@ const Farmacia = () => {
         dataCriacao: editFornecedorId ? undefined : moment().tz('Africa/Luanda').toISOString(),
       };
       if (editFornecedorId) {
-        await api.put('/fornecedor/edit', fornecedorDTO);
+        await api.put(`/fornecedor/${editFornecedorId}`, fornecedorDTO);
         toast.success('Fornecedor atualizado com sucesso');
+    
       } else {
         await api.post('/fornecedor/add', fornecedorDTO);
         toast.success('Fornecedor adicionado com sucesso');

@@ -185,6 +185,7 @@ function AvaliacaoExameRequisitado({
     try {
       const response = await api.get(`/linharequisicaoexame/all/requisicao/${requisicaoExameId}`);
       const mappedData = response.data.flatMap((item) => {
+        console.log('Dados brutos da linha:', item); // Log para inspecionar dados recebidos
         const produto = produtos.find((p) => p.id === (item.produtoId || item.produto_id));
         if (!produto) {
           return [{
@@ -228,6 +229,7 @@ function AvaliacaoExameRequisitado({
 
         return buildHierarchy(produto);
       });
+      console.log('Linhas de requisição mapeadas:', mappedData); // Log para inspecionar dados mapeados
       setLinhasRequisicao(mappedData);
     } catch (error) {
       toast.error('Erro ao buscar linhas de requisição: ' + (error.response?.data?.message || error.message), {
@@ -320,9 +322,8 @@ function AvaliacaoExameRequisitado({
     }
     try {
       setLoading(true);
-      const estadoRequisicao = 'nao_efetuado';
-      const horaMoment = moment();
-      const horaString = horaMoment.format('YYYY-MM-DDTHH:mm:ss');
+      const estadoRequisicao = 'efetuado'; // Ajustado para corresponder ao enum
+      const horaString = moment().format('YYYY-MM-DDTHH:mm:ss'); // Formato correto
 
       // Validar e ajustar valorReferencia
       const { adjustedValue, error } = validateAndAdjustValue(values.valorReferencia, exameToReopen.intervaloReferencia);
@@ -338,7 +339,6 @@ function AvaliacaoExameRequisitado({
         id: getBaseId(exameToReopen.id),
         produtoId: exameToReopen.produtoId ?? null,
         exame: exameToReopen.exame || 'N/A',
-        designacao: exameToReopen.exame || 'N/A',
         estado: estadoRequisicao,
         hora: horaString,
         requisicaoExameId: exameToReopen.requisicaoExameId ?? selectedRequisicao.id ?? null,
@@ -355,8 +355,11 @@ function AvaliacaoExameRequisitado({
       if (!updatedExame.requisicaoExameId) {
         throw new Error('Requisição Exame ID é obrigatório');
       }
+      if (!updatedExame.exame || updatedExame.exame.trim() === '') {
+        throw new Error('Exame é obrigatório e não pode ser vazio');
+      }
 
-      console.log('Enviando payload para /linharequisicaoexame/edit:', updatedExame);
+      console.log('Enviando payload para /linharequisicaoexame/edit:', JSON.stringify(updatedExame, null, 2));
 
       const response = await api.put('/linharequisicaoexame/edit', updatedExame);
       console.log('Resposta da atualização:', response.data);
@@ -560,21 +563,51 @@ function AvaliacaoExameRequisitado({
         parentId: linha.parentId || null,
         produtoId: linha.produtoId,
       }));
-      console.log('Enviando linhasResultadoPayload:', linhasResultadoPayload);
+      console.log('Enviando linhasResultadoPayload:', JSON.stringify(linhasResultadoPayload, null, 2));
       await Promise.all(linhasResultadoPayload.map((payload) => api.post('/linharesultado/add', payload)));
+
       const updateLinhaRequisicaoPromises = linhasRequisicao
         .filter((linha) => isLeafNode(linha.produtoId) && cachedLinhasResultado.some((lr) => lr.exameId === getBaseId(linha.id) && lr.produtoId === linha.produtoId))
         .map((linha) => {
+          // Validações adicionais
+          if (!linha.id) {
+            console.error('ID da linha está indefinido:', linha);
+            toast.error(`O exame ${linha.exame || 'desconhecido'} não possui um ID válido.`);
+            return Promise.reject(new Error('ID da linha inválido'));
+          }
+          if (!linha.exame || linha.exame.trim() === '') {
+            console.error('Campo exame está vazio ou inválido:', linha);
+            toast.error(`O exame ${linha.id} não possui um nome válido.`);
+            return Promise.reject(new Error('Campo exame inválido'));
+          }
+          if (!linha.produtoId) {
+            console.error('Campo produtoId está vazio ou inválido:', linha);
+            toast.error(`O exame ${linha.id} não possui um produtoId válido.`);
+            return Promise.reject(new Error('Campo produtoId inválido'));
+          }
+          if (!linha.requisicaoExameId) {
+            console.error('Campo requisicaoExameId está vazio ou inválido:', linha);
+            toast.error(`O exame ${linha.id} não possui um requisicaoExameId válido.`);
+            return Promise.reject(new Error('Campo requisicaoExameId inválido'));
+          }
           const updatedLinha = {
-            ...linha,
-            id: getBaseId(linha.id),
-            estado: 'efetuado',
-            hora: moment().toISOString(),
+            id: parseInt(getBaseId(linha.id), 10), // Garante que o ID seja um número
+            produtoId: parseInt(linha.produtoId, 10), // Garante que seja um número
+            exame: linha.exame,
+            estado: 'efetuado', // Ajustado para corresponder ao enum
+            hora: moment().format('YYYY-MM-DDTHH:mm:ss'), // Formato correto sem milissegundos
+            requisicaoExameId: parseInt(linha.requisicaoExameId, 10), // Garante que seja um número
+            empresaId: linha.empresaId ? parseInt(linha.empresaId, 10) : null,
+            status: linha.status !== undefined ? linha.status : true,
             finalizado: true,
           };
-          return api.put('/linharequisicaoexame/edit', updatedLinha);
+          console.log(`Payload enviado para /linharequisicaoexame/edit (linha ID ${linha.id}):`, JSON.stringify(updatedLinha, null, 2));
+          return api.put('/linharequisicaoexame/edit', updatedLinha).catch((error) => {
+            console.error(`Erro ao atualizar linha ${linha.id}:`, error.response?.data || error.message);
+            throw new Error(`Erro ao atualizar linha ${linha.id}: ${error.response?.data?.message || error.message}`);
+          });
         });
-      console.log('Atualizando linhas de requisição:', updateLinhaRequisicaoPromises);
+      console.log('Executando atualizações de linhas de requisição:', updateLinhaRequisicaoPromises.length, 'promessas');
       await Promise.all(updateLinhaRequisicaoPromises);
       toast.success('Exame finalizado e resultados salvos com sucesso!', { autoClose: 2000 });
       setExamesRequisitados((prev) => prev.filter((r) => r.id !== selectedRequisicao.id));
@@ -585,9 +618,9 @@ function AvaliacaoExameRequisitado({
       setRequisicoesStatus((prev) => ({ ...prev, [selectedRequisicao.id]: false }));
       fetchAllData();
     } catch (error) {
-      console.error('Erro em handleFinalizarExame:', error.response?.data || error.message);
-      toast.error(`Erro ao finalizar exame: ${error.response?.data?.message || error.message}`, {
-        autoClose: 2000,
+      console.error('Erro em handleFinalizarExame:', error.message, error.stack);
+      toast.error(`Erro ao finalizar exame: ${error.message}`, {
+        autoClose: 3000,
       });
     } finally {
       setLoading(false);
