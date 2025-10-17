@@ -187,7 +187,7 @@ function RoutesApp() {
                 path="/agenda"
                 element={
                     <Private>
-                        <RotaProtegidaPorChave chave="agenda">
+                        <RotaProtegidaPorChave chave="agendamento">
                             <Agenda />
                         </RotaProtegidaPorChave>
                     </Private>
