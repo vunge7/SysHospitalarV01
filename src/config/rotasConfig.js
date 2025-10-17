@@ -1,7 +1,7 @@
 // 🔧 Configuração de Rotas Baseada em Painéis
 // Este arquivo mapeia as rotas aos painéis do sistema
 
-import PermissaoRoute from "../components/PermissaoRoute";
+import PermissaoRoute from "./../routes/PermissaoRoute";
 
 export const ROTAS_CONFIG = {
     // 🏥 Processos Clínicos
@@ -56,6 +56,11 @@ export const ROTAS_CONFIG = {
         path: '/rh',
         painelId: 12, // RH
         descricaoPainel: 'RH',
+    },
+    'permissoes': {
+        path: '/admin/permissoes',
+        painelId: 14, // Permissoes
+        descricaoPainel: 'Permissoes',
     }
 };
 
@@ -75,12 +80,10 @@ export const PAINEIS_DISPONIVEIS = {
     10: { id: 10, descricao: 'Stock' },
     11: { id: 11, descricao: 'Usuarios' },
     12: { id: 12, descricao: 'RH' },
-    13: { id: 13, descricao: 'Agendamento' }
+    13: { id: 13, descricao: 'Agendamento' },
+    14: { id: 14, descricao: 'Permissoes' }
 };
 
-// (Removido) Verificação por tipo de usuário deixou de ser utilizada.
-
-// 📊 Exemplo de uso no componente de rotas
 export const criarRotaProtegida = (chave, componente) => {
     const config = getRotaConfig(chave);
     if (!config) return null;

@@ -12,7 +12,6 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 
 function PainelPrincipal() {
     const { user } = useContext(AuthContext);
-    const userType = (user?.tipo || '').toLowerCase();
     const { temAcessoARota } = usePermissoes();
 
     // Defina as permissões de cada bloco com 'allowed' para todos os itens (não usado na lógica)
@@ -51,6 +50,7 @@ function PainelPrincipal() {
                 { key: 'seguradoras', label: 'Seguradoras', icon: 'fas fa-shield-alt', allowed: [] },
                 { key: 'empresas', label: 'Empresas', icon: 'fas fa-building', allowed: [] },
                 { key: 'relatorios', label: 'Relatórios', icon: 'fas fa-chart-line', allowed: [] },
+                { key: 'permissoes', label: 'Permissões', icon: 'fas fa-user-shield', to: '/admin/permissoes',  allowed: [] },
             ],
         },
     ];

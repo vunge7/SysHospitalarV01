@@ -1,4 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
+import { useContext } from 'react';
+import { AuthContext } from '../contexts/auth';
 import Login from '../pages/Login';
 import PainelAdmissao from '../pages/PainelAdmissao';
 import PainelEnfermeiro from '../pages/PainelEnfermeiro';
@@ -29,8 +31,9 @@ import Html5QrcodeScanner from '../util/Html5QrcodeScanner';
 import RotaTest from '../util/RotaTest';
 import GraficoTriagem from '../components/GraficoTriagem';
 import RoleRoute from '../contexts/RoleRoute';
-import PermissaoRoute from '../components/PermissaoRoute';
+import PermissaoRoute from './PermissaoRoute';
 import { getRotaConfig } from '../config/rotasConfig';
+import PainelPermissoes from '../components/PainelPermissoes';
 
 const RotaProtegidaPorChave = ({ chave, children }) => {
     const config = getRotaConfig(chave);
@@ -54,6 +57,9 @@ const RotaProtegidaPorChave = ({ chave, children }) => {
 };
 
 function RoutesApp() {
+    const { user } = useContext(AuthContext); // Obtém o usuário autenticado
+    const usuarioId = user?.id; // Extrai o ID do usuário
+
     return (
         <Routes>
             <Route path="/" element={<Login />} />
@@ -244,7 +250,16 @@ function RoutesApp() {
                     </Private>
                 }
             />}
-
+            { <Route
+                path="/admin/permissoes"
+                element={
+                    <Private>
+                        <RotaProtegidaPorChave chave="permissoes">
+                            <PainelPermissoes usuarioId={usuarioId} />
+                        </RotaProtegidaPorChave>
+                    </Private>
+                }
+            />}
             { <Route path="/*" element={<div>Página não existente</div>} />}
         </Routes>
     );
