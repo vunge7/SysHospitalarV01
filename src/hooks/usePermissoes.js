@@ -161,21 +161,6 @@ export const usePermissoes = () => {
         return painels.filter(painel => temAcessoAoPainel(painel.id));
     };
 
-    // Verificar acesso baseado no tipo de usuário (fallback)
-    const temAcessoPorTipo = (tipoPainel) => {
-        const tiposPermitidos = {
-            'admin': ['admin', 'administrativo', 'ADMINISTRATIVO'],
-            'medico': ['medico', 'admin', 'administrativo'],
-            'enfermeiro': ['enfermeiro', 'admin', 'administrativo', 'ADMINISTRATIVO'],
-            'analista': ['analista', 'admin', 'administrativo']
-        };
-        
-        const tipoUsuario = user?.tipo;
-        const tiposAceitos = tiposPermitidos[tipoPainel] || [];
-        
-        return tiposAceitos.includes(tipoUsuario);
-    };
-
     // Utilitário: filtra permissões por critérios granulares
     const getPermissoesFiltradas = ({
         usuarioId,

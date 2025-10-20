@@ -11,6 +11,7 @@ import './Stock.css';
 import Farmacia from './Farmacia';
 import Armazem from './Armazem';
 import Relatorios from './Relatorios';
+import Cabecario from '../Cabecario';
 
 ChartJS.register(
     CategoryScale,
@@ -512,23 +513,18 @@ function Stock() {
     );
 
     return (
-        <div className="stock-container">
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100vh' }}>
+            <Cabecario />
+            <div style={{ width: 'auto', display: 'flex', flexDirection: 'row', flex: 1 }}>
                 <SideMenu menu={menu} onClick={handleTabClick} />
-            <div className="main-content">
-                <Header className="stock-header">
-                    <div className="header-content">
-                        <h1>Sistema de Gestão de Stock</h1>
-                        <div className="header-info">
-                            <span>{moment().format('DD/MM/YYYY HH:mm')}</span>
-                        </div>
+                <div className="main-content" style={{ marginTop: 10, marginLeft: 50, width: '100%' }}>
+                    <div className="stock-content">
+                        {activeTab === 'dashboard' && renderDashboard()}
+                        {activeTab === 'armazem' && <Armazem />}
+                        {activeTab === 'farmacia' && <Farmacia />}
+                        {activeTab === 'relatorios' && <Relatorios />}
                     </div>
-                </Header>
-                <Content className="stock-content">
-                    {activeTab === 'dashboard' && renderDashboard()}
-                    {activeTab === 'armazem' && <Armazem />}
-                    {activeTab === 'farmacia' && <Farmacia />}
-                    {activeTab === 'relatorios' && <Relatorios />}
-                </Content>
+                </div>
             </div>
             <Rodape />
         </div>
