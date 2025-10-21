@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-//const ip = 'localhost';
 
 const ip = 'api-ywq2.onrender.com';
 
