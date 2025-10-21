@@ -15,7 +15,7 @@ export default function FormularioQRCode() {
     useEffect(() => {
         const fetchLastQr = async () => {
             try {
-                const response = await api.get('api/qr-data');
+                const response = await api.get('api/qr-data/all');
                 if (response.data) {
                     setFormData({
                         id: response.data.id || '',
