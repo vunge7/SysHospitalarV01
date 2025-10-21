@@ -1,5 +1,6 @@
+// GerenciarPermissoes.js - MELHORADO
 import React, { useEffect, useState } from 'react';
-import { List, Button } from 'antd';
+import { List, Button, Spin, Alert, Card } from 'antd';
 import {
     fetchPermissions,
     fetchUserPermissions,
@@ -7,75 +8,121 @@ import {
     removePermissionFromUser,
 } from '../../service/api';
 
-const GerenciarPermissoes = ({ filialId, userId }) => {
+const GerenciarPermissoes = ({ filialId, userId, onBack }) => {
     const [permissions, setPermissions] = useState([]);
     const [userPermissions, setUserPermissions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetchPermissions()
-            .then(response => setPermissions(response.data))
-            .catch(error => console.error('Erro ao carregar permissões:', error));
-
-        fetchUserPermissions(userId, filialId)
-            .then(response => setUserPermissions(response.data))
-            .catch(error => console.error('Erro ao carregar permissões do usuário:', error));
+        if (userId && filialId) {
+            loadPermissions();
+        }
     }, [userId, filialId]);
 
-    const handleAssignPermission = (permissionId) => {
-        assignPermissionToUser(userId, filialId, permissionId)
-            .then(() => setUserPermissions([...userPermissions, { id: permissionId }]))
-            .catch(error => console.error('Erro ao atribuir permissão:', error));
+    const loadPermissions = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const [permissionsRes, userPermissionsRes] = await Promise.all([
+                fetchPermissions(),
+                fetchUserPermissions(userId, filialId)
+            ]);
+            
+            setPermissions(Array.isArray(permissionsRes.data) ? permissionsRes.data : []);
+            setUserPermissions(Array.isArray(userPermissionsRes.data) ? userPermissionsRes.data : []);
+        } catch (error) {
+            console.error('Erro ao carregar permissões:', error);
+            setError('Erro ao carregar permissões');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleRemovePermission = (permissionId) => {
-        removePermissionFromUser(userId, filialId, permissionId)
-            .then(() => setUserPermissions(userPermissions.filter(p => p.id !== permissionId)))
-            .catch(error => console.error('Erro ao remover permissão:', error));
+    const handleAssignPermission = async (permissionId) => {
+        setLoading(true);
+        try {
+            await assignPermissionToUser(userId, filialId, permissionId);
+            await loadPermissions(); // Recarrega para sincronizar
+        } catch (error) {
+            console.error('Erro ao atribuir permissão:', error);
+            setError('Erro ao atribuir permissão');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRemovePermission = async (permissionId) => {
+        setLoading(true);
+        try {
+            await removePermissionFromUser(userId, filialId, permissionId);
+            await loadPermissions(); // Recarrega para sincronizar
+        } catch (error) {
+            console.error('Erro ao remover permissão:', error);
+            setError('Erro ao remover permissão');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <div>
-            <h2>Permissões Disponíveis</h2>
-            <List
-                bordered
-                dataSource={permissions}
-                renderItem={(permission) => (
-                    <List.Item
-                        actions={[
-                            !userPermissions.some(p => p.id === permission.id) && (
-                                <Button
-                                    type="primary"
-                                    onClick={() => handleAssignPermission(permission.id)}
-                                >
-                                    Adicionar
-                                </Button>
-                            ),
-                        ]}
-                    >
-                        {permission.name}
-                    </List.Item>
-                )}
-            />
-            <h2 style={{ marginTop: '20px' }}>Permissões do Usuário</h2>
-            <List
-                bordered
-                dataSource={userPermissions}
-                renderItem={(permission) => (
-                    <List.Item
-                        actions={[
-                            <Button
-                                type="danger"
-                                onClick={() => handleRemovePermission(permission.id)}
+        <Spin spinning={loading}>
+            {error && <Alert message={error} type="error" showIcon style={{ marginBottom: '16px' }} />}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <Button onClick={onBack}>← Voltar para Usuários</Button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px' }}>
+                {/* Permissões Disponíveis */}
+                <Card title="➕ Permissões Disponíveis" style={{ flex: 1 }}>
+                    <List
+                        bordered
+                        dataSource={permissions.filter(p => 
+                            !userPermissions.some(up => up.id === p.id)
+                        )}
+                        locale={{ emptyText: 'Nenhuma permissão disponível para adicionar' }}
+                        renderItem={(permission) => (
+                            <List.Item
+                                actions={[
+                                    <Button
+                                        type="primary"
+                                        onClick={() => handleAssignPermission(permission.id)}
+                                    >
+                                        Adicionar
+                                    </Button>,
+                                ]}
                             >
-                                Remover
-                            </Button>,
-                        ]}
-                    >
-                        {permission.name}
-                    </List.Item>
-                )}
-            />
-        </div>
+                                {permission.name || `Permissão ${permission.id}`}
+                            </List.Item>
+                        )}
+                    />
+                </Card>
+
+                {/* Permissões do Usuário */}
+                <Card title="✅ Permissões Ativas" style={{ flex: 1 }}>
+                    <List
+                        bordered
+                        dataSource={userPermissions}
+                        locale={{ emptyText: 'Nenhuma permissão atribuída' }}
+                        renderItem={(permission) => (
+                            <List.Item
+                                actions={[
+                                    <Button
+                                        type="danger"
+                                        onClick={() => handleRemovePermission(permission.id)}
+                                    >
+                                        Remover
+                                    </Button>,
+                                ]}
+                            >
+                                {permission.name || `Permissão ${permission.id}`}
+                            </List.Item>
+                        )}
+                    />
+                </Card>
+            </div>
+        </Spin>
     );
 };
 
