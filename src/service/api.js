@@ -45,4 +45,4 @@ export const removePermissionFromUser = (usuarioId, filialId, permissionId) =>
     });
 
 // Função para buscar usuários de uma filial específica
-export const fetchUsersByFilialId = (filialId) => api.get(`/usuarios/filial/${filialId}`);
+export const fetchUsersByFilialId = (filialId) => api.get(`/usuario/filial/${filialId}`);
