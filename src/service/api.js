@@ -2,12 +2,12 @@ import axios from 'axios';
 
 //const ip = 'localhost';
 
-//const ip = 'api-ywq2.onrender.com';
-const ip = 'localhost:8081';
+const ip = 'api-ywq2.onrender.com';
+//const ip = 'localhost:8081';
 
 export const api = axios.create({
-    //baseURL: `https://${ip}/`,
-    baseURL: `http://${ip}/`,
+    baseURL: `https://${ip}/`,
+   // baseURL: `http://${ip}/`,
     withCredentials: true, // Adiciona suporte a credenciais
 });
 
