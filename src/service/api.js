@@ -1,21 +1,11 @@
 // api.js - ATUALIZADO
 import axios from 'axios';
 
-<<<<<<< HEAD
 const ip = 'localhost';
 
 export const api = axios.create({
     baseURL: `http://${ip}:8081/`,
     withCredentials: true,
-=======
-//const ip = 'localhost';
-
-const ip = 'api-ywq2.onrender.com';
-
-export const api = axios.create({
-    baseURL: `https://${ip}/`,
-    withCredentials: true, // Adiciona suporte a credenciais
->>>>>>> 8530a967302a850a0013176b35ca98dd90227452
 });
 
 // Adiciona o token JWT no header Authorization se existir
@@ -33,7 +23,7 @@ api.interceptors.request.use(config => {
 export const fetchFiliaisByUsuarioId = (usuarioId) => api.get(`/painelpermissoes/usuario/${usuarioId}/filiais`);
 
 // Função para buscar TODAS as filiais (com id e nome)
-export const fetchAllFiliais = () => api.get('/filial/all');
+export const fetchAllFiliais = () => api.get('/empresa/all');
 
 // Função para buscar todas as permissões disponíveis
 export const fetchPermissions = () => api.get('/painelpermissoes/all');

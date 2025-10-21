@@ -177,7 +177,7 @@ const ListaUsuariosComAcoes = ({ filialId, onSelectUser, loading }) => {
                 </Button>
             </div>
 
-            <h3>👥 Usuários Afiliados ({users.length})</h3>
+            <h3>👥 Usuários Afiliados</h3>
             <Spin spinning={loadingUsers}>
                 <List
                     bordered
