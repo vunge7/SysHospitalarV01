@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AutoComplete, Select, Input } from 'antd';
 import { toast } from 'react-toastify';
-
+// git dvml-dev
 import {
     Modal,
     Flex,
@@ -438,6 +438,7 @@ export const ModalTriagem = ({
     onCancel,
     exibirManchester = false,
     exibirEncaminhamento = false,
+    carrgarDados,
 }) => {
     const [pressaoArterialS, setPressaoArterialS] = useState(120);
     const [pressaoArterialD, setPressaoArterialD] = useState(80);
@@ -597,6 +598,10 @@ export const ModalTriagem = ({
             toast.success('Paciente Triado com sucesso!', {
                 autoClose: 2000,
             });
+
+            carrgarDados();
+
+
         } catch (e) {
             console.error('Erro ao registrar triagem ou linhas:', e);
             toast.success('Falha ao triar o paciente!', {
