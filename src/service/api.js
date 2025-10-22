@@ -23,7 +23,7 @@ api.interceptors.request.use(config => {
 export const fetchFiliaisByUsuarioId = (usuarioId) => api.get(`/painelpermissoes/usuario/${usuarioId}/filiais`);
 
 // Função para buscar TODAS as filiais (com id e nome)
-export const fetchAllFiliais = () => api.get('/empresa/all');
+export const fetchAllFiliais = () => api.get('/empresa/filial/all');
 
 // Função para buscar todas as permissões disponíveis
 export const fetchPermissions = () => api.get('/painelpermissoes/all');

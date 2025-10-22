@@ -32,7 +32,7 @@ const SelecionarFilial = () => {
                 
                 for (const filialId of filiaisIdsResponse.data) {
                     try {
-                        const filialResponse = await api.get(`/empresa/${filialId}`);
+                        const filialResponse = await api.get(`/empresa/filial/${filialId}`);
                         if (filialResponse.data) {
                             // 3. Buscar permissões do usuário nesta filial
                             const permissoesResponse = await api.get(`/painelpermissoes/usuario/${user?.id}/filial/${filialId}`);
