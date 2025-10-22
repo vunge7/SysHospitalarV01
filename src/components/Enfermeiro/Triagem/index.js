@@ -1,25 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../../service/api';
-import {
-    Flex,
-    List,
-    Avatar,
-    Input,
-    Button,
-    Modal,
-    Card,
-    Slider,
-    Row,
-    Col,
-    InputNumber,
-    Radio,
-    Space,
-} from 'antd';
+import { Flex, List, Input, Button } from 'antd';
 
-import { format } from 'date-fns';
-
-import TriagemManchester from '../../TriagemManchester';
-import { viewPdfPacienteFita, ModalTriagem } from '../../util/utilitarios';
+import { ModalTriagem } from '../../util/utilitarios';
 
 const { Search } = Input;
 
@@ -29,18 +12,8 @@ function Triagem() {
 
     const [idInscricao, setIdInscricao] = useState(0);
     const [nomePaciente, setNomePaciente] = useState();
-    const [encaminhamento, setEncaminhamento] = useState(1);
 
     /**DADOS DOS SINAIS VITAIS */
-
-    const [pressaArterial, setpPessaArterial] = useState(120);
-    const [pressaArterialD, setpPessaArterialD] = useState(80);
-    const [temperatura, setTemperatura] = useState(37);
-    const [peso, setPeso] = useState(0);
-    const [pulso, setPulso] = useState();
-    const [so, setSo] = useState();
-    const [respiracao, setRespiracao] = useState();
-    const [dor, setDor] = useState();
 
     useEffect(() => {
         carrgarDados();
@@ -117,6 +90,7 @@ function Triagem() {
                     onCancel={() => setIsModalTriagem(false)} //
                     exibirEncaminhamento={true}
                     exibirManchester={true}
+                    carrgarDados={carrgarDados}
                 />
             </>
         </Flex>
