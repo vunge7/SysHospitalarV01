@@ -21,7 +21,7 @@ const Armazem = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (contextLoading) return; // Avoid fetching if context is already loading
+      if (contextLoading) return;
       setLoading(true);
       try {
         const armazensRes = await api.get('/armazem/all');
@@ -36,7 +36,6 @@ const Armazem = () => {
       }
     };
 
-    // Only fetch if armazens is empty and context is not loading
     if (!armazens.length && !contextLoading) {
       fetchData();
     }
@@ -75,7 +74,7 @@ const Armazem = () => {
   const logAudit = useCallback(async (action, armazemId, armazemName) => {
     try {
       await api.post('/audit/log', {
-        userId: 'SYSTEM', // Adjust based on authentication
+        userId: 'SYSTEM',
         action,
         entity: 'ARMAZEM',
         entityId: armazemId,
@@ -87,6 +86,7 @@ const Armazem = () => {
     }
   }, []);
 
+  // **FUNÇÃO CORRIGIDA PARA CRIAR ARMAZÉM**
   const handleArmazemSubmit = useCallback(
     async (values) => {
       setLoading(true);
@@ -94,24 +94,33 @@ const Armazem = () => {
         const armazemData = {
           designacao: values.designacao.trim(),
           filialId: Number(values.filialId),
+          // Campos obrigatórios adicionados
+          status: true,
+          dataCriacao: moment().tz('Africa/Luanda').toISOString(),
+          dataAtualizacao: moment().tz('Africa/Luanda').toISOString(),
         };
+
+        console.log('Payload CREATE:', armazemData); // DEBUG
+
         const response = await api.post('/armazem/add', armazemData);
+        
         const filial = filiais.find((f) => f.id === response.data.filialId);
         setArmazens((prev) => [
           ...prev,
           {
             id: response.data.id,
-            designacao: response.data.designacao,
-            filialId: response.data.filialId,
+            ...response.data,
             filialNome: filial ? filial.nome : 'Sem filial associada',
           },
         ].sort((a, b) => a.designacao.localeCompare(b.designacao)));
+        
         await logAudit('CREATE', response.data.id, response.data.designacao);
         setShowArmazemModal(false);
         form.resetFields();
         setErrorMessage(null);
         toast.success('Armazém cadastrado com sucesso!', { autoClose: 2000 });
       } catch (error) {
+        console.error('Erro completo CREATE:', error.response?.data); // DEBUG
         const errorMsg = error.response?.data?.message || `Erro ao cadastrar armazém: ${error.message}`;
         setErrorMessage(errorMsg);
         toast.error(errorMsg, { autoClose: 2000 });
@@ -122,38 +131,50 @@ const Armazem = () => {
     [setArmazens, logAudit, filiais]
   );
 
+  // **FUNÇÃO CORRIGIDA PARA EDITAR ARMAZÉM**
   const handleArmazemEditSubmit = useCallback(
     async (values) => {
       setLoading(true);
       try {
+        // **CARREGAR DADOS COMPLETOS DO ARMAZÉM**
+        const armazemExistente = await api.get(`/armazem/${selectedArmazem.id}`);
+        const armazemCompleto = armazemExistente.data;
+
         const armazemData = {
+          // Preservar TODOS os campos existentes
           id: selectedArmazem.id,
           designacao: values.designacao.trim(),
           filialId: Number(values.filialId),
+          
+          // **CAMPO CRÍTICO: PRESERVAR STATUS**
+          status: armazemCompleto.status || true,
+          
+          // **CAMPO CRÍTICO: ATUALIZAR DATA**
+          dataCriacao: armazemCompleto.dataCriacao,
+          dataAtualizacao: moment().tz('Africa/Luanda').toISOString(),
+          
+          // Preservar outros campos que possam existir
+          ...(armazemCompleto.createdBy && { createdBy: armazemCompleto.createdBy }),
+          ...(armazemCompleto.updatedBy && { updatedBy: armazemCompleto.updatedBy }),
+          ...(armazemCompleto.ativo !== undefined && { ativo: armazemCompleto.ativo }),
         };
-        const response = await api.put(`/armazem/${selectedArmazem.id}`, armazemData); // Corrigido: URL com ID correto
-        const filial = filiais.find((f) => f.id === response.data.filialId);
-        setArmazens((prev) =>
-          prev
-            .map((a) =>
-              a.id === armazemData.id
-                ? {
-                    ...a,
-                    designacao: response.data.designacao,
-                    filialId: response.data.filialId,
-                    filialNome: filial ? filial.nome : 'Sem filial associada',
-                  }
-                : a
-            )
-            .sort((a, b) => a.designacao.localeCompare(b.designacao))
-        );
-        await logAudit('UPDATE', armazemData.id, armazemData.designacao);
+
+        console.log('Payload UPDATE:', armazemData); // DEBUG
+
+        await api.put(`/armazem/${selectedArmazem.id}`, armazemData);
+        
+        // **ATUALIZAR LISTA LOCALMENTE**
+        const armazensRes = await api.get('/armazem/all');
+        setArmazens(Array.isArray(armazensRes.data) ? armazensRes.data : []);
+        
+        await logAudit('UPDATE', selectedArmazem.id, values.designacao);
         setShowArmazemModal(false);
         form.resetFields();
         setSelectedArmazem(null);
         setErrorMessage(null);
         toast.success('Armazém atualizado com sucesso!', { autoClose: 2000 });
       } catch (error) {
+        console.error('Erro completo UPDATE:', error.response?.data); // DEBUG
         const errorMsg = error.response?.data?.message || `Erro ao atualizar armazém: ${error.message}`;
         setErrorMessage(errorMsg);
         toast.error(errorMsg, { autoClose: 2000 });
@@ -161,7 +182,7 @@ const Armazem = () => {
         setLoading(false);
       }
     },
-    [selectedArmazem, setArmazens, logAudit, filiais]
+    [selectedArmazem, setArmazens, logAudit]
   );
 
   const handleDeleteArmazem = useCallback(
@@ -228,6 +249,16 @@ const Armazem = () => {
         render: (filialNome) => filialNome || 'Sem filial',
       },
       {
+        title: 'Status',
+        dataIndex: 'status',
+        key: 'status',
+        render: (status) => (
+          <span style={{ color: status ? '#52c41a' : '#ff4d4f' }}>
+            {status ? 'Ativo' : 'Inativo'}
+          </span>
+        ),
+      },
+      {
         title: 'Ações',
         key: 'actions',
         render: (_, record) => (
@@ -236,6 +267,7 @@ const Armazem = () => {
               <Button
                 icon={<EditOutlined />}
                 onClick={() => {
+                  // **CARREGAR DADOS COMPLETOS PARA EDIÇÃO**
                   form.setFieldsValue({
                     designacao: record.designacao,
                     filialId: record.filialId,
@@ -333,6 +365,7 @@ const Armazem = () => {
             form.resetFields();
           }}
           footer={null}
+          width={600}
         >
           <Form
             form={form}
@@ -383,7 +416,7 @@ const Armazem = () => {
                   htmlType="submit"
                   loading={loading}
                 >
-                  Salvar
+                  {selectedArmazem ? 'Atualizar' : 'Salvar'}
                 </Button>
               </Space>
             </Form.Item>
