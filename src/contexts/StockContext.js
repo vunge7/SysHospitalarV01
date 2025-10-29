@@ -7,7 +7,7 @@ export const StockContext = createContext();
 
 export const StockProvider = ({ children }) => {
   const [armazens, setArmazens] = useState([]);
-  const [filiais, setFiliais] = useState([]);
+  const [empresas, setEmpresas] = useState([]); // Substitui filiais
   const [produtos, setProdutos] = useState([]);
   const [lotes, setLotes] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
@@ -23,7 +23,7 @@ export const StockProvider = ({ children }) => {
       try {
         const [
           armazensRes,
-          filiaisRes,
+          empresasRes,           // Nova chamada
           produtosRes,
           productTypesRes,
           lotesRes,
@@ -32,7 +32,7 @@ export const StockProvider = ({ children }) => {
           operacoesRes,
         ] = await Promise.all([
           api.get('/armazem/all'),
-          api.get('/empresa/filial/all'),
+          api.get('/empresa/all'), // Ajuste conforme sua rota
           api.get('/produto/all'),
           api.get('/producttype/all'),
           api.get('/lotes/all'),
@@ -49,7 +49,7 @@ export const StockProvider = ({ children }) => {
         console.log('Dados de operacoes:', operacoesRes.data);
 
         setArmazens(Array.isArray(armazensRes.data) ? armazensRes.data : []);
-        setFiliais(Array.isArray(filiaisRes.data) ? filiaisRes.data : []);
+        setEmpresas(Array.isArray(empresasRes.data) ? empresasRes.data : []);
         setProdutos(Array.isArray(produtosRes.data) ? produtosRes.data : []);
         setProductTypes(Array.isArray(productTypesRes.data) ? productTypesRes.data : []);
         setLotes(Array.isArray(lotesRes.data) ? lotesRes.data : []);
@@ -83,11 +83,11 @@ export const StockProvider = ({ children }) => {
     <StockContext.Provider
       value={{
         armazens,
-        setArmazens, // Adicionado
-        filiais,
-        setFiliais, // Adicionado
+        setArmazens,
+        empresas,           // Exportado
+        setEmpresas,        // Exportado
         produtos,
-        setProdutos, // Adicionado
+        setProdutos,
         lotes,
         setLotes,
         fornecedores,
@@ -97,7 +97,7 @@ export const StockProvider = ({ children }) => {
         operacoesList,
         setOperacoesList,
         productTypes,
-        setProductTypes, // Adicionado
+        setProductTypes,
         loading,
         error,
       }}
