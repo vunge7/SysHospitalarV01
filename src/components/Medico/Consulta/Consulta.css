@@ -1,0 +1,166 @@
+/* Consulta.css - PADRÃO VISUAL DO SISTEMA (baseado em Stock.css) */
+
+.consulta-container {
+    padding: 24px;
+    background: #f0f2f5;
+    min-height: 100vh;
+  }
+  
+  /* Card da Fila - Reutiliza stock-card */
+  .consulta-fila-card {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid #d9d9d9;
+    transition: all 0.3s ease;
+  }
+  
+  .consulta-fila-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .consulta-fila-card .ant-card-head {
+    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+    border-radius: 12px 12px 0 0;
+    padding: 16px 24px;
+    border-bottom: none;
+  }
+  
+  .consulta-fila-card .ant-card-head-title {
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+  }
+  
+  /* Item do Paciente */
+  .consulta-paciente-item {
+    padding: 16px 20px;
+    margin: 8px 12px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
+    transition: all 0.2s ease;
+  }
+  
+  .consulta-paciente-item:hover {
+    background: #f0f8ff;
+    border-color: #1890ff;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+  }
+  
+  .consulta-paciente-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  
+  .consulta-avatar {
+    background: #1890ff;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  
+  .consulta-nome {
+    margin: 0;
+    font-weight: 600;
+    color: #262626;
+  }
+  
+  .consulta-paciente-item .ant-typography {
+    margin: 0;
+    font-size: 13px;
+    color: #8c8c8c;
+  }
+  
+  /* Botões de Ação */
+  .consulta-btn-acao {
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .consulta-btn-triagem {
+    background: #52c41a;
+    border-color: #52c41a;
+    color: white;
+  }
+  
+  .consulta-btn-triagem:hover {
+    background: #73d13d;
+  }
+  
+  /* Modal de Consulta */
+  .consulta-modal .ant-modal-content {
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+  }
+  
+  .consulta-modal .ant-modal-header {
+    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+    border-bottom: none;
+    padding: 20px 28px;
+  }
+  
+  .consulta-modal .ant-modal-title {
+    color: white;
+    font-weight: 600;
+  }
+  
+  .consulta-modal .ant-modal-body {
+    padding: 28px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  /* Tabs - Estilo Stock */
+  .consulta-tabs .ant-tabs-nav {
+    margin-bottom: 24px;
+    background: #f8f9fc;
+    padding: 8px;
+    border-radius: 10px;
+  }
+  
+  .consulta-tabs .ant-tabs-tab {
+    border-radius: 8px !important;
+    font-weight: 500;
+    padding: 10px 16px !important;
+    transition: all 0.3s ease;
+  }
+  
+  .consulta-tabs .ant-tabs-tab-active {
+    background: #1890ff !important;
+    color: white !important;
+  }
+  
+  .consulta-tabs .ant-tabs-ink-bar {
+    background: transparent;
+  }
+  
+  /* Botão Salvar */
+  .btn-salvar-consulta {
+    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    height: 44px;
+    padding: 0 28px;
+    box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+  }
+  
+  .btn-salvar-consulta:hover {
+    background: linear-gradient(135deg, #73d13d 0%, #95de64 100%);
+    transform: translateY(-1px);
+  }
+  
+  /* Responsivo */
+  @media (max-width: 768px) {
+    .consulta-container { padding: 16px; }
+    .consulta-paciente-item { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .consulta-modal { width: 95% !important; }
+    .btn-salvar-consulta { width: 100%; }
+  }
