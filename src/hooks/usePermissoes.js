@@ -5,8 +5,8 @@ import { api } from '../service/api';
 import { getRotaConfig } from '../config/rotasConfig';
 
 export const usePermissoes = () => {
-    const { user } = useContext(AuthContext);
-    const [permissoes, setPermissoes] = useState([]);
+    const { user, permissoes, setPermissoes } = useContext(AuthContext);
+
     const [painels, setPainels] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -21,25 +21,51 @@ export const usePermissoes = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             // Buscar permissões do usuário na filial
-            const permissoesResponse = await api.get(`/painelpermissoes/usuario/${user.id}/filial/${user.filialSelecionada.id}`);
+            // const permissoesResponse = await api.get(`/painelpermissoes/usuario/${user.id}/filial/${user.filialSelecionada.id}`);
 
             const parseXmlList = (xmlString) => {
                 try {
                     const parser = new DOMParser();
-                    const xml = parser.parseFromString(xmlString, 'application/xml');
+                    const xml = parser.parseFromString(
+                        xmlString,
+                        'application/xml'
+                    );
                     const items = Array.from(xml.getElementsByTagName('item'));
                     return items.map((node) => ({
-                        id: Number(node.getElementsByTagName('id')?.[0]?.textContent || 0),
-                        dataCriacao: node.getElementsByTagName('dataCriacao')?.[0]?.textContent || null,
-                        dataActualizacao: node.getElementsByTagName('dataActualizacao')?.[0]?.textContent || null,
-                        usuarioIdCriacao: Number(node.getElementsByTagName('usuarioIdCriacao')?.[0]?.textContent || 0),
-                        usuarioIdActualizacao: Number(node.getElementsByTagName('usuarioIdActualizacao')?.[0]?.textContent || 0),
-                        painelId: Number(node.getElementsByTagName('painelId')?.[0]?.textContent || 0),
-                        usuarioId: Number(node.getElementsByTagName('usuarioId')?.[0]?.textContent || 0),
-                        filialId: Number(node.getElementsByTagName('filialId')?.[0]?.textContent || 0),
-                        ativo: true
+                        id: Number(
+                            node.getElementsByTagName('id')?.[0]?.textContent ||
+                                0
+                        ),
+                        dataCriacao:
+                            node.getElementsByTagName('dataCriacao')?.[0]
+                                ?.textContent || null,
+                        dataActualizacao:
+                            node.getElementsByTagName('dataActualizacao')?.[0]
+                                ?.textContent || null,
+                        usuarioIdCriacao: Number(
+                            node.getElementsByTagName('usuarioIdCriacao')?.[0]
+                                ?.textContent || 0
+                        ),
+                        usuarioIdActualizacao: Number(
+                            node.getElementsByTagName(
+                                'usuarioIdActualizacao'
+                            )?.[0]?.textContent || 0
+                        ),
+                        painelId: Number(
+                            node.getElementsByTagName('painelId')?.[0]
+                                ?.textContent || 0
+                        ),
+                        usuarioId: Number(
+                            node.getElementsByTagName('usuarioId')?.[0]
+                                ?.textContent || 0
+                        ),
+                        filialId: Number(
+                            node.getElementsByTagName('filialId')?.[0]
+                                ?.textContent || 0
+                        ),
+                        ativo: true,
                     }));
                 } catch (e) {
                     console.error('Falha ao parsear XML de permissões:', e);
@@ -47,43 +73,63 @@ export const usePermissoes = () => {
                 }
             };
 
-            const dataRaw = permissoesResponse.data;
+            const storageUser = localStorage.getItem('@sysHospitalarPRO');
+            let perm = [];
+            if (storageUser) {
+                const userData = JSON.parse(storageUser);
+                 perm = userData.permissoes || [];
+            }
+            const dataRaw = perm;
             const lista = Array.isArray(dataRaw)
                 ? dataRaw
-                : (typeof dataRaw === 'string' && dataRaw.trim().startsWith('<'))
-                    ? parseXmlList(dataRaw)
-                    : (dataRaw?.List?.item || dataRaw?.content || dataRaw?.items || []);
+                : typeof dataRaw === 'string' && dataRaw.trim().startsWith('<')
+                  ? parseXmlList(dataRaw)
+                  : dataRaw?.List?.item ||
+                    dataRaw?.content ||
+                    dataRaw?.items ||
+                    [];
 
             if (lista && lista.length > 0) {
                 // Normalizar campos (snake_case -> camelCase, booleanos em string -> boolean)
                 const normalizados = lista.map((p) => ({
                     id: p.id,
-                    usuarioId: p.usuarioId ?? p.usuario_id ?? p.userId ?? p.user_id,
+                    usuarioId:
+                        p.usuarioId ?? p.usuario_id ?? p.userId ?? p.user_id,
                     filialId: p.filialId ?? p.filial_id,
                     painelId: p.painelId ?? p.painel_id,
                     nome: p.nome ?? p.permission ?? p.permissao,
                     modulo: p.modulo ?? p.module,
-                    ativo: typeof p.ativo === 'boolean' ? p.ativo : String(p.ativo).toLowerCase() === 'true',
-                    descricao: p.descricao ?? p.description
+                    ativo:
+                        typeof p.ativo === 'boolean'
+                            ? p.ativo
+                            : String(p.ativo).toLowerCase() === 'true',
+                    descricao: p.descricao ?? p.description,
                 }));
 
                 setPermissoes(normalizados);
-                
+
                 // Buscar informações dos painéis
-                const painelIds = [...new Set(normalizados.map(p => p.painelId))].filter(Boolean);
+                const painelIds = [
+                    ...new Set(normalizados.map((p) => p.painelId)),
+                ].filter(Boolean);
                 const painelsCompletos = [];
-                
+
                 for (const painelId of painelIds) {
                     try {
-                        const painelResponse = await api.get(`/painel/${painelId}`);
+                        const painelResponse = await api.get(
+                            `/painel/${painelId}`
+                        );
                         if (painelResponse.data) {
                             painelsCompletos.push(painelResponse.data);
                         }
                     } catch (painelErr) {
-                        console.error(`Erro ao carregar painel ${painelId}:`, painelErr);
+                        console.error(
+                            `Erro ao carregar painel ${painelId}:`,
+                            painelErr
+                        );
                     }
                 }
-                
+
                 setPainels(painelsCompletos);
             } else {
                 setPermissoes([]);
@@ -111,21 +157,21 @@ export const usePermissoes = () => {
     // Verificar se o usuário tem acesso a um painel específico
     const temAcessoAoPainel = (painelId) => {
         if (!user?.filialSelecionada) return false;
-        
-        return permissoes.some(permissao => 
-            permissao.painelId === painelId
-        );
+
+        return permissoes.some((permissao) => permissao.painelId === painelId);
     };
 
     // Verificar se o usuário tem acesso a um painel por descrição
     const temAcessoAoPainelPorDescricao = (descricaoPainel) => {
         if (!user?.filialSelecionada) return false;
-        
+
         const alvo = normalizeString(descricaoPainel);
-        const painel = painels.find(p => normalizeString(p.descricao) === alvo);
-        
+        const painel = painels.find(
+            (p) => normalizeString(p.descricao) === alvo
+        );
+
         if (!painel) return false;
-        
+
         return temAcessoAoPainel(painel.id);
     };
 
@@ -133,8 +179,10 @@ export const usePermissoes = () => {
     const temPermissao = (nomePermissao) => {
         if (!user?.filialSelecionada) return false;
         const alvo = normalizeString(nomePermissao);
-        return permissoes.some(permissao => 
-            normalizeString(permissao.nome) === alvo && permissao.ativo === true
+        return permissoes.some(
+            (permissao) =>
+                normalizeString(permissao.nome) === alvo &&
+                permissao.ativo === true
         );
     };
 
@@ -142,8 +190,10 @@ export const usePermissoes = () => {
     const temPermissaoPorModulo = (modulo) => {
         if (!user?.filialSelecionada) return false;
         const alvo = normalizeString(modulo);
-        return permissoes.some(permissao => 
-            normalizeString(permissao.modulo) === alvo && permissao.ativo === true
+        return permissoes.some(
+            (permissao) =>
+                normalizeString(permissao.modulo) === alvo &&
+                permissao.ativo === true
         );
     };
 
@@ -151,14 +201,16 @@ export const usePermissoes = () => {
     const getPermissoesPorModulo = (modulo) => {
         if (!user?.filialSelecionada) return [];
         const alvo = normalizeString(modulo);
-        return permissoes.filter(permissao => 
-            normalizeString(permissao.modulo) === alvo && permissao.ativo === true
+        return permissoes.filter(
+            (permissao) =>
+                normalizeString(permissao.modulo) === alvo &&
+                permissao.ativo === true
         );
     };
 
     // Obter todos os painéis que o usuário tem acesso
     const getPainelsAcessiveis = () => {
-        return painels.filter(painel => temAcessoAoPainel(painel.id));
+        return painels.filter((painel) => temAcessoAoPainel(painel.id));
     };
 
     // Utilitário: filtra permissões por critérios granulares
@@ -167,13 +219,18 @@ export const usePermissoes = () => {
         modulo,
         nome,
         painelId,
-        ativo
+        ativo,
     } = {}) => {
         return permissoes.filter((p) => {
             if (usuarioId && p.usuarioId !== usuarioId) return false;
             if (typeof ativo === 'boolean' && p.ativo !== ativo) return false;
-            if (modulo && (p.modulo || '').toLowerCase() !== modulo.toLowerCase()) return false;
-            if (nome && (p.nome || '').toLowerCase() !== nome.toLowerCase()) return false;
+            if (
+                modulo &&
+                (p.modulo || '').toLowerCase() !== modulo.toLowerCase()
+            )
+                return false;
+            if (nome && (p.nome || '').toLowerCase() !== nome.toLowerCase())
+                return false;
             if (painelId && p.painelId !== painelId) return false;
             return true;
         });
@@ -183,9 +240,11 @@ export const usePermissoes = () => {
     const temAcessoARota = (chaveRota) => {
         const config = getRotaConfig(chaveRota);
         if (!config) return false;
-    
-        const painelOk = (config.painelId && temAcessoAoPainel(config.painelId))
-            || (config.descricaoPainel && temAcessoAoPainelPorDescricao(config.descricaoPainel));
+
+        const painelOk =
+            (config.painelId && temAcessoAoPainel(config.painelId)) ||
+            (config.descricaoPainel &&
+                temAcessoAoPainelPorDescricao(config.descricaoPainel));
         return Boolean(painelOk);
     };
 
@@ -202,6 +261,6 @@ export const usePermissoes = () => {
         getPainelsAcessiveis,
         getPermissoesFiltradas,
         temAcessoARota,
-        recarregarPermissoes: carregarPermissoes
+        recarregarPermissoes: carregarPermissoes,
     };
 };

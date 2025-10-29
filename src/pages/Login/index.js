@@ -7,9 +7,11 @@ import fundoLogo from '../../assets/images/fundo_logo.jpg';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const { signIn, signed, user } = useContext(AuthContext);
+    const { signIn, signed, user, filiais, setFiliais } =
+        useContext(AuthContext);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -47,6 +49,16 @@ const Login = () => {
                 username: values.username,
                 password: values.password,
             });
+
+            console.log(response.data);
+
+            setFiliais(response.data.filiais || []);
+
+          
+
+            //  const filiaisIds = filiaisIdsResponse.data.map((filial) => filial.id);
+
+            //   console.log(filiaisIdsResponse)
             localStorage.setItem('token', response.data.token);
             const user = {
                 id: response.data.id,
@@ -129,12 +141,19 @@ const Login = () => {
                         >
                             <Checkbox>Lembra-me</Checkbox>
                         </Form.Item>
-                        <a href="#" onClick={(e) => e.preventDefault()}>Esqueceu a password</a>
+                        <a href="#" onClick={(e) => e.preventDefault()}>
+                            Esqueceu a password
+                        </a>
                     </Flex>
                 </Form.Item>
 
                 <Form.Item>
-                    <Button block type="primary" htmlType="submit" loading={loading}>
+                    <Button
+                        block
+                        type="primary"
+                        htmlType="submit"
+                        loading={loading}
+                    >
                         Log in
                     </Button>
                 </Form.Item>

@@ -1,14 +1,14 @@
 // api.js - ATUALIZADO
 import axios from 'axios';
 
-const ip = 'localhost:8081';
+//const ip = 'localhost:8081';
 
-//const ip = 'api-ywq2.onrender.com';
+const ip = 'api-ywq2.onrender.com';
 
 
 export const api = axios.create({
-    //baseURL: `https://${ip}/`,
-    baseURL: `http://${ip}/`,
+    baseURL: `https://${ip}/`,
+   // baseURL: `http://${ip}/`,
     withCredentials: true, // Adiciona suporte a credenciais
 });
 
