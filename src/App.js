@@ -30,7 +30,6 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <StockProvider>
           <Routes>
             {/* Rotas públicas */}
             <Route path="/" element={<Login />} />
@@ -59,7 +58,7 @@ function App() {
             />
           </Routes>
           <ToastContainer />
-        </StockProvider>
+       
       </AuthProvider>
     </Router>
   );

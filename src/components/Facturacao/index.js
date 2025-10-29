@@ -9,13 +9,12 @@ import FacturacaoFooter from '../FacturacaoFooter';
 import Gasto from '../Gasto';
 import './style.css';
 import { api } from '../../service/api';
-import { format as dateFormat, formatDate } from 'date-fns';
-import jsPDF from 'jspdf';
+import { formatDate } from 'date-fns';
+
 import 'jspdf-autotable';
 import { viewPdf } from '../util/utilitarios';
 import { Table, Pagination } from 'antd';
 
-const options = { locales: 'en', maximumFractionDigits: 2 };
 Modal.setAppElement('#root');
 
 function Facturacao() {
@@ -36,7 +35,7 @@ function Facturacao() {
     // Paginação
     const [currentPage, setCurrentPage] = useState(1);
     const productsPerPage = 5; // Número de produtos por página
-
+    const [documentType, setDocumentType] = useState('');
     // Função de Paginação
     const indexOfLastProduct = currentPage * productsPerPage;
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
@@ -365,8 +364,8 @@ function Facturacao() {
     };
 
     async function salvarSourceDocument() {
-        let invoiceType = 'FT';
-        let invoiceNo = invoiceType + ' 2024/1';
+      
+        let invoiceNo = '';
         let invoiceStatus = 'N'; //Normal
         let invoiceStatusDate = formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss');
         let sourceId = 'user.dvml';
@@ -393,7 +392,7 @@ function Facturacao() {
             hash: hash,
             hashControl: hashControl,
             invoiceDate: invoiceDate,
-            invoiceType: invoiceType,
+            invoiceType: documentType,
             selfBillingIndicator: selfBillingIndicator,
             cashVatschemeIndicator: cashVatschemeIndicator,
             thirdPartiesBillingIndicator: thirdPartiesBillingIndicator,
@@ -435,7 +434,7 @@ function Facturacao() {
                 <FacturacaoHeader />
             </div>
             <div className="container-item">
-                <FacturacaoConfig />
+                <FacturacaoConfig documentType={documentType} setDocumentType={setDocumentType} />
             </div>
             <div className="container-item">
                 <div className="numero-linhas">

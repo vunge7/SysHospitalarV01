@@ -1,12 +1,14 @@
+// api.js - ATUALIZADO
 import axios from 'axios';
 
-const ip = 'localhost:8081';
+//const ip = 'localhost:8081';
 
-//const ip = 'api-ywq2.onrender.com';
+const ip = 'api-ywq2.onrender.com';
+
 
 export const api = axios.create({
-    //baseURL: `https://${ip}/`,
-    baseURL: `http://${ip}/`,
+    baseURL: `https://${ip}/`,
+   // baseURL: `http://${ip}/`,
     withCredentials: true, // Adiciona suporte a credenciais
 });
 
@@ -21,8 +23,11 @@ api.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
-// Função para buscar filiais associadas a um usuário
+// Função para buscar filiais associadas a um usuário (retorna IDs)
 export const fetchFiliaisByUsuarioId = (usuarioId) => api.get(`/painelpermissoes/usuario/${usuarioId}/filiais`);
+
+// Função para buscar TODAS as filiais (com id e nome)
+export const fetchAllFiliais = () => api.get('/empresa/filial/all');
 
 // Função para buscar todas as permissões disponíveis
 export const fetchPermissions = () => api.get('/painelpermissoes/all');
@@ -47,3 +52,20 @@ export const removePermissionFromUser = (usuarioId, filialId, permissionId) =>
 
 // Função para buscar usuários de uma filial específica
 export const fetchUsersByFilialId = (filialId) => api.get(`/usuario/filial/${filialId}`);
+
+// Função para buscar todos os usuários
+export const fetchAllUsers = () => api.get('/usuario/all');
+
+// Função para adicionar um usuário a uma filial
+export const addUserToBranch = (filialId, usuarioId) => 
+    api.post('/painelpermissoes/add', { filialId, usuarioId });
+
+// Função para remover um usuário de uma filial
+export const removeUserFromBranch = (painelPermissoesId) => 
+    api.delete(`/painelpermissoes/${painelPermissoesId}`);
+
+// Função para buscar uma Pessoa por ID
+export const fetchPessoaById = (pessoaId) => api.get(`/pessoa/${pessoaId}`);
+
+// Função para buscar um Funcionario por ID
+export const fetchFuncionarioById = (funcionarioId) => api.get(`/funcionario/${funcionarioId}`);

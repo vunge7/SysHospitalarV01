@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { Form, Input, InputNumber, Button, Select, Table, Modal, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs, Row, Col, Statistic } from 'antd';
 import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
@@ -8,21 +7,13 @@ import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
 import './Farmacia.css';
 import { toast } from 'react-toastify';
-
-// Importar componentes personalizados
 import OperationForm from './components/OperationForm';
 
-
-
-// Ant Design destructurings (deve ser antes da importação)
 const { Option } = Select;
 const { TabPane } = Tabs;
 const { RangePicker } = DatePicker;
 const { Title } = Typography;
 
-
-
-// Responsividade: classes utilitárias
 const responsiveStyle = {
   farmaciaContainer: {
     maxWidth: '1200px',
@@ -51,14 +42,9 @@ const responsiveStyle = {
   },
 };
 
-
-
-
-
-
 const Farmacia = () => {
   const {
-    armazens, produtos, lotes, fornecedores, linhasLotes, operacoesList,productTypes,
+    armazens, produtos, lotes, fornecedores, linhasLotes, operacoesList, productTypes,
     setFornecedores,
     setLotes,
     setLinhasLotes,
@@ -93,8 +79,6 @@ const Farmacia = () => {
   const [produtosLoteModal, setProdutosLoteModal] = useState([]);
   const [showProdutosLoteModal, setShowProdutosLoteModal] = useState(false);
   const [produtosLoteModalTitle, setProdutosLoteModalTitle] = useState('');
-  // Remover o estado isLoteDisabled e restaurar o Select de lote para o comportamento inicial
-
 
   useEffect(() => {
     console.log('Produtos no Farmacia.js:', produtos);
@@ -128,20 +112,6 @@ const Farmacia = () => {
       toast.warning('Dados incompletos (produtos, lotes ou armazéns). Verifique a conexão com o backend.');
     }
   }, [produtos, lotes, armazens, linhasLotes, productTypes]);
-
-  // Atualizar estado de desabilitado do Select de lote ao trocar armazém ou tipo de operação
-  useEffect(() => {
-    const tipoOperacao = form.getFieldValue('tipoOperacao');
-    const armazemId = form.getFieldValue('armazemId');
-    if (["SAIDA", "TRANSFERENCIA", "ANULACAO"].includes(tipoOperacao) && armazemId) {
-      const lotesDisponiveis = lotes.filter(l => l.status).filter(lote =>
-        linhasLotes.some(linha => linha.lotes_id === lote.id && linha.armazem_id === armazemId)
-      );
-      // setIsLoteDisabled(lotesDisponiveis.length === 0); // Removido
-    } else {
-      // setIsLoteDisabled(lotes.length === 0); // Removido
-    }
-  }, [form, lotes, linhasLotes, form.getFieldValue('armazemId'), form.getFieldValue('tipoOperacao')]);
 
   const expirationThresholds = [
     { label: '1 Ano', days: 365 },
@@ -226,10 +196,8 @@ const Farmacia = () => {
     setFilteredFornecedores(fornecedores);
   };
 
-  // Mostra produtos do lote selecionado, e destaca se não houver produtos
   const getProdutosByLote = (loteId) => {
     if (!loteId) return [];
-    // Buscar todos os produtos do lote, independentemente do armazém
     const produtosLote = linhasLotes
       .filter((linha) => String(linha.lotes_id) === String(loteId))
       .map((linha) => {
@@ -239,23 +207,22 @@ const Farmacia = () => {
           produtoId: linha.produto_id || linha.produtoId,
           productDescription: produto?.productDescription || 'Sem Descrição',
           quantidade: Number(linha.quantidade),
+          armazem_id: linha.armazem_id,
+          armazem_nome: armazens.find(a => a.id === linha.armazem_id)?.designacao || 'Desconhecido',
         };
       });
     return produtosLote;
   };
 
-  // Função para obter produtos disponíveis baseado no tipo de operação
   const getProdutosDisponiveis = (tipoOperacao, loteId) => {
     if (tipoOperacao === 'ENTRADA') {
-      // Para entrada, mostrar todos os produtos
       return produtos.map(produto => ({
         id: produto.id,
         produtoId: produto.id,
         productDescription: produto.productDescription || 'Sem Descrição',
-        quantidade: 0, // Não há quantidade disponível para entrada
+        quantidade: 0,
       }));
     } else {
-      // Para saída, transferência e anulação, mostrar apenas produtos do lote
       return getProdutosByLote(loteId);
     }
   };
@@ -265,9 +232,6 @@ const Farmacia = () => {
       const values = await form.validateFields(['loteId', 'produtoId', 'quantidade']);
       const lote = lotes.find((l) => l.id === values.loteId);
       const produto = produtos.find((p) => p.id === values.produtoId);
-      
-      console.log('Produto selecionado (handleAddItem):', produto);
-      console.log('Lote selecionado (handleAddItem):', lote);
       
       if (!lote) {
         toast.error(`Lote inválido: ID ${values.loteId}`);
@@ -286,24 +250,13 @@ const Farmacia = () => {
         return;
       }
       const tipoOperacao = form.getFieldValue('tipoOperacao');
-      if (tipoOperacao === 'SAIDA' || tipoOperacao === 'TRANSFERENCIA' || tipoOperacao === 'ANULACAO') {
-        console.log('=== DEBUG handleAddItem - Verificação de quantidade ===');
-        console.log('Tipo de operação:', tipoOperacao);
-        console.log('Lote ID:', values.loteId, 'Produto ID:', produto.id);
-        console.log('Armazém ID:', form.getFieldValue('armazemId'));
-        
-        // Buscar TODAS as linhas do produto no lote (pode ter múltiplas entradas)
+      if (["SAIDA", "TRANSFERENCIA", "ANULACAO"].includes(tipoOperacao)) {
         const linhasDoProduto = linhasLotes.filter(
           (linha) => Number(linha.lotes_id) === Number(values.loteId) && 
                      Number(linha.produto_id) === Number(produto.id) &&
                      Number(linha.armazem_id) === Number(form.getFieldValue('armazemId'))
         );
-        
-        console.log('Linhas encontradas para o produto:', linhasDoProduto);
-        
-        // Calcular quantidade total disponível somando todas as linhas
         const qtdDisponivel = linhasDoProduto.reduce((total, linha) => total + Number(linha.quantidade || 0), 0);
-        console.log('Quantidade total disponível:', qtdDisponivel, 'Quantidade solicitada:', values.quantidade);
         
         if (qtdDisponivel < values.quantidade) {
           toast.error(`Quantidade insuficiente no lote ${lote.designacao} para o produto ${produto.productDescription} (Disponível: ${qtdDisponivel}, Solicitado: ${values.quantidade})`);
@@ -362,30 +315,19 @@ const Farmacia = () => {
     }
 
     try {
-      console.log('=== DEBUG handleSaveOperacao ===');
-      console.log('tipoOperacao:', tipoOperacao);
-      console.log('tempItens:', tempItens);
-      console.log('loading:', loading);
-      
-      // Validações específicas por tipo de operação
       const validateFieldsArr = ['tipoOperacao', 'armazemId', 'descricao'];
-    if (tipoOperacao === 'TRANSFERENCIA') {
-      validateFieldsArr.push('armazemDestinoId');
-      validateFieldsArr.push('loteIdDestino');
-    }
+      if (tipoOperacao === 'TRANSFERENCIA') {
+        validateFieldsArr.push('armazemDestinoId');
+        validateFieldsArr.push('loteIdDestino');
+      }
 
-      console.log('validateFieldsArr:', validateFieldsArr);
       const values = await form.validateFields(validateFieldsArr);
-      console.log('values após validação:', values);
-      
-      // Validações de armazém
       const armazem = armazens.find((a) => a.id === values.armazemId);
       if (!armazem) {
         toast.error(`Armazém inválido: ID ${values.armazemId}`);
         return;
       }
 
-      // Validações específicas para transferência
       if (tipoOperacao === 'TRANSFERENCIA') {
         if (!values.armazemDestinoId) {
           toast.error('Armazém de destino é obrigatório para TRANSFERENCIA');
@@ -405,27 +347,14 @@ const Farmacia = () => {
           return;
         }
         
-        // Para transferência, verificar se há itens com lotes de origem
-        if (tempItens.length === 0) {
-          toast.error('Adicione pelo menos um item à transferência');
-          return;
-        }
-        
-        // Verificar se todos os itens têm lotes válidos
-        console.log('=== DEBUG TRANSFERÊNCIA ===');
-        console.log('tempItens:', tempItens);
-        console.log('lotes disponíveis:', lotes.map(l => ({ id: l.id, designacao: l.designacao })));
-        
         for (const item of tempItens) {
-          console.log('Verificando item:', item);
-          console.log('item.loteId:', item.loteId, 'tipo:', typeof item.loteId);
-          
           const loteOrigem = lotes.find((l) => l.id === item.loteId);
-          console.log('loteOrigem encontrado:', loteOrigem);
-          
           if (!loteOrigem) {
-            console.error('Lote não encontrado para item:', item);
             toast.error(`Lote de origem não encontrado: ID ${item.loteId}`);
+            return;
+          }
+          if (item.loteId === values.loteIdDestino) {
+            toast.error('O lote de origem e o de destino não podem ser iguais na transferência.');
             return;
           }
         }
@@ -435,31 +364,10 @@ const Farmacia = () => {
           toast.error('Lote de destino não encontrado');
           return;
         }
-        
-        // Verificar se algum item tem o mesmo lote de origem e destino
-        for (const item of tempItens) {
-          if (item.loteId === values.loteIdDestino) {
-          toast.error('O lote de origem e o de destino não podem ser iguais na transferência.');
-          return;
-        }
-      }
       }
 
-      // Validações específicas para anulação
       if (tipoOperacao === 'ANULACAO') {
-        console.log('=== DEBUG ANULAÇÃO - Iniciando validações ===');
-        console.log('TempItens:', tempItens);
-        console.log('Valores do formulário:', values);
-        
-        if (tempItens.length === 0) {
-          toast.error('Adicione pelo menos um item para anular');
-          return;
-        }
-        
         for (const item of tempItens) {
-          console.log('=== DEBUG ANULAÇÃO - Verificando item ===');
-          console.log('Item:', item);
-          
           const produto = produtos.find(p => p.id === item.produtoId);
           const lote = lotes.find(l => l.id === item.loteId);
           
@@ -468,7 +376,6 @@ const Farmacia = () => {
             return;
           }
           
-          // Verificar se o produto existe no lote
           const existingLinha = linhasLotes.find(
             (linha) => Number(linha.lotes_id) === Number(item.loteId) && 
                        Number(linha.produto_id) === Number(item.produtoId) &&
@@ -476,24 +383,20 @@ const Farmacia = () => {
           );
           
           if (!existingLinha) {
-            toast.error(`Produto ${produto.designacao || produto.productDescription} não encontrado no lote ${lote.designacao} para anulação`);
+            toast.error(`Produto ${produto.productDescription} não encontrado no lote ${lote.designacao} para anulação`);
             return;
           }
           
-          // Verificar se há quantidade suficiente para anular
           if (Number(existingLinha.quantidade) < Number(item.quantidade)) {
-            toast.error(`Quantidade insuficiente para anular o produto ${produto.designacao || produto.productDescription} no lote ${lote.designacao} (Disponível: ${existingLinha.quantidade})`);
+            toast.error(`Quantidade insuficiente para anular o produto ${produto.productDescription} no lote ${lote.designacao} (Disponível: ${existingLinha.quantidade})`);
             return;
           }
         }
-        
-        console.log('=== DEBUG ANULAÇÃO - Validações passaram, prosseguindo ===');
       }
 
       setLoading(true);
       toast.loading({ content: 'Salvando operação, aguarde...', key: 'salvandoOperacao', duration: 0 });
-      
-      // Função para distribuir retirada entre múltiplas linhas de lote
+
       const distribuirRetirada = (linhasDoProduto, quantidadeARetirar) => {
         const linhasOrdenadas = [...linhasDoProduto].sort((a, b) => Number(b.quantidade) - Number(a.quantidade));
         const distribuicao = [];
@@ -517,12 +420,10 @@ const Farmacia = () => {
         return distribuicao;
       };
 
-      // Preparar linhas da operação
       const linhasOperacao = tempItens.map((item) => {
         const produto = produtos.find((p) => p.id === item.produtoId);
         const lote = lotes.find((l) => l.id === item.loteId);
         
-        // Validações de segurança
         if (!produto) {
           throw new Error(`Produto não encontrado: ID ${item.produtoId}`);
         }
@@ -530,50 +431,25 @@ const Farmacia = () => {
           throw new Error(`Lote não encontrado: ID ${item.loteId}`);
         }
         
-        // Buscar TODAS as linhas do produto no lote (pode ter múltiplas entradas)
         const linhasDoProduto = linhasLotes.filter(
           (linha) => Number(linha.lotes_id) === Number(item.loteId) && 
                      Number(linha.produto_id) === Number(produto.id) &&
                      Number(linha.armazem_id) === Number(values.armazemId)
         );
         
-        // Calcular quantidade total disponível
         const qtdAnterior = linhasDoProduto.reduce((total, linha) => total + Number(linha.quantidade || 0), 0);
         let qtdActual = qtdAnterior;
         let qtdOperacao = Number(item.quantidade);
 
-        // Calcular nova quantidade baseada no tipo de operação
-        console.log(`=== DEBUG CÁLCULO ${tipoOperacao} ===`);
-        console.log('Produto:', produto.designacao || produto.productDescription);
-        console.log('Lote:', lote.designacao);
-        console.log('qtdAnterior:', qtdAnterior);
-        console.log('qtdOperacao:', qtdOperacao);
-
         if (tipoOperacao === 'ENTRADA') {
           qtdActual = qtdAnterior + qtdOperacao;
-          console.log('ENTRADA - qtdActual:', qtdActual);
-        } else if (['SAIDA', 'TRANSFERENCIA'].includes(tipoOperacao)) {
+        } else if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(tipoOperacao)) {
           if (qtdAnterior < qtdOperacao) {
-            throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || produto.designacao || 'Sem Descrição'} no lote ${lote.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
+            throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
           }
           qtdActual = qtdAnterior - qtdOperacao;
-          console.log(`${tipoOperacao} - qtdActual:`, qtdActual);
-        } else if (tipoOperacao === 'ANULACAO') {
-          // Para anulação, REMOVER a quantidade do produto do lote
-          console.log('ANULAÇÃO - Verificando quantidade disponível...');
-          console.log('qtdAnterior:', qtdAnterior, 'qtdOperacao:', qtdOperacao);
-          
-          if (qtdAnterior < qtdOperacao) {
-            throw new Error(`Quantidade insuficiente para anular o produto ${produto.productDescription || produto.designacao || 'Sem Descrição'} no lote ${lote.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
-          }
-          
-          qtdActual = qtdAnterior - qtdOperacao;
-          console.log('ANULAÇÃO - qtdActual calculada:', qtdActual);
-          
-          // Se a quantidade resultante for 0 ou negativa, definir como 0
-          if (qtdActual <= 0) {
-            qtdActual = 0;
-            console.log('ANULAÇÃO - Quantidade ajustada para 0');
+          if (tipoOperacao === 'ANULACAO') {
+            qtdActual = Math.max(0, qtdActual);
           }
         }
 
@@ -585,10 +461,9 @@ const Farmacia = () => {
           qtdAnterior: qtdAnterior.toString(),
           qtdOperacao: qtdOperacao.toString(),
           qtdActual: qtdActual.toString(),
-          operacaoStockId: null, // será preenchido no backend
+          operacaoStockId: null,
         };
 
-        // Adicionar campos específicos para transferência
         if (tipoOperacao === 'TRANSFERENCIA') {
           linha.armazemIdDestino = values.armazemDestinoId;
           linha.loteIdDestino = values.loteIdDestino;
@@ -607,14 +482,11 @@ const Farmacia = () => {
         linhas: linhasOperacao,
       };
 
-      console.log('Payload OperacaoStockDTO:', OperacaoStockDTO);
-      
       const endpoint = editOperacaoId ? `/operacao-stock/edit-with-linhas/${editOperacaoId}` : '/operacao-stock/add-with-linhas';
       const method = editOperacaoId ? api.put : api.post;
       
-      const response = await method(endpoint, OperacaoStockDTO);
+      await method(endpoint, OperacaoStockDTO);
       
-      // Mensagem de sucesso específica
       const mensagens = {
         'ENTRADA': 'Operação de entrada efectuada com sucesso!',
         'SAIDA': 'Operação de saída efectuada com sucesso!',
@@ -623,32 +495,16 @@ const Farmacia = () => {
       };
       
       toast.success(mensagens[tipoOperacao] || 'Operação efectuada com sucesso!', { autoClose: 2000 });
-      
-            // Atualizar linhas de lotes localmente e no backend
+
       const atualizarLinhasLotes = async () => {
         try {
-          console.log('=== DEBUG atualizarLinhasLotes ===');
-          console.log('Iniciando atualização de linhas de lote para operação:', tipoOperacao);
-          console.log('Linhas a processar:', OperacaoStockDTO.linhas);
-          console.log('values.armazemId:', values.armazemId);
-          
           for (const linha of OperacaoStockDTO.linhas) {
-            console.log('Processando linha:', linha);
-            
-            // Validações de segurança
             if (!linha || !linha.loteIdOrigem || !linha.produtoId) {
               console.error('Linha inválida:', linha);
-              continue; // Pular linha inválida
+              continue;
             }
             
             if (tipoOperacao === 'TRANSFERENCIA') {
-              // Validações específicas para transferência
-              if (!values.loteIdDestino || !values.armazemDestinoId) {
-                console.error('Dados de destino inválidos para transferência');
-                continue;
-              }
-              
-              // Para transferência, atualizar origem e destino
               const existingLinhaOrigem = linhasLotes.find(
                 (l) => Number(l.lotes_id) === Number(linha.loteIdOrigem) && 
                        Number(l.produto_id) === Number(linha.produtoId) && 
@@ -661,21 +517,17 @@ const Farmacia = () => {
                        Number(l.armazem_id) === Number(values.armazemDestinoId)
               );
               
-              // Atualizar origem (diminuir quantidade)
               if (existingLinhaOrigem) {
                 const linhasLotesDTOOrigem = {
                   id: existingLinhaOrigem.id,
                   lotes_id: linha.loteIdOrigem,
                   produto_id: linha.produtoId,
-              quantidade: linha.qtdActual,
+                  quantidade: linha.qtdActual,
                   armazem_id: values.armazemId,
                 };
-                console.log('Atualizando origem (transferência):', linhasLotesDTOOrigem);
-                // CORREÇÃO: Usar endpoint correto sem ID na URL
                 await api.put(`/linhaslotes/edit`, linhasLotesDTOOrigem);
               }
               
-              // Atualizar/criar destino (aumentar quantidade)
               if (existingLinhaDestino) {
                 const novaQuantidadeDestino = Number(existingLinhaDestino.quantidade) + Number(linha.qtdOperacao);
                 const linhasLotesDTODestino = {
@@ -685,8 +537,6 @@ const Farmacia = () => {
                   quantidade: novaQuantidadeDestino,
                   armazem_id: values.armazemDestinoId,
                 };
-                console.log('Atualizando destino (transferência):', linhasLotesDTODestino);
-                // CORREÇÃO: Usar endpoint correto sem ID na URL
                 await api.put(`/linhaslotes/edit`, linhasLotesDTODestino);
               } else {
                 const linhasLotesDTODestino = {
@@ -695,54 +545,25 @@ const Farmacia = () => {
                   quantidade: Number(linha.qtdOperacao),
                   armazem_id: values.armazemDestinoId,
                 };
-                console.log('Criando destino (transferência):', linhasLotesDTODestino);
                 await api.post('/linhaslotes/add', linhasLotesDTODestino);
               }
             } else {
-              // Para outras operações (ENTRADA, SAÍDA, ANULAÇÃO)
-              // Validação de segurança para armazém
-              if (!values.armazemId) {
-                console.error('Armazém de origem não definido');
-                continue;
-              }
-              
-              // Buscar TODAS as linhas do produto no lote
               const linhasDoProduto = linhasLotes.filter(
                 (l) => Number(l.lotes_id) === Number(linha.loteIdOrigem) && 
                        Number(l.produto_id) === Number(linha.produtoId) && 
                        Number(l.armazem_id) === Number(values.armazemId)
               );
               
-              console.log('=== DEBUG atualizarLinhasLotes ===');
-              console.log('Procurando linhas com:', {
-              lotes_id: linha.loteIdOrigem,
-              produto_id: linha.produtoId,
-                armazem_id: values.armazemId
-              });
-              console.log('Linhas encontradas:', linhasDoProduto);
-              console.log('Tipo de operação:', tipoOperacao);
-              console.log('Quantidade da operação:', linha.qtdOperacao);
-              
               if (tipoOperacao === 'ENTRADA') {
-                // Para entrada, sempre criar nova linha
                 const linhasLotesDTO = {
                   lotes_id: linha.loteIdOrigem,
                   produto_id: linha.produtoId,
                   quantidade: linha.qtdOperacao,
                   armazem_id: values.armazemId,
                 };
-                
-                console.log('Criando nova linha para entrada:', linhasLotesDTO);
                 await api.post('/linhaslotes/add', linhasLotesDTO);
               } else if (linhasDoProduto.length > 0) {
-                // Para SAIDA, TRANSFERENCIA, ANULACAO - distribuir retirada
-                console.log(`=== DEBUG ${tipoOperacao} - Distribuindo retirada ===`);
-                console.log('Linhas do produto:', linhasDoProduto);
-                console.log('Quantidade a retirar:', linha.qtdOperacao);
-                
                 const distribuicao = distribuirRetirada(linhasDoProduto, Number(linha.qtdOperacao));
-                console.log('Distribuição calculada:', distribuicao);
-                
                 for (const item of distribuicao) {
                   const linhaOriginal = linhasDoProduto.find(l => l.id === item.linhaId);
                   if (linhaOriginal) {
@@ -753,56 +574,34 @@ const Farmacia = () => {
                       quantidade: item.quantidadeRestante,
                       armazem_id: values.armazemId,
                     };
-                    
-                    console.log(`${tipoOperacao} - Atualizando linha ${linhaOriginal.id}:`, linhasLotesDTO);
-                    console.log(`Quantidade anterior: ${linhaOriginal.quantidade}, Nova quantidade: ${item.quantidadeRestante}`);
-                    
                     await api.put(`/linhaslotes/edit`, linhasLotesDTO);
-                    console.log(`${tipoOperacao} - Linha ${linhaOriginal.id} atualizada com sucesso`);
                   }
                 }
               } else {
-                // Para operações de retirada (SAIDA, TRANSFERENCIA, ANULACAO), se não existe linha, não há o que processar
-                console.log(`${tipoOperacao}: Linha não encontrada, não há o que processar`);
-                console.log('Dados da linha:', linha);
-                console.log('Produto ID:', linha.produtoId, 'Lote ID:', linha.loteIdOrigem);
                 toast.warning(`Produto ${linha.produtoId} não encontrado no lote ${linha.loteIdOrigem} para ${tipoOperacao.toLowerCase()}`);
               }
             }
           }
           
-          // Atualizar lista de linhas de lotes
           const linhasLotesRes = await api.get('/linhaslotes/all');
           setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
-          
-          console.log('Atualização de linhas de lote concluída com sucesso');
-          
         } catch (error) {
           console.error('Erro ao atualizar linhas de lote:', error);
-          console.error('Detalhes do erro:', error.response?.data);
-          console.error('Status do erro:', error.response?.status);
-          console.error('Mensagem do erro:', error.response?.data?.message || error.message);
-          
-          // Mostrar notificação de erro em vez de quebrar o fluxo
           toast.error({
             content: 'Operação salva, mas houve erro ao atualizar linhas de lote',
             duration: 6,
             onClose: () => {
-              // Limpar o toast de loading se ainda estiver ativo
               toast.dismiss('salvandoOperacao');
             }
           });
         }
       };
       
-      // Executar atualização das linhas de lote
       await atualizarLinhasLotes();
 
-      // Atualizar lista de operações
       const operacoesRes = await api.get('/operacao-stock/all');
       setOperacoesList(Array.isArray(operacoesRes.data) ? operacoesRes.data : []);
       
-      // Atualizar dados do contexto para refletir mudanças em todas as páginas
       const atualizarDadosGlobais = async () => {
         try {
           const [lotesRes, linhasLotesRes] = await Promise.all([
@@ -812,8 +611,6 @@ const Farmacia = () => {
           
           setLotes(Array.isArray(lotesRes.data) ? lotesRes.data : []);
           setLinhasLotes(Array.isArray(linhasLotesRes.data) ? linhasLotesRes.data : []);
-          
-          console.log('Dados globais atualizados com sucesso');
         } catch (error) {
           console.error('Erro ao atualizar dados globais:', error);
         }
@@ -821,14 +618,11 @@ const Farmacia = () => {
       
       await atualizarDadosGlobais();
       
-      // Limpar formulário e estados
       setTempItens([]);
       setEditOperacaoId(null);
       setEditItemId(null);
       setSelectedLoteId(null);
       form.resetFields();
-
-      // Limpar campos específicos para garantir limpeza completa
       form.setFieldsValue({
         tipoOperacao: undefined,
         armazemId: undefined,
@@ -844,29 +638,20 @@ const Farmacia = () => {
       let backendMsg = error.response?.data?.message || error.response?.data?.error;
       let msg = backendMsg || error.message || 'Erro ao salvar operação';
       
-      console.error('Erro detalhado da API:', error.response?.data);
-      console.error('Erro completo:', error);
-      
       if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
         msg = error.response.data.errors.map(e => e.defaultMessage || e.message || e).join(' | ');
       }
       
-      // Mostrar notificação de erro em vez de quebrar o fluxo
       toast.error({ 
         content: msg, 
         key: 'salvandoOperacao', 
         duration: 6,
         onClose: () => {
-          // Limpar o toast de loading se ainda estiver ativo
           toast.dismiss('salvandoOperacao');
         }
       });
-      
-      // Não definir setError para não quebrar o fluxo
-      console.error('Erro ao salvar operação:', msg);
     } finally {
       setLoading(false);
-      // Limpar o toast de loading
       toast.dismiss('salvandoOperacao');
     }
   };
@@ -936,16 +721,18 @@ const Farmacia = () => {
       if (editFornecedorId) {
         await api.put(`/fornecedor/${editFornecedorId}`, fornecedorDTO);
         toast.success('Fornecedor atualizado com sucesso');
-    
+        // Refresh supplier list after edit
+        const fornecedoresRes = await api.get('/fornecedor/all');
+        setFornecedores(Array.isArray(fornecedoresRes.data) ? fornecedoresRes.data : []);
       } else {
         await api.post('/fornecedor/add', fornecedorDTO);
         toast.success('Fornecedor adicionado com sucesso');
+        const fornecedoresRes = await api.get('/fornecedor/all');
+        setFornecedores(Array.isArray(fornecedoresRes.data) ? fornecedoresRes.data : []);
       }
       setShowFornecedorModal(false);
       setEditFornecedorId(null);
       fornecedorForm.resetFields();
-      const fornecedoresRes = await api.get('/fornecedor/all');
-      setFornecedores(Array.isArray(fornecedoresRes.data) ? fornecedoresRes.data : []);
     } catch (error) {
       const errorMsg = error.response?.data?.message || `Erro ao salvar fornecedor: ${error.message}`;
       console.error('Erro ao salvar fornecedor:', errorMsg);
@@ -980,7 +767,7 @@ const Farmacia = () => {
         designacao: values.designacao,
         dataCriacao: values.dataCriacao ? values.dataCriacao.toISOString() : moment().tz('Africa/Luanda').toISOString(),
         dataVencimento: values.dataVencimento ? values.dataVencimento.toISOString() : null,
-        dataEntrada: moment().tz('Africa/Luanda').toISOString(), // Sempre automático
+        dataEntrada: moment().tz('Africa/Luanda').toISOString(),
         status: values.status !== undefined ? values.status : true,
       };
       if (editLoteId) {
@@ -1049,7 +836,7 @@ const Farmacia = () => {
       };
       
       if (editLinhasLotesId) {
-        await api.put(`/linhaslotes/edit/${editLinhasLotesId}`, linhasLotesDTO);
+        await api.put(`/linhaslotes/edit`, linhasLotesDTO);
         toast.success('Linha de lote atualizada com sucesso');
       } else {
         await api.post('/linhaslotes/add', linhasLotesDTO);
@@ -1090,72 +877,23 @@ const Farmacia = () => {
   const handleVerProdutosLote = async (lote) => {
     setLoading(true);
     try {
-      console.log('=== DEBUG handleVerProdutosLote ===');
-      console.log('Lote selecionado:', lote);
-      console.log('Dados do contexto:');
-      console.log('- armazens:', armazens.length, armazens.map(a => ({ id: a.id, designacao: a.designacao })));
-      console.log('- produtos:', produtos.length, produtos.slice(0, 3).map(p => ({ id: p.id, designacao: p.productDescription || p.designacao })));
-      console.log('- linhasLotes:', linhasLotes.length, linhasLotes.slice(0, 3));
-      
-      // Verificar se os dados estão disponíveis
-      if (!armazens || armazens.length === 0) {
-        console.error('Armazéns não estão disponíveis no contexto');
-        toast.error('Erro: Armazéns não carregados');
-        return;
-      }
-      
-      if (!produtos || produtos.length === 0) {
-        console.error('Produtos não estão disponíveis no contexto');
-        toast.error('Erro: Produtos não carregados');
-        return;
-      }
-      
-      if (!linhasLotes || linhasLotes.length === 0) {
-        console.error('Linhas de lotes não estão disponíveis no contexto');
-        toast.error('Erro: Linhas de lotes não carregadas');
-        return;
-      }
-      
-      // Usar dados do contexto em vez de fazer chamadas à API
       const linhasDoLote = linhasLotes.filter(linha => Number(linha.lotes_id) === Number(lote.id));
       
-      console.log('Linhas do lote específico:', linhasDoLote);
-      
       if (linhasDoLote.length === 0) {
-        console.log('Nenhuma linha de lote encontrada para este lote');
         setProdutosLoteModal([]);
         setProdutosLoteModalTitle(lote.designacao);
         setShowProdutosLoteModal(true);
         return;
       }
       
-      // Agrupar produtos por produto e armazém
       const produtosMap = {};
-      linhasDoLote.forEach((linha, index) => {
-        console.log(`\n--- Processando linha ${index + 1} ---`);
-        console.log('Linha completa:', linha);
-        
+      linhasDoLote.forEach((linha) => {
         const produtoId = linha.produto_id;
         const armazemId = linha.armazem_id;
-        
-        console.log('IDs extraídos:', { produtoId, armazemId });
-        console.log('Tipos:', { produtoId: typeof produtoId, armazemId: typeof armazemId });
         
         const produto = produtos.find((p) => Number(p.id) === Number(produtoId));
         const armazem = armazens.find((a) => Number(a.id) === Number(armazemId));
         
-        console.log('Produto encontrado:', produto);
-        console.log('Armazém encontrado:', armazem);
-        console.log('Armazém designacao:', armazem?.designacao);
-        console.log('Todos os armazéns disponíveis:', armazens.map(a => ({ id: a.id, designacao: a.designacao })));
-        
-        // Verificar se o armazém foi encontrado
-        if (!armazem) {
-          console.error(`Armazém com ID ${armazemId} não encontrado!`);
-          console.error('Armazéns disponíveis:', armazens.map(a => a.id));
-        }
-        
-        // Chave única: produto + armazém
         const key = `${produtoId}-${armazemId}`;
         
         if (!produtosMap[key]) {
@@ -1167,30 +905,23 @@ const Farmacia = () => {
             armazem_nome: armazem?.designacao || `Armazém ID: ${armazemId}`,
             quantidade: Number(linha.quantidade || 0),
           };
-          console.log('Novo produto criado:', produtosMap[key]);
         } else {
           produtosMap[key].quantidade += Number(linha.quantidade || 0);
-          console.log('Quantidade atualizada para:', produtosMap[key].quantidade);
         }
       });
       
       const produtosLote = Object.values(produtosMap);
-      console.log('\n=== Produtos do lote processados ===');
-      console.log(produtosLote);
-      
       setProdutosLoteModal(produtosLote);
       setProdutosLoteModalTitle(lote.designacao);
       setShowProdutosLoteModal(true);
     } catch (error) {
       console.error('Erro ao buscar produtos do lote:', error);
-      console.error('Detalhes do erro:', error.response?.data || error.message);
       toast.error('Erro ao buscar produtos do lote');
     } finally {
       setLoading(false);
     }
   };
 
-  // Corrigir coluna de Armazém na tabela de lotes para garantir exibição correta
   const lotesTableColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
@@ -1210,7 +941,6 @@ const Farmacia = () => {
       title: 'Produtos',
       key: 'produtos',
       render: (_, record) => {
-        // Verificar se o lote tem produtos
         const temProdutos = linhasLotes.some(linha => Number(linha.lotes_id) === Number(record.id) && Number(linha.quantidade) > 0);
         
         return (
@@ -1225,8 +955,8 @@ const Farmacia = () => {
               size="small" 
               onClick={() => handleVerProdutosLote(record)}
             >
-          Ver Produtos
-        </Button>
+              Ver Produtos
+            </Button>
           </Space>
         );
       },
@@ -1263,7 +993,6 @@ const Farmacia = () => {
     },
   ];
 
-  // Colunas para o modal de produtos do lote
   const produtosPorLoteColumns = [
     { 
       title: 'ID do Produto', 
@@ -1415,7 +1144,6 @@ const Farmacia = () => {
       title: 'Armazém',
       key: 'armazem',
       render: (_, record) => {
-        // Encontrar o armazém pelo primeiro produto do lote
         const linha = linhasLotes.find(linha => linha.lotes_id === record.id);
         const armazem = linha ? armazens.find(a => a.id === linha.armazem_id) : null;
         return armazem ? armazem.designacao : '-';
@@ -1513,7 +1241,7 @@ const Farmacia = () => {
               linhasLotesForm.setFieldsValue({
                 lotes_id: record.lotes_id,
                 produtoId: record.produto_id,
-                  armazem_id: record.armazem_id,
+                armazem_id: record.armazem_id,
                 quantidade: record.quantidade,
               });
               setShowLinhasLotesModal(true);
@@ -1554,7 +1282,6 @@ const Farmacia = () => {
     { title: 'Alerta', dataIndex: 'threshold', key: 'threshold' },
   ];
 
-  // Todas as colunas do Fornecedor conforme entidade backend
   const fornecedorColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
     { title: 'Nome', dataIndex: 'nome', key: 'nome' },
@@ -1686,7 +1413,7 @@ const Farmacia = () => {
               placeholder={['Data Início', 'Data Fim']}
             />
             <Button onClick={clearLoteFilters}>Limpar Filtros</Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setShowLoteModal(true); setEditLoteId(null); loteForm.resetFields(); /* Não setar dataCriacao aqui */ }}>Novo Lote</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setShowLoteModal(true); setEditLoteId(null); loteForm.resetFields(); }}>Novo Lote</Button>
           </Space>
           <Table
             dataSource={filteredLotes}
@@ -1696,63 +1423,6 @@ const Farmacia = () => {
             className="stock-table"
             title={() => <Title level={3}>Lotes</Title>}
           />
-          <Modal
-            title={
-              <Space>
-                <UnorderedListOutlined />
-                <span>Produtos do Lote: {produtosLoteModalTitle}</span>
-              </Space>
-            }
-            open={showProdutosLoteModal}
-            onCancel={() => setShowProdutosLoteModal(false)}
-            footer={null}
-            style={{ top: 25 }}
-            width={800}
-          >
-            {produtosLoteModal.length === 0 ? (
-              <Alert
-                message="Nenhum produto encontrado"
-                description="Este lote não possui produtos cadastrados."
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
-            ) : (
-              <>
-                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                  <Col span={8}>
-                    <Statistic
-                      title="Total de Produtos"
-                      value={produtosLoteModal.length}
-                      valueStyle={{ color: '#1890ff' }}
-                    />
-                  </Col>
-                  <Col span={8}>
-                    <Statistic
-                      title="Total de Unidades"
-                      value={produtosLoteModal.reduce((sum, item) => sum + (item.quantidade || 0), 0)}
-                      valueStyle={{ color: '#52c41a' }}
-                    />
-                  </Col>
-                  <Col span={8}>
-                    <Statistic
-                      title="Produtos Únicos"
-                      value={new Set(produtosLoteModal.map(item => item.produtoId)).size}
-                      valueStyle={{ color: '#722ed1' }}
-                    />
-                  </Col>
-                </Row>
-            <Table
-              dataSource={produtosLoteModal}
-              columns={produtosPorLoteColumns}
-              rowKey={record => record.id}
-              pagination={false}
-                  size="small"
-                  scroll={{ y: 300 }}
-            />
-              </>
-            )}
-          </Modal>
         </div>
       )}
       {activeSection === 'fornecedores' && (
@@ -1848,6 +1518,63 @@ const Farmacia = () => {
           />
         </div>
       )}
+      <Modal
+        title={
+          <Space>
+            <UnorderedListOutlined />
+            <span>Produtos do Lote: {produtosLoteModalTitle}</span>
+          </Space>
+        }
+        open={showProdutosLoteModal}
+        onCancel={() => setShowProdutosLoteModal(false)}
+        footer={null}
+        style={{ top: 25 }}
+        width={800}
+      >
+        {produtosLoteModal.length === 0 ? (
+          <Alert
+            message="Nenhum produto encontrado"
+            description="Este lote não possui produtos cadastrados."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        ) : (
+          <>
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+              <Col span={8}>
+                <Statistic
+                  title="Total de Produtos"
+                  value={produtosLoteModal.length}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Total de Unidades"
+                  value={produtosLoteModal.reduce((sum, item) => sum + (item.quantidade || 0), 0)}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Produtos Únicos"
+                  value={new Set(produtosLoteModal.map(item => item.produtoId)).size}
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Col>
+            </Row>
+            <Table
+              dataSource={produtosLoteModal}
+              columns={produtosPorLoteColumns}
+              rowKey={record => record.id}
+              pagination={false}
+              size="small"
+              scroll={{ y: 300 }}
+            />
+          </>
+        )}
+      </Modal>
     </div>
   );
 
@@ -1884,7 +1611,6 @@ const Farmacia = () => {
           style={{ top: 25 }}
           width={600}
         >
-          {/* Data de Entrada exibida no canto superior direito, apenas leitura */}
           <div style={{ position: 'absolute', top: 16, right: 24, color: '#888', fontSize: 13 }}>
             Data de Entrada: {loteForm.getFieldValue('dataEntrada') ? moment(loteForm.getFieldValue('dataEntrada')).tz('Africa/Luanda').format('YYYY-MM-DD HH:mm') : moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm')}
           </div>
