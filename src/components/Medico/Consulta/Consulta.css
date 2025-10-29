@@ -1,27 +1,37 @@
-/* Consulta.css - PADRÃO VISUAL DO SISTEMA (baseado em Stock.css) */
+/* ============================================================= */
+/* CONSULTA.CSS – CLÍNICO PROFISSIONAL (Stock + Premium)       */
+/* Modal "Adicionar Exame" com listagem em cards               */
+/* ============================================================= */
 
+/* ====================== */
+/* 1. CONTAINER PRINCIPAL */
+/* ====================== */
 .consulta-container {
     padding: 24px;
     background: #f0f2f5;
     min-height: 100vh;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   
-  /* Card da Fila - Reutiliza stock-card */
+  /* ====================== */
+  /* 2. CARD DA FILA        */
+  /* ====================== */
   .consulta-fila-card {
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border: 1px solid #d9d9d9;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e6ed;
+    background: #ffffff;
     transition: all 0.3s ease;
   }
   
   .consulta-fila-card:hover {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
   }
   
   .consulta-fila-card .ant-card-head {
     background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-    border-radius: 12px 12px 0 0;
+    border-radius: 14px 14px 0 0;
     padding: 16px 24px;
     border-bottom: none;
   }
@@ -30,22 +40,29 @@
     color: white;
     font-weight: 600;
     font-size: 18px;
+    margin: 0;
   }
   
-  /* Item do Paciente */
+  /* ====================== */
+  /* 3. ITEM DO PACIENTE    */
+  /* ====================== */
   .consulta-paciente-item {
     padding: 16px 20px;
     margin: 8px 12px;
-    border-radius: 10px;
-    background: #ffffff;
-    border: 1px solid #f0f0f0;
-    transition: all 0.2s ease;
+    border-radius: 12px;
+    background: #fafcff;
+    border: 1px solid #eef2f8;
+    transition: all 0.25s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   
   .consulta-paciente-item:hover {
     background: #f0f8ff;
     border-color: #1890ff;
-    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+    box-shadow: 0 3px 10px rgba(24, 144, 255, 0.18);
+    transform: translateY(-1px);
   }
   
   .consulta-paciente-info {
@@ -56,6 +73,7 @@
   
   .consulta-avatar {
     background: #1890ff;
+    color: white;
     font-weight: 600;
     font-size: 16px;
   }
@@ -63,104 +81,634 @@
   .consulta-nome {
     margin: 0;
     font-weight: 600;
-    color: #262626;
+    color: #1f1f1f;
+    font-size: 15px;
   }
   
   .consulta-paciente-item .ant-typography {
     margin: 0;
     font-size: 13px;
-    color: #8c8c8c;
+    color: #666;
   }
   
-  /* Botões de Ação */
+  /* ====================== */
+  /* 4. BOTÕES DE AÇÃO      */
+  /* ====================== */
   .consulta-btn-acao {
-    border-radius: 8px;
-    width: 36px;
-    height: 36px;
+    border-radius: 12px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    transition: all 0.25s ease;
+    font-weight: 600;
+  }
+  
+  .consulta-btn-acao:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
   }
   
   .consulta-btn-triagem {
-    background: #52c41a;
-    border-color: #52c41a;
+    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+    border: none;
     color: white;
   }
   
   .consulta-btn-triagem:hover {
-    background: #73d13d;
+    background: linear-gradient(135deg, #73d13d 0%, #95de64 100%);
   }
   
-  /* Modal de Consulta */
+  /* ====================== */
+  /* 5. MODAL DE CONSULTA   */
+  /* ====================== */
   .consulta-modal .ant-modal-content {
-    border-radius: 14px;
+    border-radius: 18px;
     overflow: hidden;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+    border: 1px solid #d0d7e2;
+    background: #fafcff;
   }
   
   .consulta-modal .ant-modal-header {
     background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
     border-bottom: none;
-    padding: 20px 28px;
+    padding: 24px 32px;
+    position: relative;
+  }
+  
+  .consulta-modal .ant-modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #40a9ff, #1890ff);
+    border-radius: 0 0 18px 18px;
   }
   
   .consulta-modal .ant-modal-title {
-    color: white;
-    font-weight: 600;
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 21px !important;
+    letter-spacing: 0.4px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
   
   .consulta-modal .ant-modal-body {
-    padding: 28px;
-    max-height: 70vh;
+    padding: 32px;
+    max-height: 74vh;
     overflow-y: auto;
+    background: #fafcff;
   }
   
-  /* Tabs - Estilo Stock */
+  .consulta-modal .ant-modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  .consulta-modal .ant-modal-body::-webkit-scrollbar-track {
+    background: #f1f3f8;
+    border-radius: 4px;
+  }
+  .consulta-modal .ant-modal-body::-webkit-scrollbar-thumb {
+    background: #1890ff;
+    border-radius: 4px;
+  }
+  .consulta-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #40a9ff;
+  }
+  
+  /* ====================== */
+  /* 6. TABS DO MODAL       */
+  /* ====================== */
   .consulta-tabs .ant-tabs-nav {
-    margin-bottom: 24px;
-    background: #f8f9fc;
-    padding: 8px;
-    border-radius: 10px;
+    margin-bottom: 30px;
+    background: #f5f7fa;
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.06);
   }
   
   .consulta-tabs .ant-tabs-tab {
-    border-radius: 8px !important;
-    font-weight: 500;
-    padding: 10px 16px !important;
+    border-radius: 12px !important;
+    font-weight: 600;
+    padding: 12px 20px !important;
+    font-size: 14.5px;
     transition: all 0.3s ease;
+    color: #595959;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
   .consulta-tabs .ant-tabs-tab-active {
-    background: #1890ff !important;
+    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%) !important;
     color: white !important;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.35);
+    transform: translateY(-1px);
   }
   
   .consulta-tabs .ant-tabs-ink-bar {
     background: transparent;
   }
   
-  /* Botão Salvar */
+  .consulta-tabs .ant-tabs-tab .anticon {
+    font-size: 16px;
+  }
+  
+  /* ====================== */
+  /* 7. BOTÃO SALVAR        */
+  /* ====================== */
   .btn-salvar-consulta {
     background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
     border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    height: 44px;
-    padding: 0 28px;
-    box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 16px;
+    height: 52px;
+    padding: 0 36px;
+    box-shadow: 0 6px 16px rgba(82, 196, 26, 0.4);
+    transition: all 0.3s ease;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
   }
   
   .btn-salvar-consulta:hover {
     background: linear-gradient(135deg, #73d13d 0%, #95de64 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(82, 196, 26, 0.5);
+  }
+  
+  /* ====================== */
+  /* 8. EXAMES COMPLEMENTARES */
+  /* ====================== */
+  .exames-container {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 26px;
+    border: 1px solid #e0e6ed;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    margin-top: 12px;
+  }
+  
+  .exames-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 2px dashed #d9d9d9;
+  }
+  
+  .exames-header h4 {
+    margin: 0;
+    font-weight: 700;
+    color: #1890ff;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Botão Adicionar */
+  .exames-btn-adicionar {
+    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+    border: none;
+    color: white;
+    border-radius: 14px;
+    font-weight: 700;
+    height: 48px;
+    padding: 0 26px;
+    box-shadow: 0 5px 14px rgba(24, 144, 255, 0.35);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .exames-btn-adicionar:hover {
+    background: linear-gradient(135deg, #40a9ff 0%, #69c0ff 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(24, 144, 255, 0.45);
+  }
+  
+  .exames-btn-adicionar .anticon {
+    transition: transform 0.2s ease;
+  }
+  
+  .exames-btn-adicionar:hover .anticon {
+    transform: scale(1.2);
+  }
+  
+  /* Tabela */
+  .exames-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 14px;
+  }
+  
+  .exames-table th {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f3f8 100%);
+    color: #262626;
+    font-weight: 700;
+    padding: 16px 18px;
+    text-align: left;
+    font-size: 14px;
+    border-bottom: 3px solid #1890ff;
+  }
+  
+  .exames-table td {
+    background: #fafcff;
+    padding: 14px 18px;
+    vertical-align: middle;
+    border-bottom: 1px solid #eef2f8;
+    font-size: 14.2px;
+  }
+  
+  .exames-table tr:hover td {
+    background: #f0f8ff;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.12);
+  }
+  
+  .exames-input-obs {
+    border-radius: 10px;
+    border: 1.5px solid #d9d9d9;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  
+  .exames-input-obs:focus {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.25);
+  }
+  
+  .exame-prioridade {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  
+  .exame-prioridade.urgente {
+    background: #fff2e8;
+    color: #d4380d;
+    border: 1.5px solid #ffbb96;
+  }
+  
+  .exame-prioridade.routine {
+    background: #f6ffed;
+    color: #389e0d;
+    border: 1.5px solid #b7eb8f;
+  }
+  
+  .exames-btn-remover {
+    color: #ff4d4f;
+    border: 1.5px solid #ff4d4f;
+    background: transparent;
+    border-radius: 10px;
+    font-size: 13px;
+    height: 36px;
+    padding: 0 16px;
+    font-weight: 600;
+  }
+  
+  .exames-btn-remover:hover {
+    background: #fff2f0;
+    color: #ff4d4f;
+    border-color: #ff4d4f;
     transform: translateY(-1px);
   }
   
-  /* Responsivo */
+  .exames-btn-salvar {
+    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+    border: none;
+    color: white;
+    border-radius: 14px;
+    font-weight: 700;
+    height: 52px;
+    padding: 0 32px;
+    box-shadow: 0 6px 18px rgba(82, 196, 26, 0.4);
+    margin-top: 24px;
+    width: 100%;
+    font-size: 16px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+  }
+  
+  .exames-btn-salvar:hover {
+    background: linear-gradient(135deg, #73d13d 0%, #95de64 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(82, 196, 26, 0.5);
+  }
+  
+  /* ====================== */
+  /* 9. MODAL "ADICIONAR EXAME" */
+  /* ====================== */
+  .exames-modal .ant-modal-content {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+    border: 1px solid #d0d7e2;
+  }
+  
+  .exames-modal .ant-modal-header {
+    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+    border-bottom: none;
+    padding: 26px 32px;
+    position: relative;
+  }
+  
+  .exames-modal .ant-modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(90deg, #40a9ff, #1890ff);
+    border-radius: 0 0 20px 20px;
+  }
+  
+  .exames-modal-title {
+    color: white;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .exames-modal-title .anticon {
+    font-size: 22px;
+  }
+  
+  .exames-modal .ant-modal-body {
+    padding: 32px;
+    background: #fafcff;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  .exames-modal .ant-modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  .exames-modal .ant-modal-body::-webkit-scrollbar-track {
+    background: #f1f3f8;
+    border-radius: 4px;
+  }
+  .exames-modal .ant-modal-body::-webkit-scrollbar-thumb {
+    background: #1890ff;
+    border-radius: 4px;
+  }
+  .exames-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #40a9ff;
+  }
+  
+  /* Input de busca */
+  .exames-search-container {
+    margin-bottom: 24px;
+    position: relative;
+  }
+  
+  .exames-search-input {
+    border-radius: 16px;
+    border: 2.5px solid #d9d9d9;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  
+  .exames-search-input:focus {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.25), 0 4px 16px rgba(24, 144, 255, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  .exames-search-icon {
+    color: #1890ff;
+    font-size: 20px;
+    font-weight: bold;
+  }
+  
+  /* Listagem de exames */
+  .exames-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 8px;
+  }
+  
+  .exame-card {
+    background: white;
+    border-radius: 16px;
+    padding: 18px 22px;
+    border: 1.5px solid #e0e6ed;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .exame-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 6px;
+    background: linear-gradient(180deg, #1890ff, #40a9ff);
+    border-radius: 0 16px 16px 0;
+    transition: width 0.3s ease;
+  }
+  
+  .exame-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(24, 144, 255, 0.18);
+    border-color: #1890ff;
+  }
+  
+  .exame-card:hover::before {
+    width: 10px;
+  }
+  
+  .exame-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+  }
+  
+  .exame-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    font-weight: bold;
+  }
+  
+  .exame-icon.hematologia { background: linear-gradient(135deg, #ff4d4f, #ff7875); }
+  .exame-icon.bioquimica { background: linear-gradient(135deg, #fa8c16, #ffb74d); }
+  .exame-icon.imagem { background: linear-gradient(135deg, #13c2c2, #5cdbd3); }
+  .exame-icon.cardiologia { background: linear-gradient(135deg, #722ed1, #9254de); }
+  .exame-icon.urinalise { background: linear-gradient(135deg, #1890ff, #40a9ff); }
+  
+  .exame-detalhes h5 {
+    margin: 0;
+    font-weight: 700;
+    color: #1f1f1f;
+    font-size: 15.5px;
+    letter-spacing: 0.3px;
+  }
+  
+  .exame-detalhes p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #666;
+    font-weight: 500;
+  }
+  
+  .exame-tags {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .exame-categoria {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .exame-categoria.hematologia { background: #fff2e8; color: #d4380d; border: 1px solid #ffbb96; }
+  .exame-categoria.bioquimica { background: #fffbe6; color: #d46b08; border: 1px solid #ffd591; }
+  .exame-categoria.imagem { background: #e6fffb; color: #08979c; border: 1px solid #87e8de; }
+  .exame-categoria.cardiologia { background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7; }
+  .exame-categoria.urinalise { background: #e6f7ff; color: #0050b3; border: 1px solid #91d5ff; }
+  
+  .exame-add-btn {
+    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  
+  .exame-card:hover .exame-add-btn {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  
+  .exame-add-btn:hover {
+    background: linear-gradient(135deg, #73d13d 0%, #95de64 100%);
+    transform: translateY(-2px) scale(1.1);
+    box-shadow: 0 8px 20px rgba(82, 196, 26, 0.45);
+  }
+  
+  /* Footer */
+  .exames-modal-footer {
+    text-align: right;
+    padding: 20px 32px 28px;
+    background: #fafcff;
+    border-top: 1px solid #f0f0f0;
+  }
+  
+  .exames-modal-footer .ant-btn {
+    border-radius: 12px;
+    height: 44px;
+    padding: 0 24px;
+    font-weight: 600;
+  }
+  
+  /* Estado vazio */
+  .exames-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+  }
+  
+  .exames-empty p {
+    margin: 0;
+    font-size: 15px;
+    color: #888;
+  }
+  
+  /* ====================== */
+  /* 10. RESPONSIVIDADE     */
+  /* ====================== */
+  @media (max-width: 992px) {
+    .consulta-modal, .exames-modal { width: 96% !important; }
+  }
+  
   @media (max-width: 768px) {
     .consulta-container { padding: 16px; }
-    .consulta-paciente-item { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .consulta-modal { width: 95% !important; }
-    .btn-salvar-consulta { width: 100%; }
+    .consulta-paciente-item { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .btn-salvar-consulta, .exames-btn-salvar, .exames-btn-adicionar { width: 100%; }
+    .exames-table { font-size: 13px; }
+    .exames-table th, .exames-table td { padding: 10px 10px; }
+    .exame-card {
+      padding: 16px 18px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .exame-info { width: 100%; }
+    .exame-add-btn { opacity: 1; transform: none; align-self: flex-end; }
+  }
+  
+  @media (max-width: 480px) {
+    .exames-modal-title { font-size: 18px; }
+    .exames-search-input { font-size: 15px; padding: 12px 16px; }
+    .exame-detalhes h5 { font-size: 14.5px; }
+  }
+
+/* ====================== */
+/* LOADING E ESTADO VAZIO */
+/* ====================== */
+.exames-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+  }
+  
+  .exames-loading p {
+    margin-top: 16px;
+    font-size: 15px;
+  }
+  
+  /* Input com loading */
+  .exames-search-input .ant-input-group-addon {
+    background: transparent;
+    border: none;
+    padding: 0 8px;
+  }
+  
+  .exames-search-input .ant-spin {
+    color: #1890ff;
   }
