@@ -29,6 +29,7 @@ function Triagem() {
         await api
             .get('inscricao/all')
             .then((r) => {
+                console.log('Dados recebidos', r.data);
                 let data = r.data.map((item, index) => {
                     Object.defineProperty(item, 'tempo', {
                         value: item.dataCriacao,

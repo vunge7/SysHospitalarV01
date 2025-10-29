@@ -32,7 +32,7 @@ export const StockProvider = ({ children }) => {
           operacoesRes,
         ] = await Promise.all([
           api.get('/armazem/all'),
-          api.get('/empresa/all'),
+          api.get('/empresa/filial/all'),
           api.get('/produto/all'),
           api.get('/producttype/all'),
           api.get('/lotes/all'),
