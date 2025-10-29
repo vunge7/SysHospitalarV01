@@ -1,17 +1,16 @@
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
-import { Table, Input, Button, Modal, Form, Select, Space, notification, Spin, Popconfirm, Tooltip, Card, Row, Col, Typography, Alert } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, SaveOutlined, CloseOutlined, ExportOutlined } from '@ant-design/icons';
+import { Table, Input, Button, Modal, Form, Select, Space, Spin, Popconfirm, Tooltip, Card, Row, Col, Typography, Alert } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, SaveOutlined, ExportOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
 import moment from 'moment';
-import 'moment-timezone';
 import './Armazem.css';
 import { toast } from 'react-toastify';
 
 const { Title } = Typography;
 
 const Armazem = () => {
-  const { armazens, setArmazens, filiais, loading: contextLoading, error: contextError } = useContext(StockContext);
+  const { armazens, setArmazens, empresas, loading: contextLoading, error: contextError } = useContext(StockContext);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [armazemSearch, setArmazemSearch] = useState('');
@@ -19,317 +18,236 @@ const Armazem = () => {
   const [selectedArmazem, setSelectedArmazem] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  // Forçar atualização do useMemo
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+
+  // Carregar armazéns (só na primeira vez)
   useEffect(() => {
     const fetchData = async () => {
-      if (contextLoading) return;
+      if (contextLoading || armazens.length > 0) return;
       setLoading(true);
       try {
-        const armazensRes = await api.get('/armazem/all');
-        setArmazens(Array.isArray(armazensRes.data) ? armazensRes.data : []);
+        const res = await api.get('/armazem/all');
+        setArmazens(Array.isArray(res.data) ? res.data : []);
         setErrorMessage(null);
       } catch (error) {
-        const errorMsg = error.response?.data?.message || `Erro ao carregar armazéns: ${error.message}`;
-        setErrorMessage(errorMsg);
-        toast.error(errorMsg, { autoClose: 2000 });
+        const msg = error.response?.data?.message || `Erro ao carregar: ${error.message}`;
+        setErrorMessage(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
     };
+    fetchData();
+  }, [contextLoading, armazens.length, setArmazens]);
 
-    if (!armazens.length && !contextLoading) {
-      fetchData();
-    }
-  }, [contextLoading, setArmazens]);
-
+  // Mensagens de erro
   useEffect(() => {
     if (contextError) {
       setErrorMessage(contextError);
     } else if (!armazens.length && !contextLoading) {
-      setErrorMessage('Nenhum armazém encontrado. Cadastre armazéns ou verifique o banco de dados.');
-    } else if (!filiais.length && !contextLoading) {
-      setErrorMessage('Nenhuma filial encontrada. Cadastre filiais antes de criar armazéns.');
+      setErrorMessage('Nenhum armazém encontrado.');
+    } else if (!empresas.length && !contextLoading) {
+      setErrorMessage('Nenhuma empresa cadastrada. Cadastre uma empresa primeiro.');
     } else {
       setErrorMessage(null);
     }
-  }, [armazens, filiais, contextError, contextLoading]);
+  }, [armazens, empresas, contextError, contextLoading, updateTrigger]);
 
+  // Enriquecer com nome da empresa
   const enrichedArmazens = useMemo(() => {
     return armazens.map((armazem) => {
-      const filial = filiais.find((f) => f.id === armazem.filialId);
+      const empresa = empresas.find((e) => e.id === armazem.empresaId);
       return {
         ...armazem,
-        filialNome: filial ? filial.nome : 'Sem filial associada',
+        empresaNome: empresa ? empresa.nome : 'Sem empresa',
       };
     });
-  }, [armazens, filiais]);
+  }, [armazens, empresas, updateTrigger]); // Força recalcular
 
   const filteredArmazens = useMemo(
     () =>
-      Array.isArray(enrichedArmazens)
-        ? enrichedArmazens.filter((a) => a.designacao?.toLowerCase().includes(armazemSearch.toLowerCase()))
-        : [],
+      enrichedArmazens.filter((a) =>
+        a.designacao?.toLowerCase().includes(armazemSearch.toLowerCase())
+      ),
     [enrichedArmazens, armazemSearch]
   );
 
-  const logAudit = useCallback(async (action, armazemId, armazemName) => {
-    try {
-      await api.post('/audit/log', {
-        userId: 'SYSTEM',
-        action,
-        entity: 'ARMAZEM',
-        entityId: armazemId,
-        details: `${action} armazém: ${armazemName}`,
-        timestamp: moment().tz('Africa/Luanda').toISOString(),
-      });
-    } catch (error) {
-      console.error('Erro ao registrar log de auditoria:', error);
-    }
-  }, []);
-
-  // **FUNÇÃO CORRIGIDA PARA CRIAR ARMAZÉM**
+  // CRIAR – adiciona localmente
   const handleArmazemSubmit = useCallback(
     async (values) => {
       setLoading(true);
       try {
-        const armazemData = {
+        const payload = {
           designacao: values.designacao.trim(),
-          filialId: Number(values.filialId),
-          // Campos obrigatórios adicionados
-          status: true,
-          dataCriacao: moment().tz('Africa/Luanda').toISOString(),
-          dataAtualizacao: moment().tz('Africa/Luanda').toISOString(),
+          empresaId: Number(values.empresaId),
         };
 
-        console.log('Payload CREATE:', armazemData); // DEBUG
+        const { data: novo } = await api.post('/armazem/add', payload);
 
-        const response = await api.post('/armazem/add', armazemData);
-        
-        const filial = filiais.find((f) => f.id === response.data.filialId);
-        setArmazens((prev) => [
-          ...prev,
-          {
-            id: response.data.id,
-            ...response.data,
-            filialNome: filial ? filial.nome : 'Sem filial associada',
-          },
-        ].sort((a, b) => a.designacao.localeCompare(b.designacao)));
-        
-        await logAudit('CREATE', response.data.id, response.data.designacao);
+        const empresa = empresas.find((e) => e.id === novo.empresaId);
+        const novoComNome = {
+          ...novo,
+          empresaNome: empresa?.nome || 'Sem empresa',
+        };
+
+        setArmazens((prev) => [...prev, novoComNome]);
+        setUpdateTrigger((t) => t + 1); // Força atualização
+
+        toast.success('Armazém criado!');
         setShowArmazemModal(false);
         form.resetFields();
-        setErrorMessage(null);
-        toast.success('Armazém cadastrado com sucesso!', { autoClose: 2000 });
       } catch (error) {
-        console.error('Erro completo CREATE:', error.response?.data); // DEBUG
-        const errorMsg = error.response?.data?.message || `Erro ao cadastrar armazém: ${error.message}`;
-        setErrorMessage(errorMsg);
-        toast.error(errorMsg, { autoClose: 2000 });
+        const msg = error.response?.data?.message || 'Erro ao criar armazém';
+        toast.error(msg);
+        setErrorMessage(msg);
       } finally {
         setLoading(false);
       }
     },
-    [setArmazens, logAudit, filiais]
+    [empresas, setArmazens, form]
   );
 
-  // **FUNÇÃO CORRIGIDA PARA EDITAR ARMAZÉM**
+  // EDITAR – ATUALIZA LOCALMENTE E FORÇA RECOMPUTAÇÃO
   const handleArmazemEditSubmit = useCallback(
     async (values) => {
       setLoading(true);
       try {
-        // **CARREGAR DADOS COMPLETOS DO ARMAZÉM**
-        const armazemExistente = await api.get(`/armazem/${selectedArmazem.id}`);
-        const armazemCompleto = armazemExistente.data;
-
-        const armazemData = {
-          // Preservar TODOS os campos existentes
-          id: selectedArmazem.id,
+        const payload = {
           designacao: values.designacao.trim(),
-          filialId: Number(values.filialId),
-          
-          // **CAMPO CRÍTICO: PRESERVAR STATUS**
-          status: armazemCompleto.status || true,
-          
-          // **CAMPO CRÍTICO: ATUALIZAR DATA**
-          dataCriacao: armazemCompleto.dataCriacao,
-          dataAtualizacao: moment().tz('Africa/Luanda').toISOString(),
-          
-          // Preservar outros campos que possam existir
-          ...(armazemCompleto.createdBy && { createdBy: armazemCompleto.createdBy }),
-          ...(armazemCompleto.updatedBy && { updatedBy: armazemCompleto.updatedBy }),
-          ...(armazemCompleto.ativo !== undefined && { ativo: armazemCompleto.ativo }),
+          empresaId: Number(values.empresaId),
         };
 
-        console.log('Payload UPDATE:', armazemData); // DEBUG
+        const { data: atualizado } = await api.put(`/armazem/${selectedArmazem.id}`, payload);
 
-        await api.put(`/armazem/${selectedArmazem.id}`, armazemData);
-        
-        // **ATUALIZAR LISTA LOCALMENTE**
-        const armazensRes = await api.get('/armazem/all');
-        setArmazens(Array.isArray(armazensRes.data) ? armazensRes.data : []);
-        
-        await logAudit('UPDATE', selectedArmazem.id, values.designacao);
+        const empresa = empresas.find((e) => e.id === atualizado.empresaId);
+        const atualizadoComNome = {
+          ...atualizado,
+          empresaNome: empresa?.nome || 'Sem empresa',
+        };
+
+        // Atualiza o estado com o objeto completo
+        setArmazens((prev) =>
+          prev.map((a) => (a.id === atualizado.id ? atualizadoComNome : a))
+        );
+
+        setUpdateTrigger((t) => t + 1); // Força useMemo a recalcular
+
+        toast.success('Armazém atualizado!');
         setShowArmazemModal(false);
         form.resetFields();
         setSelectedArmazem(null);
-        setErrorMessage(null);
-        toast.success('Armazém atualizado com sucesso!', { autoClose: 2000 });
       } catch (error) {
-        console.error('Erro completo UPDATE:', error.response?.data); // DEBUG
-        const errorMsg = error.response?.data?.message || `Erro ao atualizar armazém: ${error.message}`;
-        setErrorMessage(errorMsg);
-        toast.error(errorMsg, { autoClose: 2000 });
+        const msg = error.response?.data?.message || 'Erro ao atualizar armazém';
+        toast.error(msg);
+        setErrorMessage(msg);
       } finally {
         setLoading(false);
       }
     },
-    [selectedArmazem, setArmazens, logAudit]
+    [selectedArmazem, empresas, setArmazens, form]
   );
 
+  // DELETAR – remove localmente
   const handleDeleteArmazem = useCallback(
     async (id) => {
       setLoading(true);
       try {
         await api.delete(`/armazem/${id}`);
         setArmazens((prev) => prev.filter((a) => a.id !== id));
-        await logAudit('DELETE', id, enrichedArmazens.find((a) => a.id === id)?.designacao || 'N/A');
-        setErrorMessage(null);
-        toast.success('Armazém excluído com sucesso!', { autoClose: 2000 });
+        setUpdateTrigger((t) => t + 1); // Força atualização
+        toast.success('Armazém excluído!');
       } catch (error) {
-        const errorMsg = error.response?.data?.message || `Erro ao excluir armazém: ${error.message}`;
-        setErrorMessage(errorMsg);
-        toast.error(errorMsg, { autoClose: 2000 });
+        const msg = error.response?.data?.message || 'Erro ao excluir';
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
     },
-    [enrichedArmazens, setArmazens, logAudit]
+    [setArmazens]
   );
 
   const handleExport = useCallback(() => {
-    try {
-      const csvData = filteredArmazens.map((armazem) => ({
-        ID: armazem.id,
-        Designação: armazem.designacao,
-        Filial: armazem.filialNome,
-      }));
-      const csv = [
-        ['ID', 'Designação', 'Filial'],
-        ...csvData.map((row) => Object.values(row)),
-      ].map((row) => row.join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `armazens_${moment().format('YYYYMMDD')}.csv`;
-      link.click();
-      toast.success('Exportação de armazéns concluída!', { autoClose: 2000 });
-    } catch (error) {
-      toast.error('Falha ao exportar armazéns', { autoClose: 2000 });
-    }
+    const csv = [
+      ['ID', 'Designação', 'Empresa'],
+      ...filteredArmazens.map((a) => [a.id, a.designacao, a.empresaNome]),
+    ]
+      .map((row) => row.join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `armazens_${moment().format('YYYYMMDD')}.csv`;
+    link.click();
+    toast.success('Exportado!');
   }, [filteredArmazens]);
 
-  const armazemColumns = useMemo(
+  const columns = useMemo(
     () => [
-      {
-        title: 'ID',
-        dataIndex: 'id',
-        key: 'id',
-        sorter: (a, b) => a.id - b.id,
-      },
-      {
-        title: 'Designação',
-        dataIndex: 'designacao',
-        key: 'designacao',
-        sorter: (a, b) => a.designacao.localeCompare(b.designacao),
-      },
-      {
-        title: 'Filial',
-        dataIndex: 'filialNome',
-        key: 'filialNome',
-        sorter: (a, b) => (a.filialNome || 'Sem filial').localeCompare(b.filialNome || 'Sem filial'),
-        render: (filialNome) => filialNome || 'Sem filial',
-      },
-      {
-        title: 'Status',
-        dataIndex: 'status',
-        key: 'status',
-        render: (status) => (
-          <span style={{ color: status ? '#52c41a' : '#ff4d4f' }}>
-            {status ? 'Ativo' : 'Inativo'}
-          </span>
-        ),
-      },
+      { title: 'ID', dataIndex: 'id', key: 'id', sorter: (a, b) => a.id - b.id },
+      { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
+      { title: 'Empresa', dataIndex: 'empresaNome', key: 'empresaNome' },
       {
         title: 'Ações',
         key: 'actions',
         render: (_, record) => (
           <Space>
-            <Tooltip title="Editar armazém">
+            <Tooltip title="Editar">
               <Button
                 icon={<EditOutlined />}
                 onClick={() => {
-                  // **CARREGAR DADOS COMPLETOS PARA EDIÇÃO**
                   form.setFieldsValue({
                     designacao: record.designacao,
-                    filialId: record.filialId,
+                    empresaId: record.empresaId,
                   });
                   setSelectedArmazem(record);
                   setShowArmazemModal(true);
                 }}
-                disabled={loading || contextLoading}
               />
             </Tooltip>
             <Popconfirm
-              title={`Excluir "${record.designacao || ''}"?`}
+              title={`Excluir "${record.designacao}"?`}
               onConfirm={() => handleDeleteArmazem(record.id)}
-              okText="Confirmar"
-              cancelText="Cancelar"
+              okText="Sim"
+              cancelText="Não"
             >
-              <Tooltip title="Excluir armazém">
-                <Button icon={<DeleteOutlined />} danger disabled={loading || contextLoading} />
-              </Tooltip>
+              <Button icon={<DeleteOutlined />} danger />
             </Popconfirm>
           </Space>
         ),
       },
     ],
-    [loading, contextLoading, handleDeleteArmazem]
+    [form, handleDeleteArmazem]
   );
 
   return (
     <div className="armazem-container">
       <Spin spinning={loading || contextLoading}>
-        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+        <Row justify="space-between" align="middle">
           <Col>
             <Title level={3}>Gestão de Armazéns</Title>
           </Col>
         </Row>
+
         {errorMessage && (
-          <Alert
-            message="Erro"
-            description={errorMessage}
-            type="error"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
+          <Alert message="Erro" description={errorMessage} type="error" showIcon style={{ marginBottom: 16 }} />
         )}
+
         <Card>
-          <Row gutter={[16, 16]} justify="space-between">
+          <Row gutter={16} justify="space-between" style={{ marginBottom: 16 }}>
             <Col xs={24} md={12}>
               <Input
-                placeholder="Filtrar por designação"
+                placeholder="Buscar por designação"
                 value={armazemSearch}
                 onChange={(e) => setArmazemSearch(e.target.value)}
                 prefix={<SearchOutlined />}
-                disabled={loading || contextLoading}
               />
             </Col>
             <Col xs={24} md={12} style={{ textAlign: 'right' }}>
               <Space>
-                <Button
-                  icon={<ExportOutlined />}
-                  onClick={handleExport}
-                  disabled={loading || contextLoading || filteredArmazens.length === 0}
-                >
+                <Button icon={<ExportOutlined />} onClick={handleExport} disabled={!filteredArmazens.length}>
                   Exportar
                 </Button>
                 <Button
@@ -340,22 +258,23 @@ const Armazem = () => {
                     setSelectedArmazem(null);
                     setShowArmazemModal(true);
                   }}
-                  disabled={loading || contextLoading || filiais.length === 0}
+                  disabled={empresas.length === 0}
                 >
                   Novo Armazém
                 </Button>
               </Space>
             </Col>
           </Row>
+
           <Table
-            columns={armazemColumns}
+            columns={columns}
             dataSource={filteredArmazens}
             rowKey="id"
-            pagination={{ pageSize: 10, showSizeChanger: true }}
+            pagination={{ pageSize: 10 }}
             loading={loading || contextLoading}
-            locale={{ emptyText: 'Nenhum armazém encontrado. Verifique se há filiais cadastradas.' }}
           />
         </Card>
+
         <Modal
           title={selectedArmazem ? 'Editar Armazém' : 'Novo Armazém'}
           open={showArmazemModal}
@@ -375,47 +294,29 @@ const Armazem = () => {
             <Form.Item
               name="designacao"
               label="Designação"
-              rules={[{ required: true, message: 'Designação é obrigatória' }]}
+              rules={[{ required: true, message: 'Obrigatório' }]}
             >
-              <Input disabled={loading || contextLoading} placeholder="Ex.: Armazém Central" />
+              <Input placeholder="Ex: Armazém Central" />
             </Form.Item>
+
             <Form.Item
-              name="filialId"
-              label="Filial"
-              rules={[{ required: true, message: 'Filial é obrigatória' }]}
+              name="empresaId"
+              label="Empresa"
+              rules={[{ required: true, message: 'Selecione uma empresa' }]}
             >
-              <Select
-                placeholder="Selecionar uma filial"
-                disabled={loading || contextLoading || filiais.length === 0}
-                showSearch
-                optionFilterProp="children"
-              >
-                {filiais.map((filial) => (
-                  <Select.Option key={filial.id} value={filial.id}>
-                    {filial.nome}
+              <Select placeholder="Selecione" showSearch optionFilterProp="children">
+                {empresas.map((e) => (
+                  <Select.Option key={e.id} value={e.id}>
+                    {e.nome}
                   </Select.Option>
                 ))}
               </Select>
             </Form.Item>
+
             <Form.Item style={{ textAlign: 'right' }}>
               <Space>
-                <Button
-                  icon={<CloseOutlined />}
-                  onClick={() => {
-                    setShowArmazemModal(false);
-                    setSelectedArmazem(null);
-                    form.resetFields();
-                  }}
-                  disabled={loading || contextLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  htmlType="submit"
-                  loading={loading}
-                >
+                <Button onClick={() => setShowArmazemModal(false)}>Cancelar</Button>
+                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
                   {selectedArmazem ? 'Atualizar' : 'Salvar'}
                 </Button>
               </Space>

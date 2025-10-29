@@ -1,41 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../../service/api';
-import jsPDF from 'jspdf';
-import fundoLogo from '../../../assets/images/logo5.jpg';
 import Receituario from '../Receituario';
 import Procedimento from '../../Procedimento';
 import ExameRequisitado from '../../ExameRequisitado';
-import { formatDate } from 'date-fns';
 import Cid10 from '../../Cid10';
 import BancoUrgencia from '../BancoUrgencia';
 import Internamento from '../Internamento';
 import { ConfigProvider } from 'antd';
 import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
+import { viewPdfGenerico, ModalTriagem, ModalFinalizarAtendimento } from '../../util/utilitarios';
 import {
-    viewPdfGenerico,
-    ModalTriagem,
-    ModalFinalizarAtendimento,
-} from '../../util/utilitarios';
-import {
-    List,
-    Flex,
-    Button,
-    Modal,
-    Tabs,
-    Input,
-    Form,
-    message,
-    Tooltip,
+    List, Button, Modal, Tabs, Form, message, Tooltip,
+    Card, Row, Tag, Space, Avatar, Typography, Divider
 } from 'antd';
 import {
-    MedicineBoxOutlined,
-    CloseCircleOutlined,
-    FileSearchOutlined,
-    PrinterOutlined,
+    MedicineBoxOutlined, CloseCircleOutlined, FileSearchOutlined,
+    PrinterOutlined, ClockCircleOutlined, UserOutlined
 } from '@ant-design/icons';
 import { format } from 'date-fns';
-const { TextArea } = Input;
+import './Consulta.css';
+
+const { Title, Text } = Typography;
 
 function Consulta() {
     const [id, setId] = useState(0);
@@ -46,669 +32,187 @@ function Consulta() {
     const [exameFisico, setExameFisico] = useState('');
     const [motivoConsulta, setMotivoConsulta] = useState('');
     const [historiaClinica, setHistoriaClinica] = useState('');
-    const [diagnosticoInicial, setDiagnosticoInicial] = useState('');
-    const [diagnosticoFinal, setDiagnosticoFinal] = useState('');
     const [receita, setReceita] = useState('');
     const [idInscricao, setIdInscricao] = useState(0);
     const [isModalConsulta, setIsModalConsulta] = useState(false);
     const [isConsultaCriada, setIsConsultaCriada] = useState(false);
     const [loading, setLoading] = useState(false);
     const [formConsulta] = Form.useForm();
-
     const [listaExamesRequisitado, setListaExamesRequisitado] = useState([]);
-
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalTriagem, setIsModalTriagem] = useState(false);
-    const [isModalFinalizarAtendimento, setIsModalFinalizarAtendimento] =
-        useState(false);
+    const [isModalFinalizarAtendimento, setIsModalFinalizarAtendimento] = useState(false);
     const [inscricaoIdTriagem, setInscricaoIdTriagem] = useState(null);
 
-    useEffect(() => {
-        _carrgarDados();
-    }, []);
+    useEffect(() => { _carrgarDados(); }, []);
 
     useEffect(() => {
-        formConsulta.setFieldsValue({
-            motivoConsulta: motivoConsulta,
-            historiaClinica: historiaClinica,
-            exameFisico: exameFisico,
-            receita: receita,
-            diagnosticoInicial: diagnosticoInicial,
-            diagnosticoFinal: diagnosticoFinal,
-        });
-    }, [
-        motivoConsulta,
-        historiaClinica,
-        exameFisico,
-        receita,
-        diagnosticoInicial,
-        diagnosticoFinal,
-    ]);
-
-    useEffect(() => {
-        // console.log('Data CID', dataCIDInicial);
-    }, [dataCIDInicial]);
+        formConsulta.setFieldsValue({ motivoConsulta, historiaClinica, exameFisico, receita });
+    }, [motivoConsulta, historiaClinica, exameFisico, receita]);
 
     const _showModalConsulta = async (idInscricao, nome) => {
-        // Limpa os estados antes de carregar novos dados
-        limpar();
-        setNomePaciente(nome);
-
-        await api
-            .get('/consulta/' + idInscricao + '/ABERTO')
-            .then((r) => {
-                setIsConsultaCriada(true);
-                updateFieldsInForm(r.data);
-                // Parse do diagnóstico inicial
-                let diaInicial = r.data.diagnosticoInicial;
-                if (typeof diaInicial === 'string') {
-                    try {
-                        diaInicial = JSON.parse(diaInicial);
-                    } catch (e) {
-                        diaInicial = [];
-                    }
-                }
-                setdataCIDInicial(diaInicial);
-                // Parse do diagnóstico inicial
-                let diaFinal = r.data.diagnosticoFinal;
-                if (typeof diaFinal === 'string') {
-                    try {
-                        diaFinal = JSON.parse(diaFinal);
-                    } catch (e) {
-                        diaFinal = [];
-                    }
-                }
-                setdataCIDFinal(diaFinal);
+        limpar(); setNomePaciente(nome);
+        await api.get(`/consulta/${idInscricao}/ABERTO`)
+            .then(r => {
+                setIsConsultaCriada(true); updateFieldsInForm(r.data);
+                setdataCIDInicial(tryParse(r.data.diagnosticoInicial));
+                setdataCIDFinal(tryParse(r.data.diagnosticoFinal));
             })
-            .catch((e) => {
-                limpar();
-            });
-
-        setIdInscricao(idInscricao);
-        setIsModalConsulta(true);
+            .catch(() => limpar());
+        setIdInscricao(idInscricao); setIsModalConsulta(true);
     };
 
-    const handleCancel = () => {
-        setIsModalConsulta(false);
-    };
+    const tryParse = (json) => typeof json === 'string' ? (JSON.parse(json) || []) : (json || []);
 
-    const handleOk = async () => {};
+    const handleCancel = () => setIsModalConsulta(false);
 
-    const _onChange = (key) => {
-        //  console.log(key);
-    };
-
-    const success = (msg) => {
-        messageApi.open({
-            type: 'success',
-            content: msg,
-        });
-    };
-    const error = (msg) => {
-        messageApi.open({
-            type: 'error',
-            content: msg,
-        });
-    };
+    const success = (msg) => messageApi.success(msg);
+    const error = (msg) => messageApi.error(msg);
 
     const limpar = () => {
-        setIsConsultaCriada(false);
-        setMotivoConsulta('');
-        setHistoriaClinica('');
-        setExameFisico('');
-        setReceita('');
-        setDiagnosticoInicial('');
-        setDiagnosticoFinal('');
-        setId(0);
-        setListaExamesRequisitado([]);
-        setdataCIDInicial([]);
-        setdataCIDFinal([]);
+        setIsConsultaCriada(false); setMotivoConsulta(''); setHistoriaClinica(''); setExameFisico('');
+        setReceita(''); setId(0); setListaExamesRequisitado([]); setdataCIDInicial([]); setdataCIDFinal([]);
         formConsulta.resetFields();
     };
 
     const _carrgarDados = async () => {
-        await api
-            .get('inscricao/all/consulta')
-            .then((r) => {
-                let listaFiltrada = (r.data || []).filter((item) => item !== null && typeof item === 'object');
-    
-                let data = listaFiltrada.map((item) => {
-                    Object.defineProperty(item, 'tempo', {
-                        value: item.dataCriacao,
-                        writable: true,
-                        enumerable: true,
-                        configurable: true,
-                    });
-                    return item;
-                });
-    
-                setData(data);
-                console.log(data);
-            })
-            .catch((e) => {
-                console.log('Falha na busca', e);
-            });
+        await api.get('inscricao/all/consulta')
+            .then(r => setData((r.data || []).filter(i => i).map(i => ({ ...i, tempo: i.dataCriacao }))))
+            .catch(() => {});
     };
-    
 
-    const prepararConsulta = (values) => {
-        console.log(values.receita);
-        let consulta = {
-            motivoConsulta: values.motivoConsulta,
-            historiaClinica: values.historiaClinica,
-            exameFisico: values.exameFisico,
-            dataConsulta: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            estadoConsulta: 'ABERTO',
-            receita: values.receita,
-            inscricaoId: idInscricao,
-            diagnosticoInicial: JSON.stringify(dataCIDInicial),
-            diagnosticoFinal: JSON.stringify(dataCIDFinal),
-            usuarioId: 1,
-        };
-        return consulta;
-    };
+    const prepararConsulta = (values) => ({
+        ...values, dataConsulta: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+        estadoConsulta: 'ABERTO', inscricaoId: idInscricao,
+        diagnosticoInicial: JSON.stringify(dataCIDInicial), diagnosticoFinal: JSON.stringify(dataCIDFinal),
+        usuarioId: 1
+    });
+
     const _onFinishCriar = async (values) => {
         setLoading(true);
-        let consulta = prepararConsulta(values);
-        await api
-            .post('consulta/add', consulta)
-            .then((r) => {
-                let msg = 'consulta criada com successo';
-                setId(r.data.id);
-                success(msg);
-                setLoading(false);
-                setIsConsultaCriada(true);
-            })
-            .catch((e) => {
-                let msg = 'Falha ao criar a consulta';
-                console.error(msg, e);
-                error(msg);
-                setLoading(false);
-            });
+        await api.post('consulta/add', prepararConsulta(values))
+            .then(r => { setId(r.data.id); success('Consulta iniciada'); setIsConsultaCriada(true); })
+            .catch(() => error('Erro ao iniciar'))
+            .finally(() => setLoading(false));
     };
 
     const _onFinishActualizar = async (values) => {
         setLoading(true);
-        let consulta = prepararConsulta(values);
-        Object.defineProperty(consulta, 'id', {
-            value: id,
-            writable: true,
-            enumerable: true,
-            configurable: true,
-        });
-        console.log(consulta);
-
-        await api
-            .put('consulta/edit', consulta)
-            .then((r) => {
-                let msg = 'consulta actualizada com successo';
-                console.log(msg);
-                success(msg);
-                setLoading(false);
-            })
-            .catch((e) => {
-                let msg = 'Falha ao actualizar a consulta';
-                console.error(msg, e);
-                error(msg);
-                setLoading(false);
-            });
+        await api.put('consulta/edit', { ...prepararConsulta(values), id })
+            .then(() => success('Atualizado'))
+            .catch(() => error('Erro ao salvar'))
+            .finally(() => setLoading(false));
     };
 
     const _onFinalizarInscricao = async () => {
-        ///inscricao/estadocondicao/edit/
-        await api
-            .put('inscricao/estadocondicao/edit/' + idInscricao + '/FECHADO')
-            .then((r) => {
-                console.log(r.data);
-                _carrgarDados();
-            })
-            .catch((e) => {
-                console.error('Erro ao finalizar inscrição:', e);
-            });
+        await api.put(`inscricao/estadocondicao/edit/${idInscricao}/FECHADO`)
+            .then(() => _carrgarDados()).catch(() => {});
     };
 
-    const updateFieldsInForm = (data) => {
-        setMotivoConsulta(data.motivoConsulta);
-        setHistoriaClinica(data.historiaClinica);
-        setExameFisico(data.exameFisico);
-        setReceita(data.receita);
-        setId(data.id);
+    const updateFieldsInForm = (d) => {
+        setMotivoConsulta(d.motivoConsulta); setHistoriaClinica(d.historiaClinica);
+        setExameFisico(d.exameFisico); setReceita(d.receita); setId(d.id);
     };
 
     const removerItemExameRequisitado = (row) => {
-        console.log(row);
-        let data = listaExamesRequisitado;
-
-        let newData = data.filter((item) => item.id !== row.id);
-        setListaExamesRequisitado([...newData]);
+        setListaExamesRequisitado(prev => prev.filter(i => i.id !== row.id));
     };
 
     const updateDescricao = (row, obs) => {
-        let data = listaExamesRequisitado.map((item) =>
-            item.id === row.id ? { ...item, obs: obs } : item
-        );
-
-        setListaExamesRequisitado([...data]);
+        setListaExamesRequisitado(prev => prev.map(i => i.id === row.id ? { ...i, obs } : i));
     };
 
     const salvarRequisicao = async () => {
-        let requisicaoExame = {
-            dataRequisicao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'), // Troque formatDate por format
-            status: true,
-            usuarioId: 1,
-            inscricaoId: idInscricao,
-            finalizado: false, // Garante que a requisição não seja filtrada
-        };
-
-        console.log(requisicaoExame);
-
-        await api
-            .post('requisicaoexame/add', requisicaoExame)
-            .then((r) => {
-                let id = r.data.id;
-                listaExamesRequisitado.map(async (item) => {
-                    await salvarLinhaExamaRequisica(item, id);
-                });
-
-                console.log('Requisicao efectuada com sucesso');
+        const req = { dataRequisicao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'), status: true, usuarioId: 1, inscricaoId: idInscricao, finalizado: false };
+        await api.post('requisicaoexame/add', req)
+            .then(r => {
+                listaExamesRequisitado.forEach(i => salvarLinhaExamaRequisica(i, r.data.id));
                 setListaExamesRequisitado([]);
-                viewPdfGenerico('requisicao_exame', id);
-            })
-            .catch((e) => {
-                console.log('Erro ao salvar a requisição');
+                viewPdfGenerico('requisicao_exame', r.data.id);
             });
     };
-    const _itemsTabs = [
-        {
-            key: '1',
-            label: 'Motivo da consulta',
-            children: (
-                <Form.Item
-                    name="motivoConsulta"
-                    rules={[
-                        {
-                            required: true,
-                            message: 'Por favor digite o motivo da consulta',
-                        },
-                    ]}
-                >
-                    <div>
-                        <Tooltip title="Imprimir Motivo da Consulta">
-                            <Button
-                                type="primary"
-                                onClick={() => visualizar('motivo_consulta')}
-                                icon={<PrinterOutlined />}
-                                style={{
-                                    backgroundColor: '#184d77',
-                                    borderColor: '#133a5c',
-                                    color: '#fff',
-                                    fontWeight: 'bold',
-                                    borderRadius: 8,
-                                    boxShadow: '0 2px 8px rgba(24,77,119,0.10)',
-                                    padding: '0 24px',
-                                    height: 40,
-                                    fontSize: 16,
-                                }}
-                            />
-                        </Tooltip>
-                        <TextToSpeech
-                            inputText={motivoConsulta}
-                            setInputText={setMotivoConsulta}
-                        />
-                    </div>
-                </Form.Item>
-            ),
-        },
-        {
-            key: '2',
-            label: 'História Clínica',
-            children: (
-                <>
-                    <Form.Item name="historiaClinica">
-                        <Tooltip title="Imprimir História Clínica">
-                            <Button
-                                type="primary"
-                                onClick={() => visualizar('historia_clinica')}
-                                icon={<PrinterOutlined />}
-                                style={{
-                                    backgroundColor: '#184d77', // azul escuro
-                                    borderColor: '#133a5c',
-                                    color: '#fff',
-                                    fontWeight: 'bold',
-                                    borderRadius: 8,
-                                    boxShadow: '0 2px 8px rgba(24,77,119,0.10)',
-                                    padding: '0 24px',
-                                    height: 40,
-                                    fontSize: 16,
-                                }}
-                            ></Button>
-                        </Tooltip>
-                        <TextToSpeech
-                            inputText={historiaClinica}
-                            setInputText={setHistoriaClinica}
-                        />
-                    </Form.Item>
-                </>
-            ),
-        },
-        {
-            key: '3',
-            label: 'Exame Físico',
-            children: (
-                <>
-                    <Form.Item name="exameFisico">
-                        <TextToSpeech
-                            inputText={exameFisico}
-                            setInputText={setExameFisico}
-                        />
-                    </Form.Item>
-                </>
-            ),
-        },
 
-        {
-            key: '4',
-            label: 'Diagnóstico Inicial',
-            children: (
-                <>
-                    <Form.Item name="diagnosticoInicial">
-                        <Cid10
-                            data={dataCIDInicial}
-                            setData={setdataCIDInicial}
-                        />
-                    </Form.Item>
-                </>
-            ),
-        },
-        {
-            key: '5',
-            label: 'Exames Complementares',
-            children: (
-                <>
-                    <form>
-                        <ExameRequisitado
-                            listaExamesRequisitado={listaExamesRequisitado}
-                            setListaExamesRequisitado={
-                                setListaExamesRequisitado
-                            }
-                            removerItemExameRequisitado={
-                                removerItemExameRequisitado
-                            }
-                            updateDescricao={updateDescricao}
-                            salvarRequisicao={salvarRequisicao}
-                        />
-                    </form>
-                </>
-            ),
-        },
-        {
-            key: '6',
-            label: 'Diagnóstico Final',
-            children: (
-                <>
-                    <Form.Item name="diagnosticoInicial">
-                        <Cid10 data={dataCIDFinal} setData={setdataCIDFinal} />
-                    </Form.Item>
-                </>
-            ),
-        },
-        {
-            key: '7',
-            label: 'Receituário',
-            children: <Receituario idInscricao={idInscricao} />,
-        },
-        {
-            key: '8',
-            label: 'Prescrição Médica',
-            children: <> Prescrição Médica</>,
-        },
-
-        {
-            key: '10',
-            label: 'Procedimentos',
-            children: (
-                <ConfigProvider locale={ptPT}>
-                    <Procedimento idInscricao={idInscricao} />
-                </ConfigProvider>
-            ),
-        },
-        {
-            key: '11',
-            label: 'Internamento',
-            children: <Internamento />,
-        },
-        {
-            key: '12',
-            label: 'Banco de Urgência',
-            children: <BancoUrgencia />,
-        },
-    ];
-
-    function convertToPdf() {
-        var doc = new jsPDF('element', 'pt', 'a5');
-        doc.html(document.querySelector('#receita'), {
-            callback: function (pdf) {
-                pdf.save('receita' + idInscricao + '.pdf');
-            },
+    const salvarLinhaExamaRequisica = async (item, reqId) => {
+        await api.post('linharequisicaoexame/add', {
+            estado: 'nao_efetuado', exame: item.designacao, produtoId: item.id,
+            requisicaoExameId: reqId, status: false, finalizado: false
         });
-    }
-
-    const addItemExameRequisitado = (item) => {
-        let lista = listaExamesRequisitado;
-
-        let linha = {
-            estado: '',
-            exame: '',
-            hora: '',
-            produtoId: 1,
-            status: '',
-        };
-
-        lista.add(linha);
-
-        setListaExamesRequisitado([...lista]);
     };
 
-    const salvarLinhaExamaRequisica = async (item, requisicaoExameId) => {
-        let linha = {
-            estado: 'nao_efetuado',
-            exame: item.designacao,
-            // hora: formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            produtoId: item.id,
-            requisicaoExameId: requisicaoExameId,
-            status: false,
-            finalizado: false, // Garante que a linha é criada como não finalizada
-        };
+    const visualizar = (area) => viewPdfGenerico(area, idInscricao);
 
-        await api
-            .post('linharequisicaoexame/add', linha)
-            .then((r) => {
-                console.log('Linha criada com sucesso!...');
-            })
-            .catch((e) => {
-                console.log('Falha ao criar a linha ', e);
-            });
-    };
-
-    const visualizar = async (area) => {
-        await viewPdfGenerico(area, idInscricao);
-    };
+    const _itemsTabs = [
+        { key: '1', label: 'Motivo da Consulta', children: <Form.Item name="motivoConsulta" rules={[{ required: true }]}><TextToSpeech inputText={motivoConsulta} setInputText={setMotivoConsulta} /></Form.Item> },
+        { key: '2', label: 'História Clínica', children: <Form.Item name="historiaClinica"><TextToSpeech inputText={historiaClinica} setInputText={setHistoriaClinica} /></Form.Item> },
+        { key: '3', label: 'Exame Físico', children: <Form.Item name="exameFisico"><TextToSpeech inputText={exameFisico} setInputText={setExameFisico} /></Form.Item> },
+        { key: '4', label: 'Diagnóstico Inicial', children: <Form.Item name="diagnosticoInicial"><Cid10 data={dataCIDInicial} setData={setdataCIDInicial} /></Form.Item> },
+        { key: '5', label: 'Exames Complementares', children: <ExameRequisitado listaExamesRequisitado={listaExamesRequisitado} setListaExamesRequisitado={setListaExamesRequisitado} removerItemExameRequisitado={removerItemExameRequisitado} updateDescricao={updateDescricao} salvarRequisicao={salvarRequisicao} /> },
+        { key: '6', label: 'Diagnóstico Final', children: <Form.Item name="diagnosticoFinal"><Cid10 data={dataCIDFinal} setData={setdataCIDFinal} /></Form.Item> },
+        { key: '7', label: 'Receituário', children: <Receituario idInscricao={idInscricao} /> },
+        { key: '10', label: 'Procedimentos', children: <ConfigProvider locale={ptPT}><Procedimento idInscricao={idInscricao} /></ConfigProvider> },
+        { key: '11', label: 'Internamento', children: <Internamento /> },
+        { key: '12', label: 'Banco de Urgência', children: <BancoUrgencia /> },
+    ];
 
     return (
         <>
             {contextHolder}
-            <Flex gap="small" vertical style={{ width: 600 }}>
-                <List
-                    header={<div>Lista de paciente por consultar</div>}
-                    itemLayout="horizontal"
-                    dataSource={data}
-                    renderItem={(item, index) => (
-                        <List.Item>
-                            <List.Item.Meta
-                                title={item.inscricaoId + ' - ' + item.nome}
-                                description=""
-                            />
-                            <Flex horizontal="true">
-                                <Tooltip
-                                    title={'Consultar o paciente ' + item.nome}
-                                >
-                                    <Button
-                                        size="small"
-                                        type="primary"
-                                        onClick={(e) =>
-                                            _showModalConsulta(
-                                                item.inscricaoId,
-                                                item.nome
-                                            )
-                                        }
-                                        style={{
-                                            marginRight: 20,
-                                            padding: 15,
-                                            height: 35,
-                                            borderRadius: 10,
-                                        }}
-                                        icon={
-                                            <FileSearchOutlined
-                                                style={{
-                                                    fontSize: 24,
-                                                    color: '#fff',
-                                                }}
-                                            />
-                                        }
-                                    ></Button>
-                                </Tooltip>
 
-                                <Tooltip
-                                    title={'Triar do paciente ' + item.nome}
-                                >
-                                    <Button
-                                        size="small"
-                                        type="link"
-                                        style={{
-                                            marginRight: 20,
-                                            padding: 10,
-                                            height: 35,
-                                            borderRadius: 30,
-                                        }}
-                                        onClick={() => {
-                                            setInscricaoIdTriagem(
-                                                item.inscricaoId
-                                            );
-                                            setIsModalTriagem(true);
-                                        }}
-                                        icon={
-                                            <MedicineBoxOutlined
-                                                style={{
-                                                    fontSize: 30,
-                                                    color: '#52c41a',
-                                                }}
-                                            />
-                                        }
-                                    />
-                                </Tooltip>
-                                <Tooltip
-                                    title={
-                                        'Finalizar a inscrição do paciente ' +
-                                        item.nome
-                                    }
-                                >
-                                    <Button
-                                        size="small"
-                                        type="link"
-                                        style={{
-                                            marginRight: 20,
-                                            padding: 10,
-                                            height: 35,
-                                            borderRadius: 30,
-                                        }}
-                                        onClick={async () => {
-                                            console.log('Finalizar', item);
-                                            setIsModalFinalizarAtendimento(
-                                                true
-                                            );
-                                            setIdInscricao(item.inscricaoId);
-                                        }}
-                                        icon={
-                                            <CloseCircleOutlined
-                                                style={{
-                                                    fontSize: 24,
-                                                    color: 'red',
-                                                }}
-                                            />
-                                        }
-                                    >
-                                        Finalizar
-                                    </Button>
-                                </Tooltip>
-                            </Flex>
-                        </List.Item>
-                    )}
-                    footer={<div></div>}
-                ></List>
-            </Flex>
+            {/* Fila de Consulta */}
+            <div className="consulta-container">
+                <Card className="stock-card consulta-fila-card" title="Fila de Consultas" extra={<Tag color="processing">Atualizado agora</Tag>}>
+                    <List
+                        dataSource={data}
+                        renderItem={(item) => (
+                            <List.Item className="consulta-paciente-item">
+                                <div className="consulta-paciente-info">
+                                    <Avatar icon={<UserOutlined />} className="consulta-avatar" />
+                                    <div>
+                                        <Title level={5} className="consulta-nome">{item.nome}</Title>
+                                        <Text type="secondary">
+                                            <ClockCircleOutlined /> {format(new Date(item.tempo), 'HH:mm')} • ID: {item.inscricaoId}
+                                        </Text>
+                                    </div>
+                                </div>
+                                <Space>
+                                    <Tooltip title="Iniciar Consulta">
+                                        <Button type="primary" icon={<FileSearchOutlined />} onClick={() => _showModalConsulta(item.inscricaoId, item.nome)} className="stock-btn stock-btn-primary consulta-btn-acao" />
+                                    </Tooltip>
+                                    <Tooltip title="Triagem">
+                                        <Button icon={<MedicineBoxOutlined />} onClick={() => { setInscricaoIdTriagem(item.inscricaoId); setIsModalTriagem(true); }} className="stock-btn consulta-btn-triagem" />
+                                    </Tooltip>
+                                    <Tooltip title="Finalizar">
+                                        <Button danger icon={<CloseCircleOutlined />} onClick={() => { setIdInscricao(item.inscricaoId); setIsModalFinalizarAtendimento(true); }} className="stock-btn">Finalizar</Button>
+                                    </Tooltip>
+                                </Space>
+                            </List.Item>
+                        )}
+                    />
+                </Card>
+            </div>
 
+            {/* Modal de Consulta */}
             <Modal
-                title={'Consulta do paciente: ' + nomePaciente.toUpperCase()}
+                title={<Title level={4} className="stock-header-title">Consulta • {nomePaciente}</Title>}
                 open={isModalConsulta}
                 onCancel={handleCancel}
-                width={80 + '%'}
-                height={25 + '%'}
+                footer={null}
+                width={1100}
+                className="stock-modal consulta-modal"
             >
-                <Form
-                    form={formConsulta}
-                    onFinish={
-                        isConsultaCriada ? _onFinishActualizar : _onFinishCriar
-                    }
-                >
-                    <div></div>
-                    <Form.Item>
-                        <div>
-                            {isConsultaCriada ? (
-                                <Button block type="primary" htmlType="submit">
-                                    Actualizar
-                                </Button>
-                            ) : (
-                                <Button
-                                    block
-                                    type="primary"
-                                    loading={loading}
-                                    htmlType="submit"
-                                >
-                                    Criar
-                                </Button>
-                            )}
-                        </div>
-                    </Form.Item>
+                <Form form={formConsulta} onFinish={isConsultaCriada ? _onFinishActualizar : _onFinishCriar} layout="vertical">
+                    <Row justify="end" className="mb-4">
+                        <Button type="primary" htmlType="submit" loading={loading} size="large" className="stock-btn stock-btn-primary btn-salvar-consulta">
+                            {isConsultaCriada ? 'Salvar Alterações' : 'Iniciar Consulta'}
+                        </Button>
+                    </Row>
 
-                    <Tabs
-                        defaultActiveKey="1"
-                        items={_itemsTabs}
-                        onChange={_onChange}
-                        tabPosition="top"
-                        style={{ marginTop: 10 }}
-                    />
+                    <Tabs items={_itemsTabs} className="stock-tabs consulta-tabs" />
                 </Form>
             </Modal>
 
-            <ModalTriagem
-                estado={isModalTriagem}
-                inscricaoId={inscricaoIdTriagem}
-                usuarioId={1}
-                onCancel={() => {
-                    setIsModalTriagem(false);
-                    setInscricaoIdTriagem(null);
-                }}
-                exibirEncaminhamento={false}
-                exibirManchester={false}
-            />
-
-            <ModalFinalizarAtendimento
-                estado={isModalFinalizarAtendimento}
-                onCancel={() => {
-                    setIsModalFinalizarAtendimento(false);
-                }}
-                onFinalizar={_onFinalizarInscricao}
-            />
+            <ModalTriagem estado={isModalTriagem} inscricaoId={inscricaoIdTriagem} usuarioId={1} onCancel={() => { setIsModalTriagem(false); setInscricaoIdTriagem(null); }} exibirEncaminhamento={false} exibirManchester={false} />
+            <ModalFinalizarAtendimento estado={isModalFinalizarAtendimento} onCancel={() => setIsModalFinalizarAtendimento(false)} onFinalizar={_onFinalizarInscricao} />
         </>
     );
 }
