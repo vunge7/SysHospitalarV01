@@ -414,24 +414,24 @@ function Facturacao() {
                 </div>
             </div>
 
-            {/* BOTÃO FINALIZAR – MESMO TAMANHO DO FECHAR */}
+            {/* BOTÃO FINALIZAR */}
             <div className="finalize-container">
                 <button onClick={salvarSourceDocument} className="finalize-btn">
                     <CheckOutlined /> Finalizar
                 </button>
             </div>
 
-            {/* MODAL BUSCA – SEM ÍCONE DE FECHAR NO TOPO */}
+            {/* MODAL BUSCA ARTIGO */}
             <Modal
                 isOpen={isOpen}
                 onAfterClose={closeModal}
+                onRequestClose={closeModal}
                 className="modal-content"
                 overlayClassName="modal-overlay"
-                closeTimeoutMS={300}
+                closeTimeoutMS={481}
             >
                 <div className="modal-header">
                     <h3 className="modal-title">Pesquisar Artigo</h3>
-                    {/* ÍCONE REMOVIDO */}
                 </div>
 
                 <div className="modal-search-container">
@@ -484,19 +484,27 @@ function Facturacao() {
                 </button>
             </Modal>
 
-            {/* MODAL GASTOS */}
+            {/* MODAL GASTOS – DESIGN PREMIUM */}
             <Modal
                 isOpen={isOpenGasto}
+                onRequestClose={closeModalGasto}
                 onAfterClose={closeModalGasto}
                 className="modal-content"
                 overlayClassName="modal-overlay"
                 closeTimeoutMS={300}
             >
-                <Gasto
-                    newLineArtigo={newLineArtigo}
-                    setIsOpenGasto={setIsOpenGasto}
-                    getSubTotal={getSubTotal}
-                />
+                <div className="modal-header">
+                    <h3 className="modal-title">Adicionar Gasto</h3>
+                </div>
+
+                <div className="modal-body gasto-modal-body">
+                    <Gasto
+                        newLineArtigo={newLineArtigo}
+                        setIsOpenGasto={setIsOpenGasto}
+                        getSubTotal={getSubTotal}
+                    />
+                </div>
+
                 <button onClick={closeModalGasto} className="modal-close-btn">
                     <XOutlined /> Fechar
                 </button>
