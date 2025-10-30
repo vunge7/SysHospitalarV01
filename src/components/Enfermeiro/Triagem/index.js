@@ -42,7 +42,6 @@ function Triagem() {
         setIsModalOpen(true);
     };
 
-<<<<<<< HEAD
     const carrgarDados = async () => {
         await api
             .get('inscricao/all')
@@ -57,7 +56,6 @@ function Triagem() {
                     });
                     return item;
                 });
-=======
     // Busca
     const buscar = useCallback((valor) => {
         const termo = valor.toLowerCase();
@@ -67,7 +65,6 @@ function Triagem() {
         );
         setFilteredData(filtrados);
     }, [data]);
->>>>>>> dvml-dev
 
     // Cores
     const corPrioridade = (p) => {
