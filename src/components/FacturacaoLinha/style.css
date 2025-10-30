@@ -36,3 +36,85 @@
     background: linear-gradient(90deg, #feb47b 0%, #ff7e5f 100%);
     color: #fff !important;
 }
+
+/* LINHAS DA FATURA */
+.facturacao-linha {
+    transition: background 0.2s;
+  }
+  
+  .facturacao-linha:hover {
+    background-color: #f8faff !important;
+  }
+  
+  .facturacao-linha:nth-child(even) {
+    background-color: #fbfbfd;
+  }
+  
+  /* CÉLULAS */
+  .designacao-cell {
+    font-weight: 500;
+    color: var(--gray-900);
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .preco-cell,
+  .iva-cell,
+  .subtotal-cell {
+    font-weight: 600;
+    color: var(--gray-700);
+    text-align: center;
+  }
+  
+  .qtd-cell,
+  .desconto-cell {
+    text-align: center;
+  }
+  
+  .subtotal-cell {
+    font-size: 15px;
+    color: var(--primary);
+  }
+  
+  /* INPUTS DE EDIÇÃO */
+  .input-edicao {
+    width: 70px;
+    padding: 6px 8px;
+    border: 1.5px solid var(--primary);
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+    background: white;
+    transition: var(--transition);
+  }
+  
+  .input-edicao:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    transform: scale(1.02);
+  }
+  
+  /* BOTÕES DE AÇÃO */
+  .acoes-cell {
+    text-align: center;
+    white-space: nowrap;
+  }
+  
+  .btn-acao {
+    margin: 0 4px;
+    font-size: 12px;
+    padding: 4px 8px;
+    height: auto;
+  }
+  
+  .btn-remover {
+    color: var(--danger);
+  }
+  
+  .btn-remover:hover {
+    background: #fee2e2 !important;
+    color: var(--danger-hover) !important;
+  }

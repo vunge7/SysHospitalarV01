@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-
 import Modal from 'react-modal';
 import { format, unformat } from '@react-input/number-format';
 import FacturacaoHeader from '../FacturacaoHeader';
@@ -10,49 +9,37 @@ import Gasto from '../Gasto';
 import './style.css';
 import { api } from '../../service/api';
 import { format as dateFormat, formatDate } from 'date-fns';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { viewPdf } from '../util/utilitarios';
 import { Table, Pagination } from 'antd';
+import { SearchOutlined, PlusOutlined, DollarOutlined, XOutlined, CheckOutlined } from '@ant-design/icons';
 
-const options = { locales: 'en', maximumFractionDigits: 2 };
 Modal.setAppElement('#root');
 
 function Facturacao() {
-    const [linhasFactura, setlinhasFactura] = useState(
-        []
-    ); /**Linhas da factura a ser processada */
+    const [linhasFactura, setlinhasFactura] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isOpenGasto, setIsOpenGasto] = useState(false);
-    const [artigos, setArtigos] = useState(
-        []
-    ); /** lista actual em função da pesquisa do usuário*/
-    const [fonteArtigos, setFonteArtigos] = useState([]); /**lista do backend.*/
+    const [artigos, setArtigos] = useState([]);
+    const [fonteArtigos, setFonteArtigos] = useState([]);
     const [totalLiquido, setTotalLiquido] = useState(0);
     const [totalIva, setTotalIva] = useState(0);
     const [totalDesconto, setTotalDesconto] = useState(0);
     const [totalIliquido, setTotalIliquido] = useState(0);
     const [totalItens, setTotalItens] = useState(0);
-    // Paginação
-    const [currentPage, setCurrentPage] = useState(1);
-    const productsPerPage = 5; // Número de produtos por página
 
-    // Função de Paginação
+    const [currentPage, setCurrentPage] = useState(1);
+    const productsPerPage = 5;
+
     const indexOfLastProduct = currentPage * productsPerPage;
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-
-    const currentProducts = artigos.slice(
-        indexOfFirstProduct,
-        indexOfLastProduct
-    );
+    const currentProducts = artigos.slice(indexOfFirstProduct, indexOfLastProduct);
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     useEffect(() => {
-        carregarArtigos(); //carrega os artigos para ser usado na pesquisa
+        carregarArtigos();
     }, []);
 
     useEffect(() => {
-        // console.log(linhasFactura); //carrega os artigos para ser usado na pesquisa
         somaTotalIlqiuido();
         somaTotalIva();
         somaTotalDesconto();
@@ -62,32 +49,27 @@ function Facturacao() {
 
     async function carregarArtigos() {
         await carregarArtigosServer();
-        let array = fonteArtigos;
-        setArtigos([...array]);
+        setArtigos([...fonteArtigos]);
     }
+
     async function carregarArtigosServer() {
         await api
             .get('produto/all')
             .then((r) => {
                 let dados = r.data;
-                let newDados = dados.map((_item) => {
-                    let item = {
-                        id: _item.id,
-                        designacao: _item.productDescription,
-                        grupo: _item.productGroup,
-                        qtd: 1,
-                        preco: _item.preco,
-                        iva: _item.taxIva,
-                        desconto: 0,
-                        subTotal: getSubTotal(_item),
-                    };
-                    return item;
-                });
-
+                let newDados = dados.map((_item) => ({
+                    id: _item.id,
+                    designacao: _item.productDescription,
+                    grupo: _item.productGroup,
+                    qtd: 1,
+                    preco: _item.preco,
+                    iva: _item.taxIva,
+                    desconto: 0,
+                    subTotal: getSubTotal(_item),
+                }));
                 setFonteArtigos([...newDados]);
-                // console.log(newDados);
             })
-            .catch((e) => {});
+            .catch(() => {});
     }
 
     const newLine = () => {
@@ -101,7 +83,6 @@ function Facturacao() {
             desconto: 0,
             subTotal: 100.0,
         };
-
         itens.push(item);
         setlinhasFactura([...itens]);
     };
@@ -116,10 +97,8 @@ function Facturacao() {
                 preco: getValorFormatado(artigo.preco),
                 iva: artigo.iva,
                 desconto: 0,
-                //subTotal: getSubTotal(artigo),
                 subTotal: novoSubTotal(artigo),
             };
-
             itens.push(item);
             setlinhasFactura([...itens]);
         }
@@ -141,9 +120,7 @@ function Facturacao() {
     };
 
     const existeItem = (id) => {
-        console.log('ID: ' + id);
-        let existe = linhasFactura.some((item) => item.id === id);
-        return existe;
+        return linhasFactura.some((item) => item.id === id);
     };
 
     const removerItem = (id) => {
@@ -157,57 +134,27 @@ function Facturacao() {
         setIsOpen(true);
     };
     const openModalGasto = () => {
-        // carregarArtigos();
         setIsOpenGasto(true);
     };
     const closeModal = () => setIsOpen(false);
     const closeModalGasto = () => setIsOpenGasto(false);
 
     const buscaArtigo = (e) => {
-        console.log(e.target.value);
         filtroArtigo(e.target.value);
     };
 
     function buscaArtigoById(id) {
-        return fonteArtigos.filter((item) => item.id === id)[0];
+        return fonteArtigos.find(item => item.id === id);
     }
 
-    /**Componente interno para ser usado no modal da pesquisa */
-    function Artigo(props) {
-        return (
-            <tr
-                className="tr"
-                onClick={() => {
-                    console.log(props.designacao);
-                    let artigo = buscaArtigoById(props.id);
-                    // console.log(artigo);
-                    newLineArtigo(artigo);
-                    closeModal();
-                }}
-            >
-                <td className="td">{props.designacao}</td>
-                <td className="td">{props.grupo}</td>
-                <td className="td">{props.preco}</td>
-                <td className="td">{props.iva}</td>
-                <td className="td">{props.subTotal}</td>
-            </tr>
-        );
-    }
-
-    /**Função filtro */
     function filtroArtigo(value) {
-        /**Faz o filtro  na fonte pelas inicias do artigos Obs: criar um array novo.*/
         let newArray = fonteArtigos.filter((item) =>
             item.designacao.toLowerCase().includes(value.toLowerCase())
         );
-        setArtigos([
-            ...newArray,
-        ]); /**Actualiza os artigos em função da busca do ususário */
+        setArtigos([...newArray]);
     }
 
-    /**Função que retorna o valor formatado de 1500.00 para AOA 1,500.00*/
     function getValorFormatado(value) {
-        // locales={['ban', 'id']}
         return format(value, {
             locales: 'de-DE',
             format: 'currency',
@@ -215,30 +162,25 @@ function Facturacao() {
             maximumFractionDigits: 2,
         });
     }
-    /**Função que faz a operação inversa da formatação. Ex: A0A 1,500.00 para 1500.00 */
+
     function getValorUnFormat(value) {
         return unformat(value, 'de-DE');
     }
 
-    /**Função que retorna o total de uma determinada linha */
     function novoSubTotal(item) {
         let valorDescontado = item.preco * item.qtd - item.desconto;
-        let totalLiquido =
-            valorDescontado + getValorIva(item.iva, valorDescontado);
+        let totalLiquido = valorDescontado + getValorIva(item.iva, valorDescontado);
         return getValorFormatado(totalLiquido);
     }
 
-    /**Função que retorna o total de uma determinada linha  com os valores pré-definidos*/
     function getSubTotal(item, newQtd, desconto) {
         let valorDescontado = getValorUnFormat(item.preco) * newQtd - desconto;
-        let totalLiquido =
-            valorDescontado + getValorIva(item.iva, valorDescontado);
+        let totalLiquido = valorDescontado + getValorIva(item.iva, valorDescontado);
         return getValorFormatado(totalLiquido);
     }
 
     function getValorIva(iva, valor) {
-        let valorIva = (valor * iva) / 100;
-        return valorIva;
+        return (valor * iva) / 100;
     }
 
     function isZero(value) {
@@ -257,69 +199,49 @@ function Facturacao() {
         return false;
     }
 
-    /**Soma Total Iliquidos */
     function somaTotalIlqiuido() {
         if (linhasFactura.length === 0) {
             setTotalIliquido(0);
+            return;
         }
-        const total = Object.values(linhasFactura).reduce(
-            (sum, item) => sum + item.qtd * getValorUnFormat(item.preco),
-            0
-        );
+        const total = linhasFactura.reduce((sum, item) => sum + item.qtd * getValorUnFormat(item.preco), 0);
         setTotalIliquido(getValorFormatado(total));
     }
 
-    /**Soma Total do Iva */
     function somaTotalIva() {
         if (linhasFactura.length === 0) {
             setTotalIva(0);
+            return;
         }
-        const total = Object.values(linhasFactura).reduce(
-            (sum, item) =>
-                sum +
-                getValorIva(
-                    item.iva,
-                    getValorUnFormat(item.preco) * item.qtd - item.desconto
-                ),
-            0
-        );
+        const total = linhasFactura.reduce((sum, item) =>
+            sum + getValorIva(item.iva, getValorUnFormat(item.preco) * item.qtd - item.desconto), 0);
         setTotalIva(getValorFormatado(total));
     }
 
     function somaTotalDesconto() {
         if (linhasFactura.length === 0) {
             setTotalDesconto(0);
+            return;
         }
-        const total = Object.values(linhasFactura).reduce(
-            (sum, item) => sum + Number(item.desconto),
-            0
-        );
+        const total = linhasFactura.reduce((sum, item) => sum + Number(item.desconto), 0);
         setTotalDesconto(getValorFormatado(total));
     }
 
     function somaTotalLiquido() {
         if (linhasFactura.length === 0) {
             setTotalLiquido(0);
+            return;
         }
-        const total = Object.values(linhasFactura).reduce(
-            (sum, item) => sum + Number(getValorUnFormat(item.subTotal)),
-            0
-        );
-
-        console.log('TotalLiquido: ' + getValorFormatado(total));
+        const total = linhasFactura.reduce((sum, item) => sum + Number(getValorUnFormat(item.subTotal)), 0);
         setTotalLiquido(getValorFormatado(total));
     }
 
     function somaTotalItens() {
         if (linhasFactura.length === 0) {
             setTotalItens(0);
+            return;
         }
-        const total = Object.values(linhasFactura).reduce(
-            (sum, item) => sum + Number(item.qtd),
-            0
-        );
-
-        console.log('TotalLiquido: ' + getValorFormatado(total));
+        const total = linhasFactura.reduce((sum, item) => sum + Number(item.qtd), 0);
         setTotalItens(total);
     }
 
@@ -335,7 +257,6 @@ function Facturacao() {
     }
 
     const parseLine = (linha, number, sourceDocumentId, reference) => {
-        //console.log(number);
         let line = {
             lineNumber: number,
             productCode: linha.id,
@@ -348,8 +269,7 @@ function Facturacao() {
             reference: reference,
             description: linha.designacao,
             debitAmount: 0.0,
-            creditAmount:
-                Number(linha.qtd) * Number(getValorUnFormat(linha.preco)),
+            creditAmount: Number(linha.qtd) * Number(getValorUnFormat(linha.preco)),
             taxType: 'IVA',
             taxCountryRegion: 'AOA',
             taxCode: 'NOR',
@@ -367,7 +287,7 @@ function Facturacao() {
     async function salvarSourceDocument() {
         let invoiceType = 'FT';
         let invoiceNo = invoiceType + ' 2024/1';
-        let invoiceStatus = 'N'; //Normal
+        let invoiceStatus = 'N';
         let invoiceStatusDate = formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss');
         let sourceId = 'user.dvml';
         let sourceBilling = 'P';
@@ -411,110 +331,129 @@ function Facturacao() {
                 var number = 0;
                 var lastId = r.data.id;
                 linhasFactura.map(async (linha) => {
-                    let linhaConvertida = parseLine(
-                        linha,
-                        ++number,
-                        lastId,
-                        document.invoiceNo
-                    );
-                    // console.log(linhaConvertida);
+                    let linhaConvertida = parseLine(linha, ++number, lastId, document.invoiceNo);
                     await salvarLinha(linhaConvertida);
                 });
                 viewPdf('invoice_A4', lastId);
-                //generatePDF();
             })
             .catch((error) => {
                 console.log(error);
             });
     }
 
-    /**Renderização do componente 'Facturacao' */
     return (
         <div id="container-facturacao" className="container-facturacao">
-            <div className="container-item">
-                <FacturacaoHeader />
-            </div>
-            <div className="container-item">
-                <FacturacaoConfig />
-            </div>
-            <div className="container-item">
+            <div className="container-item"><FacturacaoHeader /></div>
+            <div className="container-item"><FacturacaoConfig /></div>
+
+            {/* BARRA DE AÇÕES */}
+            <div className="container-item action-bar">
                 <div className="numero-linhas">
                     Nº de Linhas: <strong>{linhasFactura.length}</strong>
                 </div>
-                <div>
-                    <button onClick={openModal}>busca</button>
-                    <button onClick={newLine}>Nova Linha</button>
-                    <button onClick={openModalGasto}>Gastos</button>
+                <div className="action-buttons">
+                    <button onClick={openModal} className="action-btn btn-search">
+                        <SearchOutlined /> Buscar
+                    </button>
+                    <button onClick={newLine} className="action-btn btn-new">
+                        <PlusOutlined /> Nova Linha
+                    </button>
+                    <button onClick={openModalGasto} className="action-btn btn-expense">
+                        <DollarOutlined /> Gastos
+                    </button>
                 </div>
             </div>
-            <div className="container-item">
-                {linhasFactura.map((item) => (
-                    <FacturacaoLinha
-                        key={item.id}
-                        id={item.id}
-                        designacao={item.designacao}
-                        preco={item.preco}
-                        qtd={item.qtd}
-                        desconto={item.desconto}
-                        iva={item.iva}
-                        subTotal={item.subTotal}
-                        updateItem={updateItem}
-                        removerItem={removerItem}
-                        isZero={isZero}
-                        isMenorQueZero={isMenorQueZero}
-                    />
-                ))}
-            </div>
-            <div className="container-item">
-                <hr />
-            </div>
-            <div className="container-item">
-                <FacturacaoFooter
-                    totalIliquido={totalIliquido}
-                    totalIva={totalIva}
-                    totalDesconto={totalDesconto}
-                    totalLiquido={totalLiquido}
-                    totalItens={totalItens}
-                />
+
+            {/* FATURA VISUAL ÚNICA */}
+            <div className="invoice-body">
+                <table className="invoice-table">
+                    <thead>
+                        <tr>
+                            <th>Designação</th>
+                            <th>Qtd</th>
+                            <th>Preço</th>
+                            <th>IVA</th>
+                            <th>Desconto</th>
+                            <th>Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {linhasFactura.map((item) => (
+                            <FacturacaoLinha
+                                key={item.id}
+                                id={item.id}
+                                designacao={item.designacao}
+                                preco={item.preco}
+                                qtd={item.qtd}
+                                desconto={item.desconto}
+                                iva={item.iva}
+                                subTotal={item.subTotal}
+                                updateItem={updateItem}
+                                removerItem={removerItem}
+                                isZero={isZero}
+                                isMenorQueZero={isMenorQueZero}
+                            />
+                        ))}
+                    </tbody>
+                </table>
+
+                <div className="invoice-footer">
+                    <div className="invoice-totals">
+                        <FacturacaoFooter
+                            totalIliquido={totalIliquido}
+                            totalIva={totalIva}
+                            totalDesconto={totalDesconto}
+                            totalLiquido={totalLiquido}
+                            totalItens={totalItens}
+                        />
+                    </div>
+                    <div className="invoice-payment-terms">
+                        <label>Condições de pagamentos</label>
+                    </div>
+                </div>
             </div>
 
-            <div className="container-item">
-                <label>Condições de pagamentos</label>
-            </div>
-            <div className="container-item">
-                <button onClick={salvarSourceDocument}>Finalizar</button>
+            {/* BOTÃO FINALIZAR – MESMO TAMANHO DO FECHAR */}
+            <div className="finalize-container">
+                <button onClick={salvarSourceDocument} className="finalize-btn">
+                    <CheckOutlined /> Finalizar
+                </button>
             </div>
 
+            {/* MODAL BUSCA – SEM ÍCONE DE FECHAR NO TOPO */}
             <Modal
                 isOpen={isOpen}
                 onAfterClose={closeModal}
-                style={{
-                    content: {
-                        top: '50%',
-                        left: '50%',
-                        right: 'auto',
-                        bottom: 'auto',
-                        width: '60%',
-                        marginRight: '-50%',
-                        transform: 'translate(-50%, -50%)',
-                    },
-                    overlay: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                    },
-                }}
+                className="modal-content"
+                overlayClassName="modal-overlay"
+                closeTimeoutMS={300}
             >
-                <input
-                    type="text"
-                    onChange={buscaArtigo}
-                    style={{ marginBottom: '20px' }}
-                />
-                <div>
+                <div className="modal-header">
+                    <h3 className="modal-title">Pesquisar Artigo</h3>
+                    {/* ÍCONE REMOVIDO */}
+                </div>
+
+                <div className="modal-search-container">
+                    <div className="modal-search-wrapper">
+                        <SearchOutlined className="modal-search-icon" />
+                        <input
+                            type="text"
+                            placeholder="Nome, código ou grupo..."
+                            onChange={buscaArtigo}
+                            className="modal-search-input"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+
+                <div className="modal-body">
                     <Table
                         columns={columns}
                         dataSource={currentProducts.map((item) => ({
                             ...item,
                             key: item.id,
-                            subTotal: novoSubTotal(item, 1, 0),
+                            subTotal: novoSubTotal(item),
                         }))}
                         pagination={false}
                         onRow={(record) => ({
@@ -528,49 +467,38 @@ function Facturacao() {
                         locale={{ emptyText: 'Nenhum produto encontrado' }}
                         size="small"
                     />
-                    <div
-                        className="pagination"
-                        style={{ marginTop: 16, textAlign: 'center' }}
-                    >
-                        <Pagination
-                            current={currentPage}
-                            pageSize={productsPerPage}
-                            total={artigos.length}
-                            onChange={paginate}
-                            showSizeChanger={false}
-                        />
-                    </div>
                 </div>
-                <button onClick={closeModal} style={{ marginTop: '20px' }}>
-                    Fechar
+
+                <div className="modal-pagination">
+                    <Pagination
+                        current={currentPage}
+                        pageSize={productsPerPage}
+                        total={artigos.length}
+                        onChange={paginate}
+                        showSizeChanger={false}
+                    />
+                </div>
+
+                <button onClick={closeModal} className="modal-close-btn">
+                    <XOutlined /> Fechar
                 </button>
             </Modal>
 
+            {/* MODAL GASTOS */}
             <Modal
                 isOpen={isOpenGasto}
                 onAfterClose={closeModalGasto}
-                style={{
-                    content: {
-                        top: '50%',
-                        left: '50%',
-                        right: 'auto',
-                        bottom: 'auto',
-                        width: 'auto', // ajuste conforme necessário
-                        marginRight: '-50%',
-                        transform: 'translate(-50%, -50%)',
-                    },
-                    overlay: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                    },
-                }}
+                className="modal-content"
+                overlayClassName="modal-overlay"
+                closeTimeoutMS={300}
             >
                 <Gasto
                     newLineArtigo={newLineArtigo}
                     setIsOpenGasto={setIsOpenGasto}
                     getSubTotal={getSubTotal}
                 />
-                <button onClick={closeModalGasto} style={{ marginTop: '20px' }}>
-                    Fechar
+                <button onClick={closeModalGasto} className="modal-close-btn">
+                    <XOutlined /> Fechar
                 </button>
             </Modal>
         </div>
@@ -578,31 +506,11 @@ function Facturacao() {
 }
 
 const columns = [
-    {
-        title: 'Designação',
-        dataIndex: 'designacao',
-        key: 'designacao',
-    },
-    {
-        title: 'Grupo',
-        dataIndex: 'grupo',
-        key: 'grupo',
-    },
-    {
-        title: 'Preço',
-        dataIndex: 'preco',
-        key: 'preco',
-    },
-    {
-        title: 'Taxa Iva',
-        dataIndex: 'iva',
-        key: 'iva',
-    },
-    {
-        title: 'Preço c/Iva',
-        dataIndex: 'subTotal',
-        key: 'subTotal',
-    },
+    { title: 'Designação', dataIndex: 'designacao', key: 'designacao' },
+    { title: 'Grupo', dataIndex: 'grupo', key: 'grupo' },
+    { title: 'Preço', dataIndex: 'preco', key: 'preco' },
+    { title: 'Taxa Iva', dataIndex: 'iva', key: 'iva' },
+    { title: 'Preço c/Iva', dataIndex: 'subTotal', key: 'subTotal' },
 ];
 
 export default Facturacao;
