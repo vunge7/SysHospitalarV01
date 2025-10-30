@@ -477,6 +477,7 @@ function Facturacao() {
                 />
             </div>
 
+<<<<<<< HEAD
             <div className="container-item">
                 <label>Condições de pagamentos</label>
             </div>
@@ -508,6 +509,42 @@ function Facturacao() {
                     style={{ marginBottom: '20px' }}
                 />
                 <div>
+=======
+            {/* BOTÃO FINALIZAR */}
+            <div className="finalize-container">
+                <button onClick={salvarSourceDocument} className="finalize-btn">
+                    <CheckOutlined /> Finalizar
+                </button>
+            </div>
+
+            {/* MODAL BUSCA ARTIGO */}
+            <Modal
+                isOpen={isOpen}
+                onAfterClose={closeModal}
+                onRequestClose={closeModal}
+                className="modal-content"
+                overlayClassName="modal-overlay"
+                closeTimeoutMS={481}
+            >
+                <div className="modal-header">
+                    <h3 className="modal-title">Pesquisar Artigo</h3>
+                </div>
+
+                <div className="modal-search-container">
+                    <div className="modal-search-wrapper">
+                        <SearchOutlined className="modal-search-icon" />
+                        <input
+                            type="text"
+                            placeholder="Nome, código ou grupo..."
+                            onChange={buscaArtigo}
+                            className="modal-search-input"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+
+                <div className="modal-body">
+>>>>>>> dvml-dev
                     <Table
                         columns={columns}
                         dataSource={currentProducts.map((item) => ({
@@ -545,8 +582,13 @@ function Facturacao() {
                 </button>
             </Modal>
 
+<<<<<<< HEAD
+=======
+            {/* MODAL GASTOS – DESIGN PREMIUM */}
+>>>>>>> dvml-dev
             <Modal
                 isOpen={isOpenGasto}
+                onRequestClose={closeModalGasto}
                 onAfterClose={closeModalGasto}
                 style={{
                     content: {
@@ -563,6 +605,7 @@ function Facturacao() {
                     },
                 }}
             >
+<<<<<<< HEAD
                 <Gasto
                     newLineArtigo={newLineArtigo}
                     setIsOpenGasto={setIsOpenGasto}
@@ -570,6 +613,22 @@ function Facturacao() {
                 />
                 <button onClick={closeModalGasto} style={{ marginTop: '20px' }}>
                     Fechar
+=======
+                <div className="modal-header">
+                    <h3 className="modal-title">Adicionar Gasto</h3>
+                </div>
+
+                <div className="modal-body gasto-modal-body">
+                    <Gasto
+                        newLineArtigo={newLineArtigo}
+                        setIsOpenGasto={setIsOpenGasto}
+                        getSubTotal={getSubTotal}
+                    />
+                </div>
+
+                <button onClick={closeModalGasto} className="modal-close-btn">
+                    <XOutlined /> Fechar
+>>>>>>> dvml-dev
                 </button>
             </Modal>
         </div>
