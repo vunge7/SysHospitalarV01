@@ -1,22 +1,67 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../contexts/auth';
 import './style.css';
-//import logo from '../../assets/images/logo_dvml.png';
 import logo from '../../assets/images/logo5.png';
 import user from '../../assets/images/user.png';
 
 function Cabecario() {
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const { user, logout } = useContext(AuthContext);
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
+    const toggleUserMenu = () => {
+        setShowUserMenu(!showUserMenu);
+    };
+
+    // Fechar o menu quando clicar fora dele
+    const handleClickOutside = (e) => {
+        if (!e.target.closest('.navbar-user')) {
+            setShowUserMenu(false);
+        }
+    };
+
+    // Adicionar evento de clique fora do menu
+    React.useEffect(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     return (
         <div style={{ marginBottom: 5 }}>
             <header className="navbar">
                 <Link to="/admin">
                     <div className="navbar-logo">
-                        <img src={logo} alt="Logo"  style={{width:"60%", height:"60%"}}/>
+                        <img src={logo} alt="Logo" style={{ width: "60%", height: "60%" }} />
                     </div>
                 </Link>
 
-                <div className="navbar-user">
-                    <img src={user} alt="Usuário" />
+                <div className="navbar-user" onClick={toggleUserMenu}>
+                    <img src={user} alt="Usuário" style={{ cursor: 'pointer' }} />
+                    {user && (
+                        <span style={{ marginLeft: '8px', color: '#fff' }}>
+                            {user.nome || 'Usuário'}
+                        </span>
+                    )}
+                    {showUserMenu && (
+                        <div className="user-dropdown">
+                            <div className="user-info">
+                                <p><strong>{user?.nome || 'Usuário'}</strong></p>
+                                <p className="user-email">{user?.email || ''}</p>
+                            </div>
+                            <div className="dropdown-divider"></div>
+                            <button onClick={handleLogout} className="logout-button">
+                                Sair
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="hamburger">

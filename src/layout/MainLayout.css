@@ -1,0 +1,214 @@
+/* Cores padrão do tema */
+:root {
+  --primary-color: #48cae4; /* Cor do cabeçalho */
+  --secondary-color: #002366; /* Cor do rodapé */
+  --menu-bg: #001529; /* Cor de fundo do menu */
+  --menu-text: rgba(255, 255, 255, 0.85);
+  --menu-hover: #48cae4;
+  --menu-active: #48cae4;
+  --menu-item-hover: rgba(72, 202, 228, 0.2);
+  --content-bg: #f0f2f5;
+  --header-bg: #48cae4;
+  --border-color: #f0f0f0;
+  --header-height: 64px;
+  --footer-height: 64px;
+}
+
+/* Reset de estilos */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Estilo do layout principal */
+.site-layout {
+  min-height: 100vh;
+  background: var(--content-bg);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+/* Estilo do conteúdo principal */
+.main-content {
+  flex: 1;
+  padding: 24px;
+  background: var(--content-bg);
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
+  margin-left: 0;
+  transition: all 0.2s;
+}
+
+/* Estilo do menu lateral */
+.ant-layout-sider {
+  background: var(--menu-bg) !important;
+  box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.15) !important;
+  z-index: 10;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  transition: all 0.2s;
+  overflow-y: auto;
+}
+
+/* Estilo do logo no menu */
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color) !important;
+  color: white !important;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 0 16px;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: 0 1px 9px -3px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilo dos itens do menu */
+.ant-menu-dark {
+  background: var(--menu-bg) !important;
+  border-right: none !important;
+}
+
+.ant-menu-dark .ant-menu-item,
+.ant-menu-dark .ant-menu-submenu-title {
+  color: var(--menu-text);
+  font-size: 14px;
+  height: 48px;
+  line-height: 48px;
+  margin: 0;
+  padding: 0 16px !important;
+  border-radius: 0;
+  transition: all 0.3s;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background-color: var(--menu-active) !important;
+  color: white !important;
+  font-weight: 500;
+}
+
+.ant-menu-dark .ant-menu-item:not(.ant-menu-item-selected):hover,
+.ant-menu-dark .ant-menu-submenu-title:hover {
+  color: var(--menu-hover) !important;
+  background-color: var(--menu-item-hover) !important;
+}
+
+.ant-menu-dark .ant-menu-item:active,
+.ant-menu-dark .ant-menu-submenu-title:active {
+  background: var(--menu-item-hover) !important;
+}
+
+/* Estilo do cabeçalho principal */
+.main-header {
+  background: var(--header-bg) !important;
+  padding: 0 !important;
+  height: var(--header-height) !important;
+  line-height: var(--header-height) !important;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 9;
+  width: 100% !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+/* Estilo do conteúdo principal */
+.main-content {
+  margin: var(--header-height) 0 var(--footer-height) 0;
+  padding: 24px;
+  flex: 1;
+  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
+  overflow-y: auto;
+}
+
+.content-wrapper {
+  background: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  flex: 1;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-color);
+  min-height: 0; /* Permite que o conteúdo role */
+  overflow-y: auto; /* Adiciona rolagem apenas ao conteúdo */
+}
+
+/* Estilo do rodapé */
+.main-footer {
+  background: var(--secondary-color) !important;
+  color: white !important;
+  padding: 0 !important;
+  height: var(--footer-height) !important;
+  line-height: var(--footer-height) !important;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0;
+}
+
+/* Estilo para o botão de recolher/expandir menu */
+.ant-btn.ant-btn-text {
+  color: var(--primary-color) !important;
+  font-size: 16px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.ant-btn.ant-btn-text:hover {
+  background: rgba(72, 202, 228, 0.1) !important;
+  color: var(--menu-hover) !important;
+}
+
+/* Ajustes para menu colapsado */
+.ant-layout-sider-collapsed .logo {
+  padding: 0;
+}
+
+.ant-layout-sider-collapsed .ant-menu-item,
+.ant-layout-sider-collapsed .ant-menu-submenu-title {
+  padding: 0 16px !important;
+}
+
+/* Responsividade */
+@media (max-width: 991px) {
+  .ant-layout-sider {
+    z-index: 1000;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px !important;
+  }
+  
+  .content-wrapper {
+    padding: 16px !important;
+  }
+  
+  /* Ajustes para o menu em dispositivos móveis */
+  .ant-layout-sider-collapsed + .site-layout {
+    margin-left: 0 !important;
+  }
+  
+  .main-header {
+    left: 0;
+  }
+}

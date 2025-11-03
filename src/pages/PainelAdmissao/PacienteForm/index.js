@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import './style.css';
 import PacienteTabs from '../PacienteTabs';
 import { api } from '../../../service/api';
-import { format } from 'date-fns'; // ✅ Correção
+import { format } from 'date-fns';
 import { toast } from 'react-toastify';
+import { Card, Row, Col, Input, Select, Button, Upload, Avatar, Spin } from 'antd';
+import { UploadOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+
+const { Option } = Select;
 
 const PacienteForm = () => {
     const [form, setForm] = useState({
@@ -14,7 +18,7 @@ const PacienteForm = () => {
         provinciaEndereco: '',
         municipioEndereco: '',
         endereco: '',
-        profissao: '', // ✅ Apenas um
+        profissao: '',
         habilitacao: '',
         estadoCivil: '',
         paisNascimento: '',
@@ -27,6 +31,7 @@ const PacienteForm = () => {
         raca: '',
         pai: '',
         mae: '',
+        empresaId: '',
     });
 
     const [photo, setPhoto] = useState(null);
@@ -36,77 +41,91 @@ const PacienteForm = () => {
     const [photoPreview, setPhotoPreview] = useState(null);
     const [errors, setErrors] = useState({});
     const [paciente, setPaciente] = useState({});
+    const [conveniosParaSalvar, setConveniosParaSalvar] = useState([]); // NOVO
 
     useEffect(() => {
         const fetchLastQr = async () => {
             try {
-                const response = await api.get('api/qr-data');
-                if (response.data) {
-                    let id = response.data.id;
-
-                    await api
-                        .get('paciente/' + id)
-                        .then((r) => {
-                            toast.dismiss();
-
-                            setPaciente(r.data);
-                            setForm((prevForm) => ({
-                                ...prevForm,
-                                nome: r.data.nome,
-                                nif: r.data.nif,
-                                apelido: r.data.apelido,
-                                paisEndereco: r.data.paisEndereco,
-                                provinciaEndereco: r.data.provinciaEndereco,
-                                municipioEndereco: r.data.municipioEndereco,
-                                endereco: r.data.endereco,
-                                profissao: r.data.profissao,
-                                habilitacao: r.data.habilitacao,
-                                estadoCivil: r.data.estadoCivil,
-                                paisNascimento: r.data.paisNascimento,
-                                provinciaNascimento: r.data.provinciaNascimento,
-                                municipioNascimento: r.data.municipioNascimento,
-                                dataNascimento: r.data.dataNascimento,
-                                localNascimento: r.data.localNascimento,
-                                nacionalidade: r.data.nacionalidade,
-                                genero: r.data.genero,
-                                raca: r.data.raca,
-                                pai: r.data.pai,
-                                mae: r.data.mae,
-                            }));
-                        })
-                        .catch(() => {
-                            limparFormulario();
-                            toast.info('Não existe paciente com este ID', {
-                                autoClose: 2000,
-                            });
-                        });
+                const response = await api.get('/api/qr-data');
+                if (response.data?.pacienteId) {
+                    const id = response.data.pacienteId;
+                    const r = await api.get(`paciente/${id}`);
+                    toast.dismiss();
+                    setPaciente(r.data);
+                    preencherFormulario(r.data);
+                    await carregarFoto(r.data.nomePhoto);
+                    await api.delete('/api/qr-data').catch(() => {});
                 }
-
-                await api.delete('api/qr-data');
             } catch (error) {
-                console.log(`Erro ao buscar dados do QR Code: ${error}`);
-                // Se não houver dado, apenas ignora
+                if (error.response?.status !== 404) {
+                    console.warn('Erro QR:', error);
+                }
             }
         };
+
         fetchLastQr();
-        const interval = setInterval(fetchLastQr, 2000);
+        const interval = setInterval(fetchLastQr, 3000);
         return () => clearInterval(interval);
     }, []);
 
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-        setErrors({ ...errors, [e.target.name]: '' });
+    const preencherFormulario = (data) => {
+        setForm(prev => ({
+            ...prev,
+            nome: data.nome || '',
+            nif: data.nif || '',
+            apelido: data.apelido || '',
+            paisEndereco: data.paisEndereco || '',
+            provinciaEndereco: data.provinciaEndereco || '',
+            municipioEndereco: data.municipioEndereco || '',
+            endereco: data.endereco || '',
+            profissao: data.profissao || '',
+            habilitacao: data.habilitacao || '',
+            estadoCivil: data.estadoCivil || '',
+            paisNascimento: data.paisNascimento || '',
+            provinciaNascimento: data.provinciaNascimento || '',
+            municipioNascimento: data.municipioNascimento || '',
+            dataNascimento: data.dataNascimento ? data.dataNascimento.split('T')[0] : '',
+            localNascimento: data.localNascimento || '',
+            nacionalidade: data.nacionalidade || '',
+            genero: data.genero || '',
+            raca: data.raca || '',
+            pai: data.pai || '',
+            mae: data.mae || '',
+            empresaId: data.empresaId || '',
+        }));
     };
 
-    const handlePhotoChange = (e) => {
-        const file = e.target.files[0];
+    const carregarFoto = async (nomePhoto) => {
+        if (nomePhoto) {
+            const imageUrl = `/images/${nomePhoto}`;
+            try {
+                const blobRes = await api.get(imageUrl, { responseType: 'blob' });
+                setPhotoPreview(URL.createObjectURL(blobRes.data));
+            } catch (err) {
+                console.warn('Foto não encontrada:', err);
+                setPhotoPreview(null);
+            }
+        }
+    };
+
+    const handleChange = (name, value) => {
+        setForm(prev => ({ ...prev, [name]: value }));
+        setErrors(prev => ({ ...prev, [name]: '' }));
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        handleChange(name, value);
+    };
+
+    const handlePhotoChange = ({ file }) => {
         setPhoto(file);
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setPhotoPreview(reader.result);
-            };
+            reader.onloadend = () => setPhotoPreview(reader.result);
             reader.readAsDataURL(file);
+        } else {
+            setPhotoPreview(null);
         }
     };
 
@@ -114,208 +133,142 @@ const PacienteForm = () => {
         e.preventDefault();
 
         const newErrors = {};
-        if (!form.nif) newErrors.nif = 'Por favor insira o nif.';
-        if (!form.nome) newErrors.nome = 'Por favor insira o nome.';
-        if (!form.apelido) newErrors.apelido = 'Por favor insira o apelido.';
+        if (!form.nif) newErrors.nif = 'NIF obrigatório.';
+        if (!form.nome) newErrors.nome = 'Nome obrigatório.';
+        if (!form.apelido) newErrors.apelido = 'Apelido obrigatório.';
         setErrors(newErrors);
 
         if (Object.keys(newErrors).length > 0) return;
 
-        setForm((prevForm) => ({
-            ...prevForm,
-            dataNascimento: format(new Date(form.dataNascimento), 'yyyy-MM-dd'), // ✅ Correção
-        }));
-
-        console.log(form);
-
-        /**
-         * Verifica se existe uma pessoa que tem o mesmo nif
-         */
-
         api.get(`pessoa/nif/${form.nif}`)
-            .then(async (r) => {
-                //senão existe: registra
+            .then(r => {
                 if (isEmpty(r.data)) {
-                    await registrarPessoa();
+                    registrarPessoa();
                 } else {
-                    //caso contrário emite a mensagem de erro.
-                    toast.error('Já existe um registro com este NIF');
+                    toast.error('NIF já cadastrado.');
                 }
             })
-            .catch((e) => {
-                let msg = 'Falha ao tentar se comunicar com a API';
-                console.error(msg, e);
-                toast.error(msg);
-            });
+            .catch(() => toast.error('Erro ao verificar NIF.'));
     };
 
     const registrarPessoa = async () => {
-        await api
-            .post('pessoa/add', form)
-            .then(async (r) => {
-                let pessoa = r.data;
-                await criarPaciente(pessoa.id);
-            })
-            .catch(() => {
-                toast.error('Falha ao criar o paciente!');
-            });
-    };
-
-    const actualizarPessoa = async (id) => {
-        const formComId = {
-            ...form,
-            id: id,
-        };
-
-        console.log(formComId);
-        await api
-            .put('pessoa/edit', formComId)
-            .then(() => {
-                toast.success('Paciente actualizado com sucesso!', {
-                    autoClose: 2000,
-                });
-            })
-            .catch(() => {
-                toast.error('Falha ao actualizar os dados!');
-            });
-    };
-
-    const criarPaciente = async (pessoaId) => {
-        let paciente = {
-            pessoaId: pessoaId,
-        };
-        await api
-            .post('paciente/add', paciente)
-            .then((r) => {
-                setIdPaciente(r.data.id);
-                savePhotoUpload(pessoaId);
-                toast.success('Paciente adicionado com sucesso!', {
-                    autoClose: 2000,
-                });
-            })
-            .catch(() => {
-                toast.error('Falha ao registrar o paciente!', {
-                    autoClose: 2000,
-                });
-            });
-    };
-
-    const actualizarPaciente = async () => {
-        await api
-            .put('paciente/edit', paciente)
-            .then(async () => {
-                await actualizarPessoa(paciente.pessoaId);
-            })
-            .catch(() => {
-                toast.error('Falha ao actualizar o paciente!', {
-                    autoClose: 2000,
-                });
-            });
-    };
-
-    function isEmpty(obj) {
-        return Object.keys(obj).length === 0;
-    }
-
-    const limparFormulario = () => {
-        const camposVazios = Object.keys(form).reduce((acc, key) => {
-            acc[key] = '';
-            return acc;
-        }, {});
-        setForm({ ...camposVazios });
-        setPhoto(null);
-        setPhotoPreview(null);
-    };
-
-    const handleKeyDownNIF = (e) => {
-        if (e.key === 'Enter') {
-            console.log('Pesquisando NIF:', nifPesquisa);
-            setNifPesquisa('');
+        try {
+            const r = await api.post('pessoa/add', form);
+            const pessoaId = r.data.id;
+            await criarPaciente(pessoaId);
+        } catch (err) {
+            toast.error('Falha ao criar pessoa.');
+            console.error(err);
         }
     };
 
-    const handleKeyDownID = async (e) => {
-        if (e.key === 'Enter') {
-            await api
-                .get('paciente/' + idPesquisa)
-                .then((r) => {
-                    toast.dismiss();
+    const criarPaciente = async (pessoaId) => {
+        try {
+            const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+            const pacienteData = {
+                pessoaId,
+                empresaId: form.empresaId ? parseInt(form.empresaId) : null,
+                dataCadastro: now,
+                dataActualizacao: now,
+            };
+            const r = await api.post('paciente/add', pacienteData);
+            const novoPaciente = r.data;
+            setIdPaciente(novoPaciente.id);
+            setPaciente(novoPaciente);
 
-                    setPaciente(r.data);
-                    setForm((prevForm) => ({
-                        ...prevForm,
-                        nome: r.data.nome,
-                        nif: r.data.nif,
-                        apelido: r.data.apelido,
-                        paisEndereco: r.data.paisEndereco,
-                        provinciaEndereco: r.data.provinciaEndereco,
-                        municipioEndereco: r.data.municipioEndereco,
-                        endereco: r.data.endereco,
-                        profissao: r.data.profissao,
-                        habilitacao: r.data.habilitacao,
-                        estadoCivil: r.data.estadoCivil,
-                        paisNascimento: r.data.paisNascimento,
-                        provinciaNascimento: r.data.provinciaNascimento,
-                        municipioNascimento: r.data.municipioNascimento,
-                        dataNascimento: r.data.dataNascimento,
-                        localNascimento: r.data.localNascimento,
-                        nacionalidade: r.data.nacionalidade,
-                        genero: r.data.genero,
-                        raca: r.data.raca,
-                        pai: r.data.pai,
-                        mae: r.data.mae,
-                    }));
+            // SALVAR CONVÊNIOS AQUI
+            if (conveniosParaSalvar.length > 0) {
+                await salvarConveniosAutomaticamente(novoPaciente.id);
+            }
 
-                    console.log(r.data.nomePhoto);
+            await savePhotoUpload(pessoaId);
+            toast.success('Paciente e convênios cadastrados com sucesso!', { autoClose: 2000 });
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Falha ao cadastrar paciente.';
+            toast.error(msg);
+            console.error('Erro ao cadastrar paciente:', err.response?.data);
+        }
+    };
 
-                    const imageUrl = `/images/${r.data.nomePhoto}`;
+    const salvarConveniosAutomaticamente = async (pacienteId) => {
+        const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const promises = conveniosParaSalvar.map(conv => {
+            const payload = {
+                seguradoraId: conv.seguradoraId,
+                pacienteId,
+                numeroCartao: conv.numeroCartao || null,
+                validade: conv.validade || null,
+                dataCricao: now,
+                dataActualizacao: now,
+                usuarioIdCricao: 1,
+                usuarioIdAtualizacao: 1,
+                empresaId: conv.empresaId || null
+            };
+            return api.post('/pacienteSeguradora/add', payload);
+        });
 
-                    let file = async () => {
-                        try {
-                            const response = await api.get(imageUrl, {
-                                responseType: 'blob',
-                            });
-                            const imageBlob = response.data;
-                            const imageObjectURL =
-                                URL.createObjectURL(imageBlob);
-                            setPhotoPreview(imageObjectURL);
-                        } catch (error) {
-                            console.error(
-                                'Erro ao buscar a imagem do paciente:',
-                                error
-                            );
-                            setPhotoPreview(null);
-                        }
-                    };
-                    console.log(file);
-                })
-                .catch(() => {
-                    limparFormulario();
-                    toast.info('Não existe paciente com este ID', {
-                        autoClose: 2000,
-                    });
-                });
+        try {
+            await Promise.all(promises);
+            toast.success('Convênios vinculados ao paciente!');
+        } catch (error) {
+            console.error('Erro ao salvar convênios:', error);
+            toast.warn('Paciente criado, mas convênios não foram salvos.');
+        }
+    };
 
-            setIdPesquisa('');
+    const actualizarPaciente = async () => {
+        if (!paciente.id) {
+            toast.warn('Nenhum paciente para atualizar.');
+            return;
+        }
+        try {
+            const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+            const dadosAtualizados = {
+                id: paciente.id,
+                pessoaId: paciente.pessoaId,
+                empresaId: form.empresaId ? parseInt(form.empresaId) : null,
+                dataActualizacao: now,
+            };
+            await api.put('paciente/edit', dadosAtualizados);
+            await actualizarPessoa(paciente.pessoaId);
+            toast.success('Paciente atualizado com sucesso!');
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Falha ao atualizar paciente.';
+            toast.error(msg);
+            console.error(err);
+        }
+    };
+
+    const actualizarPessoa = async (pessoaId) => {
+        const formComId = { ...form, id: pessoaId };
+        try {
+            await api.put('pessoa/edit', formComId);
+        } catch (err) {
+            console.error('Erro ao atualizar pessoa:', err);
         }
     };
 
     const savePhotoUpload = async (pessoaId) => {
+        if (!photo) return;
         const formData = new FormData();
         formData.append('image', photo);
         formData.append('pessoaId', pessoaId);
-
         try {
-            const response = await api.post('api/images/upload', formData);
-            alert('Imagem enviada! Nome salvo: ' + response.data);
-        } catch (error) {
-            alert('Erro ao enviar imagem');
+            await api.post('api/images/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success('Foto salva!');
+        } catch (err) {
+            toast.warn('Erro ao salvar foto.');
         }
     };
 
-    /**Funcção anónima que cria a inscrição ou epsódifo do paciente */
     const novaInscricao = async () => {
-        let inscricao = {
+        if (!paciente.id) {
+            toast.warn('Cadastre o paciente primeiro!');
+            return;
+        }
+        const inscricao = {
             dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
             dataActualizacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
             estadoInscricao: 'NAO_TRIADO',
@@ -324,198 +277,203 @@ const PacienteForm = () => {
             obsTriagemManchester: '',
             pacienteId: paciente.id,
         };
-        console.log('InscricaoId', inscricao);
-
-        await api
-            .post('inscricao/add', inscricao)
-            .then((r) => {
-                console.log('Inscricao criada com sucesso!..');
-                toast.success('Inscricao criada com sucesso!..', {
-                    autoClose: 2000,
-                });
-            })
-            .catch((e) => {
-                console.log(e);
-                toast.error('Falha ao inscrever o paciente', {
-                    autoClose: 2000,
-                });
-            });
+        try {
+            await api.post('inscricao/add', inscricao);
+            toast.success('Inscrição criada!');
+        } catch (err) {
+            toast.error('Falha ao criar inscrição.');
+        }
     };
 
+    const limparFormulario = () => {
+        setForm({
+            nif: '', nome: '', apelido: '', paisEndereco: '', provinciaEndereco: '',
+            municipioEndereco: '', endereco: '', profissao: '', habilitacao: '',
+            estadoCivil: '', paisNascimento: '', provinciaNascimento: '',
+            municipioNascimento: '', dataNascimento: '', localNascimento: '',
+            nacionalidade: '', genero: '', raca: '', pai: '', mae: '', empresaId: ''
+        });
+        setPhoto(null);
+        setPhotoPreview(null);
+        setErrors({});
+        setPaciente({});
+        setIdPaciente(0);
+        setConveniosParaSalvar([]);
+    };
+
+    const handleKeyDownID = async (e) => {
+        if (e.key === 'Enter' && idPesquisa) {
+            try {
+                const r = await api.get(`paciente/${idPesquisa}`);
+                toast.dismiss();
+                setPaciente(r.data);
+                setIdPaciente(r.data.id);
+                preencherFormulario(r.data);
+                await carregarFoto(r.data.nomePhoto);
+            } catch (err) {
+                limparFormulario();
+                toast.info('Paciente não encontrado.');
+            }
+            setIdPesquisa('');
+        }
+    };
+
+    const isEmpty = (obj) => Object.keys(obj).length === 0;
+
     return (
-        <>
-            <div className="search-group">
-                <div className="item">
-                    <input
-                        value={idPesquisa}
-                        onChange={(e) => setIdPesquisa(e.target.value)}
-                        placeholder="Pesquisa pelo ID"
-                        onKeyDown={handleKeyDownID}
-                    />
-                </div>
-                <div className="item">
-                    <input
-                        type="text"
-                        placeholder="Pesquisa pelo NIF"
-                        value={nifPesquisa}
-                        onChange={(e) => setNifPesquisa(e.target.value)}
-                        onKeyDown={handleKeyDownNIF}
-                    />
-                </div>
-            </div>
-            <form className="patient-form" onSubmit={handleSubmit}>
-                <div className="buttons top-buttons">
-                    <button type="submit">Criar Ficha</button>
-                    <button type="button" onClick={actualizarPaciente}>
-                        Actualizar
-                    </button>
-                    <button type="button" onClick={novaInscricao}>
-                        Nova Inscrição
-                    </button>
-                    <button type="button">Visualizar</button>
-                    <button type="button" onClick={limparFormulario}>
-                        Limpar
-                    </button>
-                </div>
-
-                <h3>Ficha do Paciente</h3>
-
-                <div style={{ display: 'flex', gap: '32px' }}>
-                    <div className="form-left" style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', gap: '16px' }}>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label>* Nome:</label>
-                                <input
-                                    name="nome"
-                                    value={form.nome}
-                                    onChange={handleChange}
-                                />
-                                {errors.nome && (
-                                    <span className="error">{errors.nome}</span>
-                                )}
-                            </div>
-
-                            <div
-                                className="form-group"
-                                style={{ width: '200px' }}
-                            >
-                                <label>* Sexo:</label>
-                                <select
-                                    name="genero"
-                                    value={form.genero}
-                                    onChange={handleChange}
-                                >
-                                    <option value="">---Selecione---</option>
-                                    <option value="MASCULINO">Masculino</option>
-                                    <option value="FEMININO">Feminino</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label>* Apelido:</label>
-                            <input
-                                name="apelido"
-                                value={form.apelido}
-                                onChange={handleChange}
+        <div className="patient-form">
+            <Spin spinning={false}>
+                <Card className="search-card">
+                    <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                            <Input
+                                prefix={<SearchOutlined />}
+                                placeholder="Pesquisa pelo ID"
+                                value={idPesquisa}
+                                onChange={(e) => setIdPesquisa(e.target.value)}
+                                onKeyDown={handleKeyDownID}
+                                addonAfter={<Button type="link" size="small">Buscar</Button>}
                             />
-                            {errors.apelido && (
-                                <span className="error">{errors.apelido}</span>
-                            )}
-                        </div>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Input
+                                placeholder="Pesquisa pelo NIF"
+                                value={nifPesquisa}
+                                onChange={(e) => setNifPesquisa(e.target.value)}
+                            />
+                        </Col>
+                    </Row>
+                </Card>
 
-                        <div style={{ display: 'flex', gap: '16px' }}>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label>* Nif:</label>
-                                <input
-                                    name="nif"
-                                    value={form.nif}
-                                    onChange={handleChange}
-                                />
-                                {errors.nif && (
-                                    <span className="error">{errors.nif}</span>
-                                )}
-                            </div>
-
-                            <div
-                                className="form-group"
-                                style={{ width: '200px' }}
-                            >
-                                <label>Raça</label>
-                                <select
-                                    name="raca"
-                                    value={form.raca}
-                                    onChange={handleChange}
-                                >
-                                    <option value="">---Selecione---</option>
-                                    <option value="Negra">
-                                        Negra (Africana)
-                                    </option>
-                                    <option value="Branca">
-                                        Branca (Europeia)
-                                    </option>
-                                    <option value="Amarela">
-                                        Amarela (Asiática)
-                                    </option>
-                                    <option value="Parda">
-                                        Parda (Mestiça)
-                                    </option>
-                                    <option value="Indígena">
-                                        Indígena (Nativa)
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="top-buttons">
+                        <Button type="primary" htmlType="submit">Criar Ficha</Button>
+                        <Button onClick={actualizarPaciente}>Atualizar</Button>
+                        <Button onClick={novaInscricao}>Nova Inscrição</Button>
+                        <Button>Visualizar</Button>
+                        <Button danger onClick={limparFormulario}>Limpar</Button>
                     </div>
 
-                    <div
-                        className="form-right"
-                        style={{ width: '180px', textAlign: 'center' }}
-                    >
-                        <label>Foto do Paciente:</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePhotoChange}
-                        />
-                        {photoPreview && (
-                            <img
-                                src={photoPreview}
-                                alt="Pré-visualização"
-                                style={{
-                                    width: '150px',
-                                    height: '150px',
-                                    marginTop: '10px',
-                                    objectFit: 'cover',
-                                    borderRadius: '8px',
-                                    border: '1px solid #ccc',
-                                }}
-                            />
-                        )}
-                    </div>
-                </div>
+                    <h3>Ficha do Paciente</h3>
 
-                <PacienteTabs
-                    endereco={form.endereco}
-                    paisEndereco={form.paisEndereco}
-                    provinciaEndereco={form.provinciaEndereco}
-                    municipioEndereco={form.municipioEndereco}
-                    paisNascimento={form.paisNascimento}
-                    provinciaNascimento={form.provinciaNascimento}
-                    municipioNascimento={form.municipioNascimento}
-                    localNascimento={form.localNascimento}
-                    dataNascimento={form.dataNascimento}
-                    profissao={form.profissao}
-                    habilitacao={form.habilitacao}
-                    estadoCivil={form.estadoCivil}
-                    pai={form.pai}
-                    mae={form.mae}
-                    nacionalidade={form.nacionalidade}
-                    handleChange={handleChange}
-                    errors={errors}
-                />
-            </form>
-        </>
+                    <Row gutter={24} className="form-main">
+                        <Col xs={24} lg={16} className="form-left">
+                            <Row gutter={16}>
+                                <Col xs={24} sm={12}>
+                                    <div className="form-group">
+                                        <label>* Nome:</label>
+                                        <Input name="nome" value={form.nome} onChange={handleInputChange} />
+                                        {errors.nome && <span className="error">{errors.nome}</span>}
+                                    </div>
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                    <div className="form-group" style={{ width: '200px' }}>
+                                        <label>* Sexo:</label>
+                                        <Select
+                                            value={form.genero}
+                                            onChange={(value) => handleChange('genero', value)}
+                                            style={{ width: '100%' }}
+                                        >
+                                            <Option value="">---</Option>
+                                            <Option value="MASCULINO">Masculino</Option>
+                                            <Option value="FEMININO">Feminino</Option>
+                                        </Select>
+                                    </div>
+                                </Col>
+                            </Row>
+
+                            <Row gutter={16}>
+                                <Col xs={24} sm={12}>
+                                    <div className="form-group">
+                                        <label>* Apelido:</label>
+                                        <Input name="apelido" value={form.apelido} onChange={handleInputChange} />
+                                        {errors.apelido && <span className="error">{errors.apelido}</span>}
+                                    </div>
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                    <div className="form-group" style={{ width: '200px' }}>
+                                        <label>Raça</label>
+                                        <Select
+                                            value={form.raca}
+                                            onChange={(value) => handleChange('raca', value)}
+                                            style={{ width: '100%' }}
+                                        >
+                                            <Option value="">---</Option>
+                                            <Option value="Negra">Negra</Option>
+                                            <Option value="Branca">Branca</Option>
+                                            <Option value="Amarela">Amarela</Option>
+                                            <Option value="Parda">Parda</Option>
+                                            <Option value="Indígena">Indígena</Option>
+                                        </Select>
+                                    </div>
+                                </Col>
+                            </Row>
+
+                            <Row gutter={16}>
+                                <Col xs={24} sm={12}>
+                                    <div className="form-group">
+                                        <label>* NIF:</label>
+                                        <Input name="nif" value={form.nif} onChange={handleInputChange} />
+                                        {errors.nif && <span className="error">{errors.nif}</span>}
+                                    </div>
+                                </Col>
+                            </Row>
+                        </Col>
+
+                        <Col xs={24} lg={8} className="form-right">
+                            <Card title="Foto do Paciente" style={{ textAlign: 'center' }}>
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
+                                    {photoPreview ? (
+                                        <Avatar size={140} src={photoPreview} />
+                                    ) : (
+                                        <Avatar size={140} icon={<UserOutlined />} />
+                                    )}
+                                </Upload>
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
+                                    <Button icon={<UploadOutlined />} block style={{ marginTop: 16 }}>
+                                        Selecionar Foto
+                                    </Button>
+                                </Upload>
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    <PacienteTabs
+                        key={paciente.id || idPaciente}
+                        pacienteId={paciente.id || idPaciente}
+                        endereco={form.endereco}
+                        paisEndereco={form.paisEndereco}
+                        provinciaEndereco={form.provinciaEndereco}
+                        municipioEndereco={form.municipioEndereco}
+                        paisNascimento={form.paisNascimento}
+                        provinciaNascimento={form.provinciaNascimento}
+                        municipioNascimento={form.municipioNascimento}
+                        localNascimento={form.localNascimento}
+                        dataNascimento={form.dataNascimento}
+                        profissao={form.profissao}
+                        habilitacao={form.habilitacao}
+                        estadoCivil={form.estadoCivil}
+                        pai={form.pai}
+                        mae={form.mae}
+                        nacionalidade={form.nacionalidade}
+                        empresaId={form.empresaId}
+                        handleChange={handleChange}
+                        errors={errors}
+                        setConveniosParaSalvar={setConveniosParaSalvar}
+                    />
+                </form>
+            </Spin>
+        </div>
     );
 };
 

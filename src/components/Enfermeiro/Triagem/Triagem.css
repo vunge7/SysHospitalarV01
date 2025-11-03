@@ -1,0 +1,213 @@
+/* ============================================================= */
+/* TRIAGEM.CSS – DESIGN HOSPITALAR PREMIUM (FINAL)             */
+/* Card gigante, busca perfeita, sem contadores no header      */
+/* ============================================================= */
+
+.triagem-master {
+    background: linear-gradient(135deg, #f8fdff 0%, #eef8ff 100%);
+    min-height: 100vh;
+    padding: 40px 20px;
+    font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+}
+
+/* HEADER */
+.triagem-header {
+    max-width: 1350px;
+    margin: 0 auto 32px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 8px;
+}
+
+.triagem-titulo {
+    margin: 0 !important;
+    font-weight: 800 !important;
+    font-size: 29px !important;
+    color: #1a1a1a;
+    letter-spacing: -0.6px;
+}
+
+/* CARD PRINCIPAL */
+.triagem-card-principal {
+    max-width: 1350px;
+    margin: 0 auto;
+    border-radius: 26px;
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.12);
+    border: 1px solid #d9edff;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+/* BUSCA */
+.triagem-barra-busca {
+    padding: 28px 36px 16px;
+}
+
+.input-busca {
+    height: 68px;
+    font-size: 17.5px;
+    font-weight: 500;
+    border-radius: 22px;
+    border: 2.5px solid #cce7ff;
+    background: #fafdff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.input-busca:hover {
+    border-color: #13c2c2;
+    box-shadow: 0 8px 24px rgba(19, 194, 194, 0.18);
+    transform: translateY(-1px);
+}
+
+.input-busca:focus {
+    border-color: #13c2c2 !important;
+    box-shadow: 0 0 0 4px rgba(19, 194, 194, 0.2) !important;
+}
+
+.icone-busca {
+    font-size: 23px;
+    color: #13c2c2;
+}
+
+/* ITEM DO PACIENTE */
+.triagem-paciente {
+    margin: 18px 36px;
+    background: #fafdff;
+    border-radius: 22px;
+    border: 1px solid #eef5ff;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.triagem-paciente:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 18px 36px rgba(19, 194, 194, 0.22);
+    border-color: #13c2c2;
+    background: #f0faff;
+}
+
+.triagem-conteudo {
+    padding: 30px 36px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    position: relative;
+}
+
+/* AVATAR */
+.triagem-avatar-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.alerta-urgente {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 22px;
+    color: #ff4d4f;
+    animation: pulse 1.4s infinite;
+    filter: drop-shadow(0 2px 4px rgba(255,77,79,0.3));
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.35); }
+}
+
+/* DETALHES */
+.triagem-detalhes {
+    flex: 1;
+    min-width: 0;
+}
+
+.nome-paciente {
+    margin: 0 0 10px 0 !important;
+    font-size: 19.5px !important;
+    font-weight: 700 !important;
+    color: #1a1a1a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tag-tempo, .tag-prioridade {
+    font-weight: 700;
+    font-size: 12.5px;
+    padding: 7px 13px;
+    border-radius: 18px;
+    letter-spacing: 0.3px;
+}
+
+.info-extra {
+    font-size: 14px;
+    margin-top: 8px;
+    display: block;
+    color: #666;
+}
+
+/* BOTÃO TRIAR */
+.btn-triar {
+    background: linear-gradient(135deg, #13c2c2 0%, #08979c 100%);
+    border: none;
+    color: white;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 16px;
+    height: 58px;
+    padding: 0 38px;
+    box-shadow: 0 8px 22px rgba(19, 194, 194, 0.38);
+    transition: all 0.3s ease;
+    min-width: 190px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.btn-triar:hover {
+    background: linear-gradient(135deg, #08979c 0%, #006d75 100%);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px rgba(19, 194, 194, 0.48);
+}
+
+.btn-triar .anticon {
+    font-size: 21px;
+    transition: transform 0.2s ease;
+}
+
+.btn-triar:hover .anticon {
+    transform: scale(1.2);
+}
+
+/* RESPONSIVIDADE */
+@media (max-width: 1200px) {
+    .triagem-header { justify-content: center; }
+    .triagem-titulo { font-size: 25px !important; }
+}
+
+@media (max-width: 992px) {
+    .triagem-conteudo {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+    .btn-triar { width: 100%; }
+    .triagem-avatar-container { justify-content: center; }
+}
+
+@media (max-width: 768px) {
+    .triagem-master { padding: 24px 12px; }
+    .triagem-barra-busca { padding: 20px 20px 12px; }
+    .triagem-paciente { margin: 14px 20px; }
+    .triagem-conteudo { padding: 24px; }
+    .nome-paciente { font-size: 18px !important; }
+}
+
+@media (max-width: 480px) {
+    .triagem-titulo { font-size: 23px !important; }
+    .input-busca { height: 60px; font-size: 16px; }
+    .btn-triar { height: 54px; font-size: 15px; }
+}

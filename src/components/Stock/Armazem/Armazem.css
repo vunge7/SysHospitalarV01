@@ -1,5 +1,7 @@
 .armazem-container {
-  padding: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 0;
   background: #f0f2f5;
   min-height: 100vh;
 }
@@ -35,6 +37,53 @@
   background: #e6f7ff;
 }
 
+.armazem-title {
+  margin-bottom: 0;
+  color: #1890ff;
+}
+
+.armazem-card {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.armazem-header-row {
+  margin-bottom: 16px;
+}
+
+.armazem-toolbar-row {
+  margin-bottom: 16px;
+}
+
+.armazem-search-input {
+  max-width: 300px;
+}
+
+.armazem-table {
+  margin-top: 16px;
+}
+
+.armazem-modal .ant-modal-content {
+  padding: 24px;
+}
+
+.armazem-form .armazem-form-item {
+  margin-bottom: 16px;
+}
+
+.armazem-form-actions {
+  margin-top: 16px;
+}
+
+.armazem-save-btn,
+.armazem-cancel-btn,
+.armazem-export-btn,
+.armazem-new-btn {
+  min-width: 110px;
+}
+
 @media (max-width: 768px) {
   .armazem-controls {
     flex-direction: column;
@@ -43,9 +92,13 @@
   .search-input {
     max-width: 100%;
   }
-}
-.armazem-container {
-  padding: 24px;
-  background: #f0f2f5;
-  min-height: 100vh;
+  .armazem-container {
+    padding: 8px 0;
+  }
+  .armazem-card {
+    padding: 12px;
+  }
+  .armazem-search-input {
+    max-width: 100%;
+  }
 }
