@@ -1,0 +1,23 @@
+.paciente-form-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.paciente-form-card {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 24px;
+}
+
+.paciente-form-title {
+  margin-bottom: 24px;
+}
+
+.paciente-form .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.paciente-form .ant-btn {
+  min-width: 100px;
+}

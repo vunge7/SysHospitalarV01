@@ -8,6 +8,12 @@ function FacturacaoLinha(props) {
     const [qtd, setQtd] = useState(props.qtd);
     const [desconto, setDesconto] = useState(props.desconto);
 
+    // Sincroniza com props quando a linha é atualizada externamente
+    useEffect(() => {
+        setQtd(props.qtd);
+        setDesconto(props.desconto);
+    }, [props.qtd, props.desconto]);
+
     const updateRow = () => {
         acaoActualizarLinha();
     };
@@ -18,6 +24,7 @@ function FacturacaoLinha(props) {
             acaoActualizarLinha();
         }
     }
+
     function acaoActualizarLinha() {
         if (
             props.isZero(qtd) ||
@@ -30,87 +37,102 @@ function FacturacaoLinha(props) {
         props.updateItem(props.id, qtd, desconto);
     }
 
+    const isBloqueado = props.designacao === 'Serviço Especial';
+
     return (
-        <div className="container-facturacao-linha">
-            <div className="item">{props.designacao}</div>
-            <div className="item">
-                <div>{props.preco}</div>
+        <tr className="facturacao-linha">
+            {/* DESIGNACAO */}
+            <td className="designacao-cell">{props.designacao}</td>
+
+            {/* PREÇO */}
+            <td className="preco-cell">{props.preco}</td>
+
+            {/* QTD */}
+            <td className="qtd-cell">
                 {editavel ? (
                     <input
-                        autoFocus={true}
-                        type="text"
+                        autoFocus
+                        type="number"
                         value={qtd}
                         onChange={(e) => setQtd(Number(e.target.value))}
-                        onKeyPress={(event) => handleKeyPress(event)}
+                        onKeyPress={handleKeyPress}
+                        min="1"
+                        className="input-edicao"
                     />
                 ) : (
-                    <div>{props.qtd}</div>
+                    <span>{props.qtd}</span>
                 )}
+            </td>
 
+            {/* IVA */}
+            <td className="iva-cell">{props.iva}%</td>
+
+            {/* DESCONTO */}
+            <td className="desconto-cell">
                 {editavel ? (
                     <input
-                        type="text"
+                        type="number"
                         value={desconto}
                         onChange={(e) => setDesconto(Number(e.target.value))}
-                        onKeyPress={(event) => handleKeyPress(event)}
+                        onKeyPress={handleKeyPress}
+                        min="0"
+                        className="input-edicao"
                     />
                 ) : (
-                    <div>{props.desconto}</div>
+                    <span>{props.desconto}</span>
                 )}
-                <div>{props.iva}</div>
-                <div>
-                    <strong>{props.subTotal}</strong>
-                </div>
-                <div>
-                    {editavel ? (
-                        <Button
-                            type="primary"
-                            onClick={() => updateRow()}
-                            disabled={props.designacao === 'Serviço Especial'}
-                            icon={
-                                props.designacao === 'Serviço Especial'
-                                    ? <StopOutlined />
-                                    : <CheckOutlined />
-                            }
-                        >
-                            {props.designacao === 'Serviço Especial'
-                                ? 'Bloqueado'
-                                : 'actualizar'}
-                        </Button>
-                    ) : (
-                        <Button
-                            onClick={() => setEditavel(true)}
-                            type={
-                                props.designacao === 'Medicamento'
-                                    ? 'dashed'
-                                    : 'default'
-                            }
-                            icon={<EditOutlined />}
-                        >
-                            {props.designacao === 'Medicamento'
-                                ? 'editar medicamento'
-                                : 'editar'}
-                        </Button>
-                    )}
-                    <Popconfirm
-                        title="Tens a certeza que queres remover?"
-                        onConfirm={() => props.removerItem(props.id)}
-                        okText="Sim"
-                        cancelText="Não"
-                        disabled={props.designacao === 'Serviço Especial'}
+            </td>
+
+            {/* SUBTOTAL */}
+            <td className="subtotal-cell">
+                <strong>{props.subTotal}</strong>
+            </td>
+
+            {/* AÇÕES */}
+            <td className="acoes-cell">
+                {editavel ? (
+                    <Button
+                        type="primary"
+                        size="small"
+                        onClick={updateRow}
+                        disabled={isBloqueado}
+                        icon={isBloqueado ? <StopOutlined /> : <CheckOutlined />}
+                        className="btn-acao"
                     >
-                        <Button
-                            type="text"
-                            danger
-                            disabled={props.designacao === 'Serviço Especial'}
-                            icon={<DeleteOutlined />}
-                        >
-                            remover
-                        </Button>
-                    </Popconfirm>
-                </div>
-            </div>
-        </div>
+                        {isBloqueado ? 'Bloqueado' : 'OK'}
+                    </Button>
+                ) : (
+                    <Button
+                        onClick={() => setEditavel(true)}
+                        type={props.designacao === 'Medicamento' ? 'dashed' : 'default'}
+                        size="small"
+                        icon={<EditOutlined />}
+                        className="btn-acao"
+                    >
+                        {props.designacao === 'Medicamento' ? 'Editar' : 'Editar'}
+                    </Button>
+                )}
+
+                <Popconfirm
+                    title="Tens a certeza que queres remover?"
+                    onConfirm={() => props.removerItem(props.id)}
+                    okText="Sim"
+                    cancelText="Não"
+                    disabled={isBloqueado}
+                >
+                    <Button
+                        type="text"
+                        danger
+                        size="small"
+                        disabled={isBloqueado}
+                        icon={<DeleteOutlined />}
+                        className="btn-acao btn-remover"
+                    >
+                        Remover
+                    </Button>
+                </Popconfirm>
+            </td>
+        </tr>
     );
 }
 

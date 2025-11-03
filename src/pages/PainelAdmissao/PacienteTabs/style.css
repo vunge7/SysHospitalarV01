@@ -1,77 +1,255 @@
-/* Container principal das abas */
+/* ======================================== ABAS HORIZONTAIS + EFEITO HOVER PERFEITO ======================================== */
+.patient-tabs {
+  margin-top: 1.5rem;
+  width: 100% !important;
+}
+
 .tabs-container {
-    border-bottom: 1px solid #ccc;
-    overflow-x: auto;
-    white-space: nowrap;
-    margin-bottom: 1rem;
+  border-bottom: 2px solid #e8e8e8 !important;
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  padding: 0 12px !important;
 }
 
-/* Linha das tabs */
-.tabs {
-    display: flex;
-    gap: 1rem;
-    padding: 0.5rem 1rem;
-    flex-wrap: nowrap;
-}
-
-/* Cada aba */
-.tab {
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s ease;
-    white-space: nowrap;
-    font-weight: 500;
-    color: #333;
-}
-
-.tabs {
-    position: relative;
-}
-
-/* Indicador animado */
-.tab-indicator {
-    position: absolute;
-    bottom: 0;
-    height: 3px;
-    background-color: #1a73e8;
-    transition: all 0.3s ease;
-    border-radius: 3px;
-}
-
-/* Aba ativa */
-.tab.active {
-    color: #1a73e8;
-    border-bottom-color: #1a73e8;
-    font-weight: bold;
-}
-
-/* Conteúdo da aba */
-.tab-content {
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #eee;
-    background-color: #fff;
-}
-
-/* Scroll customizado para mobile */
 .tabs-container::-webkit-scrollbar {
-    height: 6px;
+  display: none !important;
 }
 
-.tabs-container::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 4px;
+/* FORÇA HORIZONTAL */
+.tabs {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  padding: 14px 0 !important;
+  position: relative !important;
+  min-width: max-content !important;
+  justify-content: flex-start !important;
 }
 
-/* Estilo responsivo para telas pequenas */
-@media (max-width: 600px) {
-    .tab {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.9rem;
-    }
+/* ABA PADRÃO */
+.tab {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 12px 20px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  color: #595959 !important;
+  background: #f8f9fa !important;
+  border-radius: 12px 12px 0 0 !important;
+  border: 1px solid #e0e0e0 !important;
+  border-bottom: none !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  min-width: 140px !important;
+  justify-content: center !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  user-select: none !important;
+  flex-shrink: 0 !important;
+}
 
-    .tabs {
-        gap: 0.5rem;
-    }
+/* EFEITO HOVER: ELEVAÇÃO + SOMBRA + COR */
+.tab:hover {
+  background: #e6f7ff !important;
+  color: #1890ff !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.25) !important;
+  border-color: #1890ff !important;
+  z-index: 3 !important;
+}
+
+/* ABA ATIVA */
+.tab.active {
+  background: #1890ff !important;
+  color: white !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 24px rgba(24, 144, 255, 0.35) !important;
+  z-index: 2 !important;
+  transform: translateY(-2px) !important;
+}
+
+.tab.active .tab-icon,
+.tab.active .tab-label,
+.tab.active .tab-badge {
+  color: white !important;
+}
+
+/* ÍCONE */
+.tab-icon {
+  font-size: 18px !important;
+  color: #8c8c8c !important;
+  transition: color 0.3s !important;
+}
+
+.tab:hover .tab-icon {
+  color: #1890ff !important;
+}
+
+.tab.active .tab-icon {
+  color: white !important;
+}
+
+/* TEXTO */
+.tab-label {
+  font-size: 14px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  transition: color 0.3s !important;
+}
+
+/* BADGE */
+.tab-badge {
+  background: #ff4d4f !important;
+  color: white !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  border-radius: 10px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: 6px !important;
+}
+
+/* INDICADOR ANIMADO */
+.tab-indicator {
+  position: absolute !important;
+  bottom: 0 !important;
+  height: 4px !important;
+  background: linear-gradient(90deg, #1890ff, #40a9ff) !important;
+  border-radius: 2px !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3) !important;
+  z-index: 1 !important;
+}
+
+/* RESPONSIVO */
+@media (max-width: 992px) {
+  .tab {
+    min-width: 120px !important;
+    padding: 10px 16px !important;
+  }
+  .tab-label {
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .tab {
+    min-width: 80px !important;
+    padding: 8px 12px !important;
+  }
+  .tab-label {
+    display: none !important;
+  }
+  .tab {
+    justify-content: center !important;
+  }
+}
+
+/* ======================================== BOTÕES ESTILO ABAS ======================================== */
+.top-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+  padding: 0 12px;
+}
+
+.action-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 12px 20px !important;
+  min-width: 140px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  color: #595959 !important;
+  background: #f8f9fa !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  user-select: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  flex-shrink: 0 !important;
+}
+
+.action-button:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+  z-index: 2 !important;
+}
+
+/* CORES POR TIPO */
+.action-button.primary {
+  background: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+  font-weight: 700 !important;
+}
+
+.action-button.primary:hover {
+  background: #40a9ff !important;
+  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.3) !important;
+}
+
+.action-button.default:hover {
+  background: #e6f7ff !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.25) !important;
+}
+
+.action-button.success {
+  background: var(--success) !important;
+  color: white !important;
+  border-color: var(--success) !important;
+}
+
+.action-button.success:hover {
+  background: #73d13d !important;
+  box-shadow: 0 8px 20px rgba(82, 196, 26, 0.3) !important;
+}
+
+.action-button.info {
+  background: #1890ff !important;
+  color: white !important;
+  border-color: #1890ff !important;
+}
+
+.action-button.info:hover {
+  background: #40a9ff !important;
+  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.3) !important;
+}
+
+.action-button.danger {
+  background: var(--error) !important;
+  color: white !important;
+  border-color: var(--error) !important;
+}
+
+.action-button.danger:hover {
+  background: #ff7875 !important;
+  box-shadow: 0 8px 20px rgba(255, 77, 79, 0.3) !important;
+}
+
+/* RESPONSIVO */
+@media (max-width: 768px) {
+  .top-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  .action-button {
+    width: 100%;
+    max-width: 300px;
+  }
 }

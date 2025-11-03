@@ -227,7 +227,6 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 setTiposExame(response.data);
             } catch (error) {
                 console.error('Error fetching tiposExame:', error);
-                // Se a API de tipo-exame não existir, usar produtos como tipos
                 try {
                     const produtosRes = await api.get('/produto/all');
                     const produtos = Array.isArray(produtosRes.data) ? produtosRes.data : [];
@@ -384,6 +383,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             if (isEditMode) {
                 console.log('Updating exame ID:', editingExame.id, 'Payload:', exameData);
                 exameResponse = await updateExame(editingExame.id, exameData);
+                await fetchProdutosExame(); // Reload exam data after update
             } else {
                 console.log('Creating exame:', exameData);
                 exameResponse = await createExame(exameData);
@@ -414,6 +414,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             console.log('Delete response:', response.data);
             toast.success('Exame excluído com sucesso!', { autoClose: 2000 });
             fetchAllData();
+            await fetchProdutosExame(); // Reload exam data after deletion
         } catch (error) {
             console.error('Error deleting exame:', error);
             toast.error(error.response?.data || 'Erro ao excluir exame!', { autoClose: 2000 });
@@ -483,19 +484,18 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         setShowNovoProdutoModal(true);
     };
 
-    const handleCloseNovoProduto = () => {
+    const handleCloseNovoProduto = async () => {
         setShowNovoProdutoModal(false);
         setProdutoParaEditar(null);
         setIsEditMode(false);
-        // Garante atualização imediata da tabela após operações no modal
-        fetchProdutosExame();
+        await fetchProdutosExame(); // Reload exam data after modal closes
     };
 
     const handleDeleteProduto = async (produto) => {
         try {
             await api.patch(`/produto/${produto.id}/status`, null, { params: { status: false } });
             toast.success('Produto excluído com sucesso!', { autoClose: 2000 });
-            fetchProdutosExame();
+            await fetchProdutosExame(); // Reload exam data after deletion
         } catch (error) {
             console.warn('PATCH status falhou, tentando fallback via PUT...', error);
             try {
@@ -503,7 +503,7 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
                 const dto = { ...data, status: false };
                 await api.put(`/produto/${produto.id}`, dto);
                 toast.success('Produto excluído com sucesso!', { autoClose: 2000 });
-                fetchProdutosExame();
+                await fetchProdutosExame(); // Reload exam data after deletion
             } catch (err2) {
                 const msg2 = err2?.response?.data?.message || err2?.response?.data || err2?.message || 'Erro ao excluir produto!';
                 console.error('Erro ao excluir produto (fallback PUT):', err2);
