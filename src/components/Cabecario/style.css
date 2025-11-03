@@ -7,6 +7,7 @@
     background-color: #48cae4;
     color: #a7a5a5;
     position: relative;
+    z-index: 5000;
 }
 
 /* Logotipo */
@@ -30,6 +31,76 @@
 
 .navbar-links a:hover {
     text-decoration: underline;
+}
+
+/* User Menu */
+.navbar-user {
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.navbar-user:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* User Dropdown */
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 220px;
+    overflow: hidden;
+    z-index: 1001;
+    margin-top: 5px;
+}
+
+.user-info {
+    padding: 15px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.user-info p {
+    margin: 0;
+    padding: 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.user-email {
+    color: #666 !important;
+    font-size: 12px !important;
+    margin-top: 4px !important;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #f0f0f0;
+    margin: 0;
+}
+
+.logout-button {
+    width: 100%;
+    padding: 10px 15px;
+    text-align: left;
+    background: none;
+    border: none;
+    color: #333;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+    background-color: #f8f9fa;
+    color: #dc3545;
 }
 
 /* Dropdown */
