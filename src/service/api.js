@@ -1,7 +1,7 @@
 // api.js - ATUALIZADO
 import axios from 'axios';
 
-const ip = 'localhost';
+const ip = 'localhost'; // Substitua pelo IP do servidor backend se necessário
 
 
 export const api = axios.create({
