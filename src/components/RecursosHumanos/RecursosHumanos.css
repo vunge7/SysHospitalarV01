@@ -1,1 +1,282 @@
- 
+/* ============================================================= */
+/* RECURSOSHUMANOS.CSS – MENU LATERAL 100% IGUAL TRIAGEM       */
+/* ALTURA EXATA, ESPAÇAMENTO PERFEITO, CORES MELHORADAS        */
+/* ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* LAYOUT GERAL */
+.rh-master {
+  background: linear-gradient(135deg, #f8faff 0%, #eef4ff 100%);
+  min-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.rh-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* === SIDEBAR (TAMANHO EXATO DA TRIAGEM) === */
+.rh-sidebar {
+  width: 280px;
+  background: #ffffff;
+  border-right: 1px solid #e0e7ff;
+  padding: 32px 16px;           /* COMPACTO: 32px top/bottom, 16px sides */
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: width 0.3s ease;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rh-sidebar.collapsed {
+  width: 72px;
+  padding: 32px 10px;
+}
+
+/* BOTÃO TOGGLE (COMPACTO) */
+.rh-toggle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border: none;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  transition: all 0.25s ease;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rh-toggle-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.32);
+}
+
+/* MENU (ALTURA EXATA, ESPAÇAMENTO PERFEITO) */
+.rh-sidebar-menu {
+  background: transparent !important;
+  border-right: none !important;
+  width: 100%;
+}
+
+.rh-sidebar-menu .ant-menu-item,
+.rh-sidebar-menu .ant-menu-submenu-title {
+  height: 48px !important;      /* ALTURA EXATA DA TRIAGEM */
+  line-height: 48px !important;
+  margin: 4px 0 !important;     /* ESPAÇAMENTO MÍNIMO */
+  border-radius: 14px !important;
+  padding: 0 16px !important;   /* PADDING INTERNO COMPACTO */
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  color: #4b5563 !important;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.rh-sidebar-menu .ant-menu-item::after,
+.rh-sidebar-menu .ant-menu-submenu-title::after {
+  display: none;
+}
+
+/* ÍCONES */
+.rh-sidebar-menu .anticon {
+  font-size: 18px;
+  transition: transform 0.25s ease;
+}
+
+/* HOVER (SUAVE E ELEGANTE) */
+.rh-sidebar-menu .ant-menu-item:hover,
+.rh-sidebar-menu .ant-menu-submenu-title:hover {
+  background: #f0f7ff !important;
+  color: #2563eb !important;
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.rh-sidebar-menu .ant-menu-item:hover .anticon,
+.rh-sidebar-menu .ant-menu-submenu-title:hover .anticon {
+  transform: scale(1.1);
+}
+
+/* SELECIONADO (DESTAQUE FORTE) */
+.rh-sidebar-menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.28);
+}
+
+.rh-sidebar-menu .ant-menu-item-selected .anticon {
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+/* SAIR EM VERMELHO (DESTAQUE) */
+.menu-item-danger {
+  color: #ef4444 !important;
+}
+
+.menu-item-danger:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  transform: translateX(2px);
+}
+
+.menu-item-danger .anticon {
+  color: #ef4444;
+}
+
+.menu-item-danger:hover .anticon {
+  color: #dc2626;
+  transform: scale(1.1);
+}
+
+/* COLLAPSED (COMPACTO) */
+.rh-sidebar.collapsed .rh-sidebar-menu .ant-menu-item,
+.rh-sidebar.collapsed .rh-sidebar-menu .ant-menu-submenu-title {
+  padding: 0 !important;
+  justify-content: center;
+}
+
+.rh-sidebar.collapsed .rh-sidebar-menu .ant-menu-title-content {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+.rh-sidebar.collapsed .rh-sidebar-menu .anticon {
+  font-size: 20px;
+  margin: 0;
+}
+
+/* SCROLLBAR (FINA) */
+.rh-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.rh-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rh-sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+
+.rh-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* CONTEÚDO */
+.rh-content-wrapper {
+  flex: 1;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+
+.rh-card-principal {
+  max-width: 1350px;
+  margin: 0 auto;
+  border-radius: 26px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.12);
+  border: 1px solid #d9e7ff;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.rh-header {
+  padding: 28px 36px 16px;
+  text-align: center;
+}
+
+.rh-titulo {
+  margin: 0 !important;
+  font-weight: 800 !important;
+  font-size: 29px !important;
+  color: #1a1a1a;
+  letter-spacing: -0.6px;
+}
+
+.rh-content {
+  padding: 0 36px 36px;
+}
+
+.rh-placeholder {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+/* RESPONSIVIDADE */
+@media (max-width: 992px) {
+  .rh-sidebar {
+    width: 72px;
+    padding: 32px 10px;
+  }
+  .rh-toggle-btn {
+    margin-bottom: 16px;
+  }
+  .rh-sidebar-menu .ant-menu-title-content {
+    opacity: 0;
+    width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .rh-body {
+    flex-direction: column;
+  }
+  .rh-sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    padding: 16px 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+  .rh-toggle-btn {
+    display: none;
+  }
+  .rh-sidebar-menu {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .rh-sidebar-menu .ant-menu-item,
+  .rh-sidebar-menu .ant-menu-submenu-title {
+    min-width: 100px;
+    height: 44px !important;
+    line-height: 44px !important;
+    margin: 0 4px !important;
+    font-size: 13px !important;
+  }
+  .rh-content-wrapper {
+    padding: 24px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rh-titulo { font-size: 23px !important; }
+  .rh-sidebar-menu .ant-menu-item,
+  .rh-sidebar-menu .ant-menu-submenu-title {
+    min-width: 85px;
+    font-size: 12px !important;
+  }
+  .rh-sidebar-menu .anticon {
+    font-size: 17px;
+  }
+}
