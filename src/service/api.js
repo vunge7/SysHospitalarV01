@@ -20,6 +20,9 @@ api.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
+// Adicione esta linha no seu api.js
+
+
 // Função para buscar filiais associadas a um usuário (retorna IDs)
 export const fetchFiliaisByUsuarioId = (usuarioId) => api.get(`/painelpermissoes/usuario/${usuarioId}/filiais`);
 

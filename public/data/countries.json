@@ -1,0 +1,10 @@
+[
+    { "id": 1, "name": "Angola", "nationality": "Angolano" },
+    { "id": 2, "name": "Brasil", "nationality": "Brasileiro" },
+    { "id": 3, "name": "Portugal", "nationality": "Português" },
+    { "id": 4, "name": "Moçambique", "nationality": "Moçambicano" },
+    { "id": 5, "name": "Cabo Verde", "nationality": "Caboverdiano" },
+    { "id": 6, "name": "Guiné-Bissau", "nationality": "Guineense" },
+    { "id": 7, "name": "São Tomé e Príncipe", "nationality": "Santomense" },
+    { "id": 8, "name": "Timor-Leste", "nationality": "Timorense" }
+  ]

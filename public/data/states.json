@@ -1,0 +1,30 @@
+[
+    { "id": 1, "name": "Bengo", "country": "Angola" },
+    { "id": 2, "name": "Benguela", "country": "Angola" },
+    { "id": 3, "name": "Bié", "country": "Angola" },
+    { "id": 4, "name": "Cabinda", "country": "Angola" },
+    { "id": 5, "name": "Cuando Cubango", "country": "Angola" },
+    { "id": 6, "name": "Cunene", "country": "Angola" },
+    { "id": 7, "name": "Cuanza Norte", "country": "Angola" },
+    { "id": 8, "name": "Cuanza Sul", "country": "Angola" },
+    { "id": 9, "name": "Huambo", "country": "Angola" },
+    { "id": 10, "name": "Huíla", "country": "Angola" },
+    { "id": 11, "name": "Luanda", "country": "Angola" },
+    { "id": 12, "name": "Lunda Norte", "country": "Angola" },
+    { "id": 13, "name": "Lunda Sul", "country": "Angola" },
+    { "id": 14, "name": "Malanje", "country": "Angola" },
+    { "id": 15, "name": "Moxico", "country": "Angola" },
+    { "id": 16, "name": "Namibe", "country": "Angola" },
+    { "id": 17, "name": "Uíge", "country": "Angola" },
+    { "id": 18, "name": "Zaire", "country": "Angola" },
+  
+    { "id": 19, "name": "São Paulo", "country": "Brasil" },
+    { "id": 20, "name": "Rio de Janeiro", "country": "Brasil" },
+    { "id": 21, "name": "Minas Gerais", "country": "Brasil" },
+    { "id": 22, "name": "Bahia", "country": "Brasil" },
+  
+    { "id": 23, "name": "Lisboa", "country": "Portugal" },
+    { "id": 24, "name": "Porto", "country": "Portugal" },
+  
+    { "id": 25, "name": "Maputo", "country": "Moçambique" }
+  ]

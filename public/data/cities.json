@@ -1,0 +1,33 @@
+[
+    { "id": 1, "name": "Luanda", "state": "Luanda", "country": "Angola" },
+    { "id": 2, "name": "Viana", "state": "Luanda", "country": "Angola" },
+    { "id": 3, "name": "Belas", "state": "Luanda", "country": "Angola" },
+    { "id": 4, "name": "Cacuaco", "state": "Luanda", "country": "Angola" },
+    { "id": 5, "name": "Talatona", "state": "Luanda", "country": "Angola" },
+  
+    { "id": 6, "name": "Huambo", "state": "Huambo", "country": "Angola" },
+    { "id": 7, "name": "Caála", "state": "Huambo", "country": "Angola" },
+  
+    { "id": 8, "name": "Benguela", "state": "Benguela", "country": "Angola" },
+    { "id": 9, "name": "Lobito", "state": "Benguela", "country": "Angola" },
+    { "id": 10, "name": "Catumbela", "state": "Benguela", "country": "Angola" },
+  
+    { "id": 11, "name": "Cabinda", "state": "Cabinda", "country": "Angola" },
+    { "id": 12, "name": "Malanje", "state": "Malanje", "country": "Angola" },
+  
+    { "id": 13, "name": "São Paulo", "state": "São Paulo", "country": "Brasil" },
+    { "id": 14, "name": "Campinas", "state": "São Paulo", "country": "Brasil" },
+    { "id": 15, "name": "Guarulhos", "state": "São Paulo", "country": "Brasil" },
+  
+    { "id": 16, "name": "Rio de Janeiro", "state": "Rio de Janeiro", "country": "Brasil" },
+    { "id": 17, "name": "Niterói", "state": "Rio de Janeiro", "country": "Brasil" },
+  
+    { "id": 18, "name": "Lisboa", "state": "Lisboa", "country": "Portugal" },
+    { "id": 19, "name": "Sintra", "state": "Lisboa", "country": "Portugal" },
+  
+    { "id": 20, "name": "Porto", "state": "Porto", "country": "Portugal" },
+    { "id": 21, "name": "Vila Nova de Gaia", "state": "Porto", "country": "Portugal" },
+  
+    { "id": 22, "name": "Maputo", "state": "Maputo", "country": "Moçambique" },
+    { "id": 23, "name": "Matola", "state": "Maputo", "country": "Moçambique" }
+  ]
