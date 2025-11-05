@@ -1,32 +1,67 @@
 // ListaUsuariosComAcoes.js - ATUALIZADO
 import React, { useEffect, useState } from 'react';
-import { List, Button, Spin, Alert, Modal } from 'antd';
+import { List, Button, Spin, Alert, Modal, message } from 'antd';
 import { 
     fetchUsersByFilialId,
-    fetchAllUsers,
+    fetchUsersNotInFilial,
     addUserToBranch,
     removeUserFromBranch,
     fetchPessoaById,
     fetchFuncionarioById,
 } from '../../service/api';
 
-const ListaUsuariosComAcoes = ({ filialId, onSelectUser, loading }) => {
+const ListaUsuariosComAcoes = ({ filialId, filialNome, onSelectUser, loading }) => {
     const [users, setUsers] = useState([]); // Usuários afiliados (enriquecidos)
     const [allUsers, setAllUsers] = useState([]); // Todos os usuários (enriquecidos)
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [error, setError] = useState(null);
     const [addModalVisible, setAddModalVisible] = useState(false);
 
-    useEffect(() => {
-        if (filialId) {
-            console.log(`Iniciando loadUsers para filialId: ${filialId}`);
-            loadUsers();
-        } else {
+    const loadUsers = async () => {
+        if (!filialId) {
             console.log('filialId não fornecido, limpando listas');
             setUsers([]);
             setAllUsers([]);
             setError('Nenhuma filial selecionada');
+            return;
         }
+
+        setLoadingUsers(true);
+        setError(null);
+        
+        try {
+            console.log('Buscando usuários da filial...');
+            const usersResponse = await fetchUsersByFilialId(filialId);
+            console.log('Resposta fetchUsersByFilialId:', usersResponse.data);
+            const filialUsersRaw = Array.isArray(usersResponse.data) ? usersResponse.data : [];
+            console.log(`Total de usuários brutos da filial: ${filialUsersRaw.length}`);
+
+            const enrichedFilialUsers = await enrichUserData(filialUsersRaw);
+            console.log('Usuários afiliados enriquecidos:', enrichedFilialUsers);
+            console.log(`Total de usuários afiliados enriquecidos: ${enrichedFilialUsers.length}`);
+            setUsers(enrichedFilialUsers);
+
+            console.log('Buscando todos os usuários...');
+            const allUsersResponse = await fetchUsersNotInFilial(filialId);
+            console.log('Resposta fetchUsersNotInFilial:', allUsersResponse.data);
+            const allUsersRaw = Array.isArray(allUsersResponse.data) ? allUsersResponse.data : [];
+            console.log(`Total de usuários brutos (não afiliados): ${allUsersRaw.length}`);
+
+            const enrichedAllUsers = await enrichUserData(allUsersRaw);
+            console.log('Usuários não afiliados enriquecidos:', enrichedAllUsers);
+            console.log(`Total de usuários não afiliados: ${enrichedAllUsers.length}`);
+            setAllUsers(enrichedAllUsers);
+        } catch (error) {
+            console.error('Erro ao carregar usuários:', error);
+            setError(`Erro ao carregar usuários: ${error.message}`);
+        } finally {
+            setLoadingUsers(false);
+        }
+    };
+
+    // Carrega os usuários quando o componente é montado ou quando o filialId muda
+    useEffect(() => {
+        loadUsers();
     }, [filialId]);
 
     const enrichUserData = async (userList) => {
@@ -92,78 +127,48 @@ const ListaUsuariosComAcoes = ({ filialId, onSelectUser, loading }) => {
         ).then(results => results.filter(user => user !== null));
     };
 
-    const loadUsers = async () => {
-        setLoadingUsers(true);
-        setError(null);
-        try {
-            console.log('Buscando usuários da filial...');
-            const usersResponse = await fetchUsersByFilialId(filialId);
-            console.log('Resposta fetchUsersByFilialId:', usersResponse.data);
-            const filialUsersRaw = Array.isArray(usersResponse.data) ? usersResponse.data : [];
-            console.log(`Total de usuários brutos da filial: ${filialUsersRaw.length}`);
-
-            const enrichedFilialUsers = await enrichUserData(filialUsersRaw);
-            console.log('Usuários afiliados enriquecidos:', enrichedFilialUsers);
-            console.log(`Total de usuários afiliados enriquecidos: ${enrichedFilialUsers.length}`);
-            setUsers(enrichedFilialUsers);
-
-            console.log('Buscando todos os usuários...');
-            const allUsersResponse = await fetchAllUsers();
-            console.log('Resposta fetchAllUsers:', allUsersResponse.data);
-            const allUsersRaw = Array.isArray(allUsersResponse.data) ? allUsersResponse.data : [];
-            console.log(`Total de usuários brutos (todos): ${allUsersRaw.length}`);
-
-            const enrichedAllUsers = await enrichUserData(allUsersRaw);
-            console.log('Todos os usuários enriquecidos:', enrichedAllUsers);
-            console.log(`Total de usuários enriquecidos (todos): ${enrichedAllUsers.length}`);
-
-            // Filtra usuários que NÃO estão na filial, com log detalhado
-            const usersNotInBranch = enrichedAllUsers.filter(user => {
-                const isAffiliated = enrichedFilialUsers.some(filialUser => filialUser.id === user.id);
-                console.log(`Verificando usuário ${user.id} (${user.userName}): ${isAffiliated ? 'já afiliado' : 'não afiliado'}`);
-                return !isAffiliated;
-            });
-            console.log('Usuários não afiliados:', usersNotInBranch);
-            console.log(`Total de usuários não afiliados: ${usersNotInBranch.length}`);
-            setAllUsers(usersNotInBranch);
-        } catch (error) {
-            console.error('Erro ao carregar usuários:', error);
-            setError(`Erro ao carregar usuários: ${error.message}`);
-        } finally {
-            setLoadingUsers(false);
-        }
-    };
 
     const handleAddUser = async (userId) => {
         try {
             console.log(`Adicionando usuário ${userId} à filial ${filialId}`);
             await addUserToBranch(filialId, userId);
-            loadUsers();
+            message.success('Usuário adicionado à filial com sucesso!');
+            await loadUsers();
             setAddModalVisible(false);
         } catch (error) {
             console.error('Erro ao adicionar usuário:', error);
-            if (error.response && error.response.status === 409) {
-                setError(error.response.data.error || 'Este usuário já está associado à filial.');
-            } else {
-                setError(`Erro ao adicionar usuário: ${error.message}`);
-            }
+            const errorMessage = error.response?.data?.message || 'Erro ao adicionar usuário à filial';
+            message.error(errorMessage);
         }
     };
 
-    const handleRemoveUser = async (painelPermissoesId, userName) => {
+    const handleRemoveUser = async (userId, userName) => {
+        if (!window.confirm(`Tem certeza que deseja remover o usuário ${userName} desta filial?`)) {
+            return;
+        }
+        
         try {
-            console.log(`Removendo associação ${painelPermissoesId} (usuário ${userName}) da filial ${filialId}`);
-            await removeUserFromBranch(painelPermissoesId);
-            loadUsers();
+            console.log(`Removendo usuário ${userId} (${userName}) da filial ${filialId}`);
+            // Aqui precisamos do painelPermissoesId, não do userId
+            // Vamos encontrar o painelPermissoesId correspondente
+            const user = users.find(u => u.id === userId);
+            if (!user || !user.painelPermissoesId) {
+                throw new Error('ID de permissão não encontrado para este usuário');
+            }
+            
+            await removeUserFromBranch(user.painelPermissoesId);
+            message.success('Usuário removido da filial com sucesso!');
+            await loadUsers();
         } catch (error) {
             console.error('Erro ao remover usuário:', error);
-            setError(`Erro ao remover usuário: ${error.message}`);
+            const errorMessage = error.response?.data?.message || 'Erro ao remover usuário da filial';
+            message.error(errorMessage);
         }
     };
 
     return (
         <div>
-            <h2>Usuários da Filial {filialId}</h2>
+            <h2>Usuários da Filial {filialNome || `Filial ${filialId}`}</h2>
             
             {error && <Alert message={error} type="error" showIcon style={{ marginBottom: '16px' }} />}
             
@@ -189,8 +194,8 @@ const ListaUsuariosComAcoes = ({ filialId, onSelectUser, loading }) => {
                                 <Button 
                                     type="primary" 
                                     onClick={() => {
-                                        console.log(`Selecionando usuário ${user.id} para gerenciar permissões`);
-                                        onSelectUser(user.id);
+                                        console.log(`Selecionando usuário ${user.id} para gerenciar permissões`, user);
+                                        onSelectUser(user);
                                     }}
                                     disabled={loading}
                                 >
@@ -198,11 +203,7 @@ const ListaUsuariosComAcoes = ({ filialId, onSelectUser, loading }) => {
                                 </Button>,
                                 <Button 
                                     type="danger" 
-                                    onClick={() => {
-                                        if (window.confirm(`Remover ${user.nome} (@${user.userName}) da filial?`)) {
-                                            handleRemoveUser(user.painelPermissoesId, user.userName);
-                                        }
-                                    }}
+                                    onClick={() => handleRemoveUser(user.id, user.userName)}
                                     disabled={loading || !user.painelPermissoesId}
                                 >
                                     Remover da Filial

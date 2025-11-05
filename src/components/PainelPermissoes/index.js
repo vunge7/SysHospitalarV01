@@ -19,6 +19,7 @@ const PainelPermissoes = () => {
 
     const [selectedFilial, setSelectedFilial] = useState(null);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedUserName, setSelectedUserName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -52,23 +53,28 @@ const PainelPermissoes = () => {
                             </div>
                         ) : (
                             <div>
-                                <h1>🏢 Filial Selecionada: {selectedFilial}</h1>
+                                <h1>🏢 {selectedFilial?.nome || `Filial ${selectedFilial?.id}`}</h1>
                                 
                                 {/* PASSO 1: Lista de usuários da filial */}
                                 {!selectedUser && (
-                                    <ListaUsuariosComAcoes
-                                        filialId={selectedFilial}
-                                        onSelectUser={setSelectedUser}
+                                    <ListaUsuariosComAcoes 
+                                        filialId={selectedFilial?.id}
+                                        filialNome={selectedFilial?.nome}
+                                        onSelectUser={(user) => {
+                                            setSelectedUser(user);
+                                            setSelectedUserName(`${user.nome} (${user.userName})`);
+                                        }}
                                         loading={loading}
                                     />
                                 )}
                                 
                                 {/* PASSO 2: Gerenciar permissões do usuário selecionado */}
                                 {selectedUser && (
-                                    <Card title={`👤 Gerenciar Permissões - Usuário ${selectedUser}`}>
+                                    <Card title={`👤 Gerenciar Permissões - ${selectedUserName || 'Usuário'}`}>
                                         <GerenciarPermissoes 
-                                            filialId={selectedFilial}
-                                            userId={selectedUser}
+                                            filialId={selectedFilial?.id}
+                                            filialNome={selectedFilial?.nome}
+                                            userId={selectedUser?.id}
                                             onBack={() => setSelectedUser(null)} // Botão voltar
                                         />
                                     </Card>

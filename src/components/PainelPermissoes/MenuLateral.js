@@ -56,6 +56,7 @@ const MenuLateral = ({ onSelectFilial }) => {
         key: filial.id.toString(),
         label: filial.nome,
         icon: <ShopOutlined />,
+        filial: filial // Adiciona o objeto filial completo
     }));
 
     return (
@@ -68,8 +69,12 @@ const MenuLateral = ({ onSelectFilial }) => {
                     ...menuItems,
                 ]}
                 onClick={(e) => {
-                    const filialId = e.key === 'home' ? null : parseInt(e.key);
-                    onSelectFilial(filialId);
+                    if (e.key === 'home') {
+                        onSelectFilial(null);
+                    } else {
+                        const filialSelecionada = filiais.find(f => f.id.toString() === e.key);
+                        onSelectFilial(filialSelecionada);
+                    }
                 }}
                 style={{ height: '100%', borderRight: 0 }}
             />
