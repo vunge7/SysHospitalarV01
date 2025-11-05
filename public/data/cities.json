@@ -180,7 +180,7 @@
     { "id": 159, "name": "Macapá", "state": "Amapá", "country": "Brasil" },
     { "id": 160, "name": "Manaus", "state": "Amazonas", "country": "Brasil" },
     { "id": 161, "name": "Fortaleza", "state": "Ceará", "country": "Brasil" },
-    { "id": 162, "name": "Brasília", "state": "Distrito Federal", "country": "Brasil" },
+    { "id": 162, "name": "Brasília", "state": "Distrito Federal: Brasília", "country": "Brasil" },
     { "id": 163, "name": "Vitória", "state": "Espírito Santo", "country": "Brasil" },
     { "id": 164, "name": "Goiânia", "state": "Goiás", "country": "Brasil" },
     { "id": 165, "name": "São Luís", "state": "Maranhão", "country": "Brasil" },
@@ -218,7 +218,7 @@
     { "id": 195, "name": "Braga", "state": "Braga", "country": "Portugal" },
     { "id": 196, "name": "Guarda", "state": "Guarda", "country": "Portugal" },
     { "id": 197, "name": "Leiria", "state": "Leiria", "country": "Portugal" },
-    { "id": 198, "name": "Viseu", "state": "Viseu", "country": "Portugal" },
+    { "id": 198, "name": "Santarém", "state": "Santarém", "country": "Portugal" },
     { "id": 199, "name": "Évora", "state": "Évora", "country": "Portugal" },
     { "id": 200, "name": "Setúbal", "state": "Setúbal", "country": "Portugal" },
     { "id": 201, "name": "Almada", "state": "Setúbal", "country": "Portugal" },
@@ -239,7 +239,7 @@
     { "id": 214, "name": "Xai-Xai", "state": "Gaza", "country": "Moçambique" },
     { "id": 215, "name": "Inhambane", "state": "Inhambane", "country": "Moçambique" },
     { "id": 216, "name": "Maxixe", "state": "Inhambane", "country": "Moçambique" },
-    { "id": 217, "name": "Manica", "state": "Chimoio", "country": "Moçambique" },
+    { "id": 217, "name": "Manica", "state": "Manica", "country": "Moçambique" },
     { "id": 218, "name": "Nampula", "state": "Nampula", "country": "Moçambique" },
     { "id": 219, "name": "Lichinga", "state": "Niassa", "country": "Moçambique" },
     { "id": 220, "name": "Beira", "state": "Sofala", "country": "Moçambique" },
@@ -251,7 +251,7 @@
     { "id": 224, "name": "Ainaro", "state": "Ainaro", "country": "Timor-Leste" },
     { "id": 225, "name": "Baucau", "state": "Baucau", "country": "Timor-Leste" },
     { "id": 226, "name": "Maliana", "state": "Bobonaro", "country": "Timor-Leste" },
-    { "id": 227, "name": "Dili", "state": "Dili", "country": "Timor-Leste" },
+    { "id": 227, "name": "Díli", "state": "Díli", "country": "Timor-Leste" },
     { "id": 228, "name": "Ermera", "state": "Ermera", "country": "Timor-Leste" },
     { "id": 229, "name": "Gleno", "state": "Ermera", "country": "Timor-Leste" },
     { "id": 230, "name": "Lospalos", "state": "Lautém", "country": "Timor-Leste" },
@@ -279,13 +279,52 @@
     { "id": 248, "name": "Neves", "state": "Ilha de São Tomé", "country": "São Tomé e Príncipe" },
     { "id": 249, "name": "Santana", "state": "Ilha de São Tomé", "country": "São Tomé e Príncipe" },
     { "id": 250, "name": "Água Grande", "state": "Água Grande", "country": "São Tomé e Príncipe" },
-    { "id": 250, "name": "Cantagalo", "state": "Cantagalo", "country": "São Tomé e Príncipe" },
-    { "id": 250, "name": "Caué", "state": "Caué", "country": "São Tomé e Príncipe" },
-    { "id": 250, "name": "Lembá", "state": "Lembá", "country": "São Tomé e Príncipe" },
-    { "id": 250, "name": "Lobata", "state": "Lobata", "country": "São Tomé e Príncipe" },
-    { "id": 250, "name": "Mé-Zóchi", "state": "Mé-Zóchi", "country": "São Tomé e Príncipe" }
+    { "id": 251, "name": "Cantagalo", "state": "Cantagalo", "country": "São Tomé e Príncipe" },
+    { "id": 252, "name": "Caué", "state": "Caué", "country": "São Tomé e Príncipe" },
+    { "id": 253, "name": "Lembá", "state": "Lembá", "country": "São Tomé e Príncipe" },
+    { "id": 254, "name": "Lobata", "state": "Lobata", "country": "São Tomé e Príncipe" },
+    { "id": 255, "name": "Mé-Zóchi", "state": "Mé-Zóchi", "country": "São Tomé e Príncipe" },
 
 
+    { "id": 256, "name": "Cahama", "state": "Cunene", "country": "Angola" },
+    { "id": 257, "name": "Cuanhama", "state": "Cunene", "country": "Angola" },
+    { "id": 258, "name": "Curoca", "state": "Cunene", "country": "Angola" },
+    { "id": 259, "name": "Namacunde", "state": "Cunene", "country": "Angola" },
+    { "id": 260, "name": "Ombadja", "state": "Cunene", "country": "Angola" },
+    { "id": 261, "name": "Cuvelai", "state": "Cunene", "country": "Angola" },
 
 
+    { "id": 262, "name": "Lubango", "state": "Huíla", "country": "Angola" },
+    { "id": 263, "name": "Caconda", "state": "Huíla", "country": "Angola" },
+    { "id": 264, "name": "Chibia", "state": "Huíla", "country": "Angola" },
+    { "id": 265, "name": "Chicomba", "state": "Huíla", "country": "Angola" },
+    { "id": 266, "name": "Chipindo", "state": "Huíla", "country": "Angola" },
+    { "id": 267, "name": "Humpata", "state": "Huíla", "country": "Angola" },
+    { "id": 268, "name": "Jamba", "state": "Huíla", "country": "Angola" },
+    { "id": 269, "name": "Kuvango", "state": "Huíla", "country": "Angola" },
+    { "id": 270, "name": "Lubango", "state": "Huíla", "country": "Angola" },
+    { "id": 271, "name": "Matala", "state": "Huíla", "country": "Angola" },
+    { "id": 272, "name": "Quilengues", "state": "Huíla", "country": "Angola" },
+    { "id": 273, "name": "Quipungo", "state": "Huíla", "country": "Angola" },
+    { "id": 274, "name": "Cacula", "state": "Huíla", "country": "Angola" },
+    { "id": 275, "name": "Caluquembe", "state": "Huíla", "country": "Angola" },
+    { "id": 276, "name": "Chiange", "state": "Huíla", "country": "Angola" },
+    { "id": 277, "name": "Tchiquaqueia", "state": "Huíla", "country": "Angola" },
+
+
+    { "id": 278, "name": "Castelo Branco", "state": "Castelo Branco", "country": "Portugal" },
+
+
+    { "id": 279, "name": "Santo Antão", "state": "Santo Antão", "country": "Cabo-Verde" },
+    { "id": 280, "name": "São Vicente", "state": "São Vicente", "country": "Cabo-Verde" },
+    { "id": 281, "name": "Santa Luzia", "state": "Santa Luzia", "country": "Cabo-Verde" },
+    { "id": 282, "name": "São Nicolau", "state": "São Nicolau", "country": "Cabo-Verde" },
+    { "id": 283, "name": "Sal", "state": "Sal", "country": "Cabo-Verde" },
+    { "id": 284, "name": "Boa Vista", "state": "Boa Vista", "country": "Cabo-Verde" },
+    { "id": 285, "name": "Maio", "state": "Maio", "country": "Cabo-Verde" },
+    { "id": 286, "name": "Santiago", "state": "Santiago", "country": "Cabo-Verde" },
+    { "id": 287, "name": "Fogo", "state": "Fogo", "country": "Cabo-Verde" },
+    { "id": 288, "name": "Brava", "state": "Brava", "country": "Cabo-Verde" }
+    
+    
   ]
