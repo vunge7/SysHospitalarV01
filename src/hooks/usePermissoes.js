@@ -23,7 +23,7 @@ export const usePermissoes = () => {
             setError(null);
             
             // Buscar permissões do usuário na filial
-            const permissoesResponse = await api.get(`/painelpermissoes/usuario/${user.id}/filial/${user.filialSelecionada.id}`);
+            const permissoesResponse = await api.get(`/painelpermissoes/usuario/${user.id}/empresa/${user.filialSelecionada.id}`);
 
             const parseXmlList = (xmlString) => {
                 try {

@@ -10,7 +10,7 @@ import {
     fetchFuncionarioById,
 } from '../../service/api';
 
-const ListaUsuariosComAcoes = ({ filialId, filialNome, onSelectUser, loading }) => {
+const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, loading }) => {
     const [users, setUsers] = useState([]); // Usuários afiliados (enriquecidos)
     const [allUsers, setAllUsers] = useState([]); // Todos os usuários (enriquecidos)
     const [loadingUsers, setLoadingUsers] = useState(false);
@@ -130,14 +130,20 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, onSelectUser, loading }) 
 
     const handleAddUser = async (userId) => {
         try {
-            console.log(`Adicionando usuário ${userId} à filial ${filialId}`);
-            await addUserToBranch(filialId, userId);
+            const empresaIdToUse = empresaId || 1; // Valor padrão 1 para desenvolvimento
+            console.log(`Tentando adicionar usuário ${userId} à filial ${filialId} na empresa ${empresaIdToUse}`);
+            
+            if (!empresaIdToUse) {
+                throw new Error('ID da empresa não fornecido');
+            }
+            
+            await addUserToBranch(filialId, userId, empresaIdToUse);
             message.success('Usuário adicionado à filial com sucesso!');
             await loadUsers();
             setAddModalVisible(false);
         } catch (error) {
             console.error('Erro ao adicionar usuário:', error);
-            const errorMessage = error.response?.data?.message || 'Erro ao adicionar usuário à filial';
+            const errorMessage = error.response?.data?.message || error.message || 'Erro ao adicionar usuário à filial';
             message.error(errorMessage);
         }
     };

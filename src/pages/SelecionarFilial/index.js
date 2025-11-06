@@ -24,7 +24,7 @@ const SelecionarFilial = () => {
             setLoading(true);
             
             // 1. Buscar IDs das filiais que o usuário tem permissão
-            const filiaisIdsResponse = await api.get(`/painelpermissoes/usuario/${user?.id}/filiais`);
+            const filiaisIdsResponse = await api.get(`/painelpermissoes/usuario/${user?.id}/empresas`);
             
             if (filiaisIdsResponse.data && filiaisIdsResponse.data.length > 0) {
                 // 2. Buscar dados completos das filiais
@@ -35,7 +35,7 @@ const SelecionarFilial = () => {
                         const filialResponse = await api.get(`/empresa/filial/${filialId}`);
                         if (filialResponse.data) {
                             // 3. Buscar permissões do usuário nesta filial
-                            const permissoesResponse = await api.get(`/painelpermissoes/usuario/${user?.id}/filial/${filialId}`);
+                            const permissoesResponse = await api.get(`/painelpermissoes/usuario/${user?.id}/empresa/${filialId}`);
                             
                             const filialComPermissoes = {
                                 ...filialResponse.data,
