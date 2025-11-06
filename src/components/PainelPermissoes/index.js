@@ -9,6 +9,7 @@ import ListaUsuariosComAcoes from './ListaUsuariosComAcoes'; // NOVO
 import GerenciarPermissoes from './GerenciarPermissoes'; // USAR O COMPONENTE EXISTENTE
 import {
     fetchFiliaisByUsuarioId,
+    fetchAllFiliais
 } from '../../service/api';
 
 const { Content } = Layout;
@@ -22,12 +23,37 @@ const PainelPermissoes = () => {
     const [selectedUserName, setSelectedUserName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    
+    // Log quando o selectedFilial mudar
+    useEffect(() => {
+        console.log('selectedFilial atualizado:', selectedFilial);
+    }, [selectedFilial]);
 
     // Carrega filiais apenas uma vez
     useEffect(() => {
         if (usuarioId) {
             setLoading(true);
+            // Primeiro, busca as filiais do usuário
             fetchFiliaisByUsuarioId(usuarioId)
+                .then(response => {
+                    const filiais = response.data || [];
+                    console.log('Filiais do usuário:', filiais);
+                    
+                    // Se houver filiais, busca os detalhes completos da primeira filial
+                    if (filiais.length > 0) {
+                        return fetchAllFiliais().then(allFiliaisResponse => {
+                            const filialCompleta = allFiliaisResponse.data.find(f => f.id === filiais[0].id);
+                            if (filialCompleta) {
+                                setSelectedFilial({
+                                    ...filialCompleta,
+                                    empresaId: filialCompleta.empresaId || filialCompleta.empresa?.id
+                                });
+                            }
+                            return filiais;
+                        });
+                    }
+                    return filiais;
+                })
                 .then(() => setError(null))
                 .catch((error) => {
                     console.error('Erro ao carregar filiais:', error);
@@ -57,15 +83,20 @@ const PainelPermissoes = () => {
                                 
                                 {/* PASSO 1: Lista de usuários da filial */}
                                 {!selectedUser && (
-                                    <ListaUsuariosComAcoes 
+                                    (() => { 
+                                        console.log('Dados do usuário:', { user, selectedFilial, empresaId: user?.empresaId || selectedFilial?.empresaId });
+                                        return <ListaUsuariosComAcoes 
+                                    
                                         filialId={selectedFilial?.id}
                                         filialNome={selectedFilial?.nome}
+                                        empresaId={user?.empresaId || selectedFilial?.empresaId}
                                         onSelectUser={(user) => {
                                             setSelectedUser(user);
                                             setSelectedUserName(`${user.nome} (${user.userName})`);
                                         }}
                                         loading={loading}
-                                    />
+                                    />;
+                                    })()
                                 )}
                                 
                                 {/* PASSO 2: Gerenciar permissões do usuário selecionado */}

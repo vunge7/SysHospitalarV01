@@ -20,11 +20,8 @@ api.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
-// Adicione esta linha no seu api.js
-
-
 // Função para buscar filiais associadas a um usuário (retorna IDs)
-export const fetchFiliaisByUsuarioId = (usuarioId) => api.get(`/painelpermissoes/usuario/${usuarioId}/filiais`);
+export const fetchFiliaisByUsuarioId = (usuarioId) => api.get(`/painelpermissoes/usuario/${usuarioId}/empresas`);
 
 // Função para buscar TODAS as filiais (com id e nome)
 export const fetchAllFiliais = () => api.get('/empresa/filial/all');
@@ -36,7 +33,7 @@ export const fetchAllPainels = () => api.get('/painel/all');
 // Permissões de Painel
 // Buscar permissões de um usuário em uma filial específica
 export const fetchUserPermissions = (usuarioId, filialId) => 
-    api.get(`/painelpermissoes/usuario/${usuarioId}/filial/${filialId}`);
+    api.get(`/painelpermissoes/usuario/${usuarioId}/empresa/${filialId}`);
 
 // Buscar todas as permissões de um usuário
 export const fetchAllUserPermissions = (usuarioId) => 
@@ -44,7 +41,7 @@ export const fetchAllUserPermissions = (usuarioId) =>
 
 // Buscar filiais às quais o usuário tem permissão
 export const fetchUserPermissionedFiliais = (usuarioId) =>
-    api.get(`/painelpermissoes/usuario/${usuarioId}/filiais`);
+    api.get(`/painelpermissoes/usuario/${usuarioId}/empresas`);
 
 // Adicionar permissão de painel para um usuário
 export const addPanelPermission = (painelPermissaoDTO, usuarioIdCriacao) => 
@@ -78,7 +75,7 @@ export const fetchUsersByFilialId = async (filialId) => {
         
         for (const user of allUsers) {
             try {
-                const response = await api.get(`/painelpermissoes/usuario/${user.id}/filial/${filialId}`);
+                const response = await api.get(`/painelpermissoes/usuario/${user.id}/empresa/${filialId}`);
                 if (response.data && response.data.length > 0) {
                     usersInFilial.push(user);
                 }
@@ -120,19 +117,59 @@ export const fetchUsersNotInFilial = async (filialId) => {
     }
 };
 
-// Função para adicionar um usuário a uma filial
-export const addUserToBranch = async (filialId, usuarioId) => {
-    // Cria uma nova permissão para o usuário na filial
-    const painelPermissaoDTO = {
-        usuarioId: parseInt(usuarioId),
-        filialId: parseInt(filialId),
-        // Outros campos necessários para a criação da permissão
-        ativo: true,
-        dataCriacao: new Date().toISOString(),
-        usuarioCriacaoId: 1 // Substitua pelo ID do usuário logado
-    };
-    
-    return api.post('/painelpermissoes/add', painelPermissaoDTO);
+// Função para adicionar um usuário a uma empresa
+export const addUserToBranch = async (filialId, usuarioId, empresaId, usuarioLogadoId) => {
+    try {
+        // Primeiro, verifica se o usuário já tem permissão nesta empresa
+        const existingPermissions = await api.get(`/painelpermissoes/usuario/${usuarioId}/empresa/${empresaId}`);
+        
+        if (existingPermissions.data && existingPermissions.data.length > 0) {
+            console.log('Usuário já tem permissão nesta empresa:', existingPermissions.data);
+            throw new Error('Este usuário já tem permissão nesta empresa');
+        }
+
+        const formatDate = () => {
+            const now = new Date();
+
+            // Obtém componentes no fuso horário local
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0'); // +1 porque meses são 0-11
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            // Monta no formato desejado: "YYYY-MM-DD HH:mm:ss"
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        };
+
+const dataAtual = formatDate();
+        
+        // Cria uma nova permissão para o usuário na empresa
+        // Cria o objeto com as datas já como strings formatadas
+        const painelPermissaoDTO = {
+            usuarioId: parseInt(usuarioId),
+            painelId: 1,
+            empresaId: parseInt(empresaId), // Campo obrigatório
+            dataCriacao: dataAtual, // Já está como string formatada
+            usuarioIdCriacao: parseInt(usuarioLogadoId) || 1,
+            dataActualizacao: dataAtual, // Mesma data de criação
+            usuarioIdActualizacao: parseInt(usuarioLogadoId) || 1
+        };
+        
+        console.log('Enviando requisição para adicionar usuário à filial:', painelPermissaoDTO);
+        const response = await api.post('/painelpermissoes/add', painelPermissaoDTO);
+        console.log('Resposta da API ao adicionar usuário:', response.data);
+        return response;
+    } catch (error) {
+        console.error('Erro detalhado ao adicionar usuário à filial:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            headers: error.response?.headers
+        });
+        throw error;
+    }
 };
 
 // Função para remover um usuário de uma filial
