@@ -1,44 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Button, 
-    Modal, 
-    Form, 
-    Input, 
-    Select, 
-    Checkbox, 
-    Card, 
-    notification, 
-    DatePicker,
-    Table, 
-    Space, 
-    Popconfirm, 
-    Typography, 
-    Row, 
-    Col, 
-    Tag, 
-    Tooltip, 
-    Alert,
-    Divider,
-    InputNumber,
-    Switch,
-    Upload,
-    message
-} from 'antd';
-import { 
-    PlusOutlined, 
-    EditOutlined, 
-    DeleteOutlined, 
-    EyeOutlined, 
-    CopyOutlined, 
-    NodeExpandOutlined,
-    SearchOutlined,
-    FilterOutlined,
-    DownloadOutlined,
-    UploadOutlined,
-    InfoCircleOutlined,
-    ExclamationCircleOutlined,
-    CheckCircleOutlined,
-    ClockCircleOutlined
+import { Button, Modal, Form, Input, Select, Checkbox, Card, notification, DatePicker, Table, Space, Popconfirm, Typography, 
+    Row, Col, Tag, Tooltip, Alert, Divider, InputNumber, Switch, Upload, message } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined, NodeExpandOutlined, SearchOutlined, FilterOutlined,
+    DownloadOutlined, UploadOutlined, InfoCircleOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined
 } from '@ant-design/icons';
 import moment from 'moment';
 import { api } from '../../service/api';
