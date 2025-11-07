@@ -61,6 +61,11 @@ export const ROTAS_CONFIG = {
         path: '/admin/permissoes',
         painelId: 11, // Permissoes
         descricaoPainel: 'Permissoes',
+    },
+    'empresa': {
+        path: '/admin/empresa',
+        painelId: 12, // Empresa
+        descricaoPainel: 'Empresa',
     }
 };
 
@@ -81,7 +86,8 @@ export const PAINEIS_DISPONIVEIS = {
     8: { id: 8, descricao: 'Usuarios' },
     9: { id: 9, descricao: 'RH' },
     10: { id: 10, descricao: 'Agendamento' },
-    11: { id: 11, descricao: 'Permissoes' }
+    11: { id: 11, descricao: 'Permissoes' },
+    12: { id: 12, descricao: 'Empresa' }
 };
 
 export const criarRotaProtegida = (chave, componente) => {

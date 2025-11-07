@@ -153,14 +153,40 @@ const GerenciarPermissoes = ({ filialId, filialNome, userId, onBack }) => {
         try {
             if (action === 'add') {
                 // Adiciona uma nova permissão
-                const permissaoDTO = {
-                    painelId: permission.id,
-                    usuarioId: userId,
-                    empresaId: filialId,
-                    filialId: filialId, // Adicionando filialId explicitamente
-                    ativo: true
+                const formatDate = () => {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
                 };
-                await addPanelPermission(permissaoDTO, currentUser?.id);
+
+                const dataAtual = formatDate();
+
+                const safeUsuarioId = Number.parseInt(userId);
+                const safePainelId = Number.parseInt(permission?.id ?? permission?.painelId);
+                const safeEmpresaId = Number.parseInt(filialId);
+                const safeCurrentUserId = Number.parseInt(currentUser?.id) || 1;
+
+                if (!safeUsuarioId || !safePainelId || !safeEmpresaId) {
+                    throw new Error('Dados inválidos para criar permissão (usuarioId/painelId/empresaId).');
+                }
+
+                const permissaoDTO = {
+                    usuarioId: safeUsuarioId,
+                    painelId: safePainelId,
+                    empresaId: safeEmpresaId,
+                    dataCriacao: dataAtual,
+                    usuarioIdCriacao: safeCurrentUserId,
+                    dataActualizacao: dataAtual,
+                    usuarioIdActualizacao: safeCurrentUserId,
+                };
+
+                console.log('Enviando permissaoDTO:', permissaoDTO);
+                await addPanelPermission(permissaoDTO, safeCurrentUserId);
             } else {
                 // Remove uma permissão existente
                 await removePanelPermission(permission.id);
@@ -326,7 +352,7 @@ const GerenciarPermissoes = ({ filialId, filialNome, userId, onBack }) => {
 
             <Modal
                 title={confirmModal.title}
-                visible={confirmModal.visible}
+                open={confirmModal.visible}
                 onOk={handleConfirm}
                 onCancel={handleCancel}
                 okText={confirmModal.action === 'add' ? 'Adicionar' : 'Remover'}

@@ -47,16 +47,16 @@ const schema = z.object({
     ),
   intervaloReferencia: z.string().optional().refine(
     (val) => {
-      if (!val) return true;
-      if (!/^\d+(\.\d+)?-\d+(\.\d+)?$/.test(val)) return false;
+      if (!val) return true; // Permite vazio
+      if (!/^\d+(\.\d+)?-\d+(\.\d+)?$/.test(val)) return false; // Verifica formato min-max
       const [min, max] = val.split('-').map(Number);
-      return !isNaN(min) && !isNaN(max) && min <= max && max <= 1000;
+      return !isNaN(min) && !isNaN(max) && min <= max && max <= 1000; // Valida min <= max e max <= 1000
     },
     { message: 'O intervalo de referência deve estar no formato "min-max" (ex.: 4.5-5.9), com valores válidos e máximo até 1000.' }
   ),
 });
 
-const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoParaEditar, onSuccess, initialValues = {}, disabledFields = [], isFromExame }) => {
+const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoParaEditar, onSuccess, initialValues, isFromExame }) => {
   const [carregar, setCarregar] = useState(false);
   const [gruposDeProduto, setGruposDeProduto] = useState([]);
   const [tipoProduto, setTipoProduto] = useState([]);
@@ -94,7 +94,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
 
   const watchedPreco = watch('preco');
   const watchedTaxIva = watch('taxIva');
-  const watchedProductGroup = watch('productGroup');
+  const watchedProductGroup = watch('productGroup'); // Monitora o campo productGroup
 
   useEffect(() => {
     const preco = Number(watchedPreco) || 0;
@@ -114,31 +114,34 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
         api.get('/producttype/all'),
       ]);
       setUnidades(unidadesRes.data);
-
       const newGruposMap = {};
       const gruposArray = [];
-      if (Array.isArray(gruposRes.data)) {
-        gruposRes.data.forEach(grupo => {
-          if (grupo.designacaoProduto && grupo.id) {
-            const key = grupo.designacaoProduto.toLowerCase();
-            newGruposMap[key] = grupo.id;
-            gruposArray.push(grupo.designacaoProduto);
-          }
-        });
+      console.log('Dados de grupos recebidos:', gruposRes.data); // Log para depuração
+      if (!gruposRes.data || !Array.isArray(gruposRes.data)) {
+        throw new Error('Resposta inválida da API de grupos de produtos');
+      }
+      gruposRes.data.forEach(grupo => {
+        if (grupo.designacaoProduto && grupo.id) {
+          // Normaliza para minúsculas para evitar problemas de capitalização
+          newGruposMap[grupo.designacaoProduto.toLowerCase()] = grupo.id;
+          gruposArray.push(grupo.designacaoProduto);
+        }
+      });
+      if (Object.keys(newGruposMap).length === 0) {
+        throw new Error('Nenhum grupo de produto válido encontrado');
       }
       setGruposDeProduto(gruposArray);
       setGruposMap(newGruposMap);
-
+      console.log('gruposMap preenchido:', newGruposMap); // Log para verificar gruposMap
+      console.log('gruposDeProduto:', gruposArray); // Log para verificar grupos disponíveis no select
       const newTiposMap = {};
       const tiposArray = [];
-      if (Array.isArray(tiposRes.data)) {
-        tiposRes.data.forEach(tipo => {
-          if (tipo.designacaoTipoProduto && tipo.id) {
-            newTiposMap[tipo.designacaoTipoProduto] = tipo.id;
-            tiposArray.push(tipo.designacaoTipoProduto);
-          }
-        });
-      }
+      tiposRes.data.forEach(tipo => {
+        if (tipo.designacaoTipoProduto && tipo.id) {
+          newTiposMap[tipo.designacaoTipoProduto] = tipo.id;
+          tiposArray.push(tipo.designacaoTipoProduto);
+        }
+      });
       setTipoProduto(tiposArray);
       setTiposMap(newTiposMap);
     } catch (error) {
@@ -212,7 +215,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
         reset({
           productType: tipoExame || '',
           productCode: '',
-          productGroup: isFromExame ? 'Exames' : '',
+          productGroup: '',
           productDescription: '',
           taxIva: '',
           preco: '',
@@ -227,7 +230,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
         setFilhos([]);
       }
     }
-  }, [visible, modalIsOpen, produtoParaEditar, tipoProduto, reset, unidades, produtosExistentes, initialValues, isFromExame]);
+  }, [visible, modalIsOpen, produtoParaEditar, tipoProduto, reset, unidades, produtosExistentes, initialValues]);
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -366,21 +369,20 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
   );
 
   const cadastrarProdutoComFilhos = async (produtoData, filhosArr, produtoPaiId = null, produtoIdExistente = null) => {
+    console.log('Dados do produto recebidos:', produtoData); // Log para depuração
     const productTypeId = tiposMap[produtoData.productType];
-    const groupKey = produtoData.productGroup?.toLowerCase();
-    const productGroupId = isFromExame 
-      ? (gruposMap['exames'] || gruposMap['Exames'] || gruposMap[groupKey])
-      : gruposMap[groupKey];
+    // Normaliza o productGroup para minúsculas para corresponder ao gruposMap
+    const productGroupId = gruposMap[produtoData.productGroup?.toLowerCase()];
+    const unidadeSelecionada = unidades.find(u => u.descricao === produtoData.unidadeMedida);
+    const unidadeMedidaId = unidadeSelecionada?.id;
 
+    // Validação do productGroupId
     if (!productGroupId) {
       const errorMessage = `Grupo de produto "${produtoData.productGroup}" não encontrado. Verifique se o grupo está cadastrado.`;
       console.error(errorMessage);
       setErrosNoFront(prev => [...prev, errorMessage]);
       throw new Error(errorMessage);
     }
-
-    const unidadeSelecionada = unidades.find(u => u.descricao === produtoData.unidadeMedida);
-    const unidadeMedidaId = unidadeSelecionada?.id;
 
     const payload = {
       productType: produtoData.productType,
@@ -391,14 +393,16 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
       preco: produtoData.preco,
       finalPrice: produtoData.finalPrice,
       unidadeMedida: produtoData.unidadeMedida,
-      status: produtoData.status,
+      status: produtoData.status === true || produtoData.status === '1' || produtoData.status === 1 ? true : false,
       productTypeId: productTypeId,
-      productGroupId: productGroupId,
+      productGroupId: productGroupId, // Inclui o productGroupId no payload
       unidadeMedidaId: unidadeMedidaId,
       produtoPaiId: produtoPaiId,
       imagem: null,
       intervaloReferencia: produtoData.intervaloReferencia,
     };
+
+    console.log('Payload enviado para /produto/add:', payload); // Log para verificar o payload
 
     let produtoId = null;
     try {
@@ -418,7 +422,6 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
       toast.error(errorMessage, { autoClose: 2000 });
       throw e;
     }
-
     for (const filho of filhosArr) {
       if (filho.isNovo) {
         await cadastrarProdutoComFilhos(
@@ -451,6 +454,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
   const onSubmit = async (data) => {
     setCarregar(true);
     try {
+      console.log('Dados do formulário enviados:', data); // Log para verificar os dados do formulário
       const isEdicao = !!produtoParaEditar?.id;
       await cadastrarProdutoComFilhos(
         data,
@@ -459,14 +463,16 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
         isEdicao ? produtoParaEditar.id : null
       );
       toast.success(isEdicao ? 'Produto atualizado com sucesso!' : 'Produto e filhos cadastrados com sucesso!', { autoClose: 2000 });
-      if (onSuccess) await onSuccess();
+      // Recarrega imediatamente a listagem quando vier do Exame
+      if (onSuccess) onSuccess();
       reset();
       setFilhos([]);
       setIsComposto(false);
+      if (onSuccess) await onSuccess();
+      if (onClose) onClose();
       setErrosNoFront([]);
       setPreview(null);
       setModalIsOpen(false);
-      if (onClose) onClose();
     } catch (error) {
       let errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Erro ao cadastrar produto e filhos';
       if (typeof errorMessage === 'object') {
@@ -505,7 +511,8 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
     listType: 'picture',
   };
 
-  const isExameGroup = watchedProductGroup && watchedProductGroup.toLowerCase() === 'exames';
+  // Verifica se o grupo selecionado é "Exame" (case-insensitive)
+  const isExameGroup = watchedProductGroup && watchedProductGroup.toLowerCase() === 'exame';
 
   return (
     <div className="product-container">
@@ -552,7 +559,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
                   )}
                 />
                 {preview && (
-                  <img src={preview} alt="Pré-visualização" className="imagem-preview" style={{ maxWidth: 100, marginTop: 8, borderRadius: 4 }} />
+                  <img src={preview} alt="Pré-visualização" className="imagem-preview" />
                 )}
               </Form.Item>
             </div>
@@ -614,7 +621,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
                         className="form-select"
                         showSearch
                         allowClear
-                        disabled={isFromExame || disabledFields.includes('productGroup')}
+                        disabled={isFromExame}
                         optionFilterProp="children"
                         filterOption={(input, option) =>
                           option.children.toLowerCase().includes(input.toLowerCase())
@@ -622,7 +629,9 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
                         value={field.value || undefined}
                         onChange={(value) => {
                           field.onChange(value);
-                          if (value?.toLowerCase() !== 'exames') {
+                          console.log('Grupo selecionado:', value); // Log para depuração
+                          // Limpa campos condicionais se o grupo não for Exame
+                          if (value?.toLowerCase() !== 'exame') {
                             setValue('intervaloReferencia', '');
                             setIsComposto(false);
                             setFilhos([]);

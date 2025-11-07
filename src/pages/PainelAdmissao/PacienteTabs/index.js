@@ -34,11 +34,6 @@ const PacienteTabs = (props) => {
     const [loadingSeguradora, setLoadingSeguradora] = useState(false);
     const [novaSeguradora, setNovaSeguradora] = useState({ nome: '', nif: '', telefone: '', email: '', endereco: '', empresaId: null, status: true });
 
-    const [mostrarFormNovaEmpresa, setMostrarFormNovaEmpresa] = useState(false);
-    const [editandoEmpresa, setEditandoEmpresa] = useState(null);
-    const [loadingEmpresa, setLoadingEmpresa] = useState(false);
-    const [novaEmpresa, setNovaEmpresa] = useState({ nome: '', tipo: 'MATRIZ', nif: '', telefone: '', endereco: '', email: '', status: true });
-
     const tabConfig = [
         { key: 'endereco', label: 'Endereço', icon: <HomeOutlined /> },
         { key: 'fiscal', label: 'Fiscal', icon: <FileTextOutlined /> },
@@ -149,34 +144,6 @@ const PacienteTabs = (props) => {
             toast.error('Erro ao salvar seguradora.');
         } finally {
             setLoadingSeguradora(false);
-        }
-    };
-
-    const handleCadastrarEmpresa = async () => {
-        if (!novaEmpresa.nome.trim()) return toast.warn('Nome é obrigatório!');
-        setLoadingEmpresa(true);
-        try {
-            const payload = { ...novaEmpresa };
-            let res;
-            if (editandoEmpresa) {
-                res = await api.put(`/empresa/${editandoEmpresa.id}`, payload);
-                toast.success('Empresa atualizada!');
-            } else {
-                res = await api.post('/empresa/add', payload);
-                toast.success('Empresa cadastrada!');
-            }
-            setEmpresas(prev => editandoEmpresa ? prev.map(e => e.id === editandoEmpresa.id ? res.data : e) : [...prev, res.data]);
-            if (!editandoEmpresa) {
-                setEmpresaSelecionada(res.data.id);
-                handleChange('empresaId', res.data.id);
-            }
-            setMostrarFormNovaEmpresa(false);
-            setEditandoEmpresa(null);
-            setNovaEmpresa({ nome: '', tipo: 'MATRIZ', nif: '', telefone: '', endereco: '', email: '', status: true });
-        } catch (error) {
-            toast.error('Erro ao salvar empresa.');
-        } finally {
-            setLoadingEmpresa(false);
         }
     };
 
@@ -521,45 +488,11 @@ const PacienteTabs = (props) => {
                                 handleChange('empresaId', v);
                             }}
                             placeholder="Selecione empresa"
-                            dropdownRender={menu => (
-                                <>
-                                    {menu}
-                                    <Divider style={{ margin: '4px 0' }} />
-                                    <Button type="text" icon={<PlusOutlined />} onClick={() => setMostrarFormNovaEmpresa(true)}>
-                                        Nova
-                                    </Button>
-                                </>
-                            )}
                         >
                             {empresas.map(e => (
                                 <Option key={e.id} value={e.id}>{e.nome}</Option>
                             ))}
                         </Select>
-
-                        {mostrarFormNovaEmpresa && (
-                            <Card size="small" style={{ marginTop: 16 }}>
-                                <h5>Nova Empresa</h5>
-                                <Row gutter={16}>
-                                    <Col span={12}>
-                                        <Input placeholder="Nome *" value={novaEmpresa.nome} onChange={e => setNovaEmpresa(p => ({ ...p, nome: e.target.value }))} />
-                                    </Col>
-                                    <Col span={12}>
-                                        <Select value={novaEmpresa.tipo} onChange={v => setNovaEmpresa(p => ({ ...p, tipo: v }))} style={{ width: '100%' }}>
-                                            <Option value="MATRIZ">Matriz</Option>
-                                            <Option value="FILIAL">Filial</Option>
-                                        </Select>
-                                    </Col>
-                                </Row>
-                                <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                                    <Button type="primary" onClick={handleCadastrarEmpresa} loading={loadingEmpresa}>
-                                        Cadastrar
-                                    </Button>
-                                    <Button danger onClick={() => setMostrarFormNovaEmpresa(false)}>
-                                        Cancelar
-                                    </Button>
-                                </div>
-                            </Card>
-                        )}
                     </div>
                 );
 

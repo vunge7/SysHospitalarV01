@@ -1,8 +1,7 @@
 // api.js - ATUALIZADO
 import axios from 'axios';
 
-const ip = 'localhost'; // Substitua pelo IP do servidor backend se necessário
-
+const ip = 'localhost';
 
 export const api = axios.create({
     baseURL: `http://${ip}:8081/`,
@@ -50,6 +49,16 @@ export const addPanelPermission = (painelPermissaoDTO, usuarioIdCriacao) =>
             'Usuario-Id': usuarioIdCriacao || 1
         }
     });
+
+// Empresas (Empresa Mãe) APIs
+export const fetchAllEmpresas = () => api.get('/empresa/all');
+export const fetchEmpresaById = (id) => api.get(`/empresa/${id}`);
+export const fetchFilialById = (id) => api.get(`/empresa/filial/${id}`);
+export const fetchEmpresaArvore = () => api.get('/empresa/arvore');
+export const createEmpresa = (empresa) => api.post('/empresa/add', empresa);
+export const updateEmpresa = (id, empresa) => api.put(`/empresa/${id}`, empresa);
+export const deleteEmpresa = (id) => api.delete(`/empresa/${id}`);
+export const deleteEmpresaCascade = (id) => api.delete(`/empresa/${id}/cascade`);
 
 // Remover permissão de painel de um usuário
 export const removePanelPermission = (permissaoId) => 
@@ -150,7 +159,7 @@ const dataAtual = formatDate();
         const painelPermissaoDTO = {
             usuarioId: parseInt(usuarioId),
             painelId: 1,
-            empresaId: parseInt(empresaId), // Campo obrigatório
+            empresaId: parseInt(empresaId), // Campo obrigatório (corrigido)
             dataCriacao: dataAtual, // Já está como string formatada
             usuarioIdCriacao: parseInt(usuarioLogadoId) || 1,
             dataActualizacao: dataAtual, // Mesma data de criação

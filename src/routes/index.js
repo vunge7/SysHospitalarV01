@@ -34,6 +34,7 @@ import RoleRoute from '../contexts/RoleRoute';
 import PermissaoRoute from './PermissaoRoute';
 import { getRotaConfig } from '../config/rotasConfig';
 import PainelPermissoes from '../components/PainelPermissoes';
+import Empresas from '../components/Empresa';
 
 const RotaProtegidaPorChave = ({ chave, children }) => {
     const config = getRotaConfig(chave);
@@ -246,6 +247,16 @@ function RoutesApp() {
                     <Private>
                         <RotaProtegidaPorChave chave="rh">
                             <PainelRecursos />
+                        </RotaProtegidaPorChave>
+                    </Private>
+                }
+            />}
+            { <Route
+                path="/admin/empresa"
+                element={
+                    <Private>
+                        <RotaProtegidaPorChave chave="empresa">
+                            <Empresas />
                         </RotaProtegidaPorChave>
                     </Private>
                 }

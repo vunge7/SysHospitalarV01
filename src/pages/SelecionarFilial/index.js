@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Spin, Alert, Typography } from 'antd';
+
 import { CheckCircleOutlined } from '@ant-design/icons';
 import { AuthContext } from '../../contexts/auth';
 import { api } from '../../service/api';
@@ -8,7 +9,8 @@ import { useNavigate } from 'react-router-dom';
 const { Title, Text } = Typography;
 
 const SelecionarFilial = () => {
-    const { user, setUser } = useContext(AuthContext);
+    const { user, setUser, logout } = useContext(AuthContext);
+
     const [filiais, setFiliais] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -18,6 +20,16 @@ const SelecionarFilial = () => {
     useEffect(() => {
         carregarFiliais();
     }, []);
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/login');
+        } catch (e) {
+            console.warn('Falha ao terminar sessão:', e);
+            navigate('/login');
+        }
+    };
 
     const carregarFiliais = async () => {
         try {
@@ -149,6 +161,9 @@ const SelecionarFilial = () => {
             padding: '40px 20px'
         }}>
             <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                    <Button danger onClick={handleLogout}>Terminar Sessão</Button>
+                </div>
                 <div style={{ textAlign: 'center', marginBottom: 40 }}>
                     <Title level={2}>
                         <span style={{ marginRight: 8 }}>🏢</span>
