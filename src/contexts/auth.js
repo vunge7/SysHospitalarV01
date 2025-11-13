@@ -17,7 +17,6 @@ export function AuthProvider({ children }) {
                 
                 // Se o usuário não tem filial selecionada, redirecionar para seleção
                 if (!userData.filialSelecionada) {
-                    // Não redirecionar aqui, deixar o componente de rota fazer isso
                 }
             }
             setLoading(false);
@@ -34,11 +33,11 @@ export function AuthProvider({ children }) {
                 uid: user.id,
                 nome: user.username,
                 tipo: user.tipo,
-                funcionarioId: user.funcionarioId || null,
+                funcionarioId: user.funcionarioId ?? null,
             };
 
             // Busca foto do perfil via funcionario -> pessoa -> nomePhoto
-            if (data.funcionarioId) {
+            if (data.funcionarioId !== null) {
                 try {
                     const funcResp = await fetchFuncionarioById(data.funcionarioId);
                     const func = funcResp?.data;
@@ -48,19 +47,20 @@ export function AuthProvider({ children }) {
                         const pessoa = pessoaResp?.data;
                         const nomePhoto = pessoa?.nomePhoto;
                         if (nomePhoto) {
-                            const base = (api?.defaults?.baseURL || '').replace(/\/+$/, '');
-                            // Garante que usamos apenas a ORIGEM (sem caminhos como /api)
-                            const baseOrigin = (() => {
-                                try {
-                                    return new URL(base, window.location.origin).origin;
-                                } catch {
-                                    // Fallback: remove "/api" ou qualquer sufixo de caminho
-                                    return base.replace(/\/?api\/?$/, '');
-                                }
-                            })();
+                            const rawBase = api?.defaults?.baseURL || '';
+                            let baseOrigin = '';
+                            try {
+                                const u = new URL(rawBase, window.location.origin);
+                                baseOrigin = u.origin; // ex.: http://localhost:8081
+                            } catch (_) {
+                                // Fallbacks seguros
+                                const cleaned = String(rawBase).replace(/\/+$/, '');
+                                baseOrigin = cleaned.replace(/\/?api\/?$/, '') || window.location.origin;
+                            }
+                            const originNoSlash = baseOrigin.replace(/\/+$/, '');
                             data.pessoaId = pessoaId;
                             data.nomePhoto = nomePhoto;
-                            data.fotoUrl = `${api.baseURL}/uploads/pessoa/fotos/${encodeURIComponent(nomePhoto)}`;
+                            data.fotoUrl = `${originNoSlash}/uploads/pessoa/fotos/${encodeURIComponent(nomePhoto)}`;
                             console.log("Nome da foto: ", data.nomePhoto);
                         }else{
                             console.log('Nenhuma foto encontrada para o funcionário');
@@ -89,6 +89,7 @@ export function AuthProvider({ children }) {
             uid: '1',
             nome: user.username,
             tipo: user.tipo,
+            funcionarioId: user.funcionarioId,
         };
 
         setUser(data);

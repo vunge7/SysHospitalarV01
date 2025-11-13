@@ -39,7 +39,7 @@ function Cabecario() {
             <header className="navbar">
                 <Link to="/admin">
                     <div className="navbar-logo">
-                        <img src={logo} alt="Logo" style={{ width: "60%", height: "60%" }} />
+                        <img src={logo} alt="Logo" />
                     </div>
                 </Link>
 

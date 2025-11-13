@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button, Menu, Input, Select, Radio, Modal, Form, Table } from 'antd';
-import { SearchOutlined, UserAddOutlined } from '@ant-design/icons';
+import { Button, Menu, Input, Select, Radio, Modal, Typography, Card, Space } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { api } from '../../service/api';
 import ListarUsuario from './ListarUsuario';
 import Cabecario from '../Cabecario';
 import Rodape from '../Rodape';
+import NovaPessoaModal from './components/NovaPessoaModal';
+import PessoaSearchModal from './components/PessoaSearchModal';
 import './Usuario.css';
 import { format } from 'date-fns';
 
@@ -15,7 +16,6 @@ import {
   DashboardOutlined,
   UserAddOutlined as MenuUserAddOutlined,
   UnorderedListOutlined,
-  UserOutlined,
   PoweroffOutlined,
 } from '@ant-design/icons';
 import { AuthContext } from '../../contexts/auth';
@@ -34,15 +34,7 @@ function Usuario() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPessoas, setFilteredPessoas] = useState([]);
   const [tipoUsuario, setTipoUsuario] = useState('');
-  const [form, setForm] = useState({
-    nome: '',
-    telefone: '',
-    email: '',
-    endereco: '',
-    genero: '',
-    nif: '',
-    dataNascimento: '',
-  });
+  // Form state da antiga NovaPessoa foi substituído por NovaPessoaModal reutilizável
   const [funcoes, setFuncoes] = useState([]);
   const [userName, setUserName] = useState('');
   const [senha, setSenha] = useState('');
@@ -53,8 +45,23 @@ function Usuario() {
   const [status, setStatus] = useState(true);
   const [usuarioId, setUsuarioId] = useState(1); // Ajuste conforme o usuário logado
   const [funcionarios, setFuncionarios] = useState([]);
-  const navigate = useNavigate();
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
+
+  const safeText = (val) => {
+    if (val === null || val === undefined) return '';
+    if (val instanceof Date) {
+      try { return format(val, 'yyyy-MM-dd'); } catch (_) { return String(val); }
+    }
+    if (typeof val === 'object') {
+      // Caso backend envie objeto de data {year, month, day} ou estruturas aninhadas
+      if (typeof val.year === 'number' && typeof val.month === 'number' && typeof val.day === 'number') {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${val.year}-${pad(val.month)}-${pad(val.day)}`;
+      }
+      return '';
+    }
+    return String(val);
+  };
 
   const generos = [
     { value: 'M', label: 'Masculino' },
@@ -74,7 +81,7 @@ function Usuario() {
   // Funções de busca de dados
   const fetchUsuarios = async () => {
     try {
-      const response = await api.get('api/usuarios/listar');
+      const response = await api.get('usuario/all');
       setUsuarios(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
@@ -173,7 +180,6 @@ function Usuario() {
   };
 
   const abrirModal = () => {
-    setForm({ nome: '', telefone: '', email: '', endereco: '', genero: '', nif: '', dataNascimento: '' });
     setIsModalOpen(true);
   };
 
@@ -194,10 +200,7 @@ function Usuario() {
     setSearchQuery('');
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  // Handlers do formulário interno removidos; NovaPessoaModal gerencia seu próprio formulário
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -207,13 +210,13 @@ function Usuario() {
     try {
       const pessoaData = await verificarNifExistente(pessoa.nif);
       if (!pessoaData || !pessoaData.id) {
-        alert('Erro: Pessoa não encontrada no backend.');
+        Modal.error({ title: 'Erro', content: 'Pessoa não encontrada no backend.' });
         return;
       }
       // Encontre o funcionário correspondente
       const funcionario = funcionarios.find(f => Number(f.pessoaId) === Number(pessoaData.id));
       if (!funcionario) {
-        alert('Erro: Funcionário não encontrado para esta pessoa.');
+        Modal.error({ title: 'Erro', content: 'Funcionário não encontrado para esta pessoa.' });
         return;
       }
       setSelectedPessoa({ ...pessoaData, funcionarioId: funcionario.id });
@@ -222,109 +225,50 @@ function Usuario() {
       setSearchQuery('');
     } catch (error) {
       console.error('Erro ao verificar pessoa:', error);
-      alert('Erro ao verificar pessoa no backend.');
+      Modal.error({ title: 'Erro', content: 'Erro ao verificar pessoa no backend.' });
     }
   };
 
-  const validateModalForm = () => {
-    const requiredFields = ['nome', 'telefone', 'email', 'endereco', 'genero', 'nif', 'dataNascimento'];
-    const isValid = requiredFields.every((field) => form[field] && form[field].trim() !== '');
-    if (!isValid) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      alert('Por favor, insira um email válido.');
-      return false;
-    }
-    if (!/^\d{8,9}$/.test(form.nif.trim())) {
-      alert('NIF deve conter 8 ou 9 dígitos numéricos.');
-      return false;
-    }
-    if (!/^\d{9,15}$/.test(form.telefone.trim())) {
-      alert('Telefone deve conter entre 9 e 15 dígitos numéricos.');
-      return false;
-    }
-    const dataNascimentoDate = new Date(form.dataNascimento);
-    const today = new Date();
-    if (isNaN(dataNascimentoDate.getTime()) || dataNascimentoDate > today) {
-      alert('Data de nascimento inválida ou no futuro.');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmitPessoa = async (e) => {
-    e.preventDefault();
-    if (!validateModalForm()) return;
-
-    const nif = form.nif.trim();
-    const nifExiste = await verificarNifExistente(nif);
-    if (nifExiste) {
-      alert('Erro: O NIF informado já está cadastrado.');
-      return;
-    }
-
-    try {
-      const pessoaData = {
-        nome: form.nome.trim(),
-        dataNascimento: form.dataNascimento,
-        telefone: form.telefone.trim(),
-        email: form.email.trim(),
-        endereco: form.endereco.trim(),
-        genero: form.genero,
-        nif: nif,
-      };
-      const response = await api.post('pessoa/add', pessoaData);
-      if (!response.data.id) {
-        alert('Erro: ID da pessoa não retornado pelo backend.');
-        return;
-      }
-      const newPessoa = { ...response.data };
-      setPessoas((prev) => [...prev, newPessoa]);
-      setSelectedPessoa(newPessoa);
-      setIsPessoaMarked(true);
-      alert('Pessoa cadastrada com sucesso!');
-      fecharModal();
-      if (isSearchModalOpen) {
-        fecharSearchModal();
-      }
-    } catch (error) {
-      console.error('Erro ao cadastrar pessoa:', error);
-      alert('Erro ao cadastrar pessoa.');
-    }
-  };
+  // Fluxo de cadastro de pessoa agora é tratado por NovaPessoaModal e retorna via onSuccess
 
   const handleSubmitUsuario = async (e) => {
     e.preventDefault();
     if (!selectedPessoa || !isPessoaMarked) {
-      alert('Selecione e marque uma pessoa antes de cadastrar o usuário.');
+      Modal.warning({ title: 'Atenção', content: 'Selecione e marque uma pessoa antes de cadastrar o usuário.' });
       return;
     }
     if (!tipoUsuario) {
-      alert('Selecione um tipo de usuário.');
+      Modal.warning({ title: 'Atenção', content: 'Selecione um tipo de usuário.' });
       return;
     }
     if (!userName || !senha || !numeroOrdem || !funcaoId) {
-      alert('Preencha todos os campos obrigatórios do usuário.');
+      Modal.warning({ title: 'Atenção', content: 'Preencha todos os campos obrigatórios do usuário.' });
+      return;
+    }
+    if (!user?.filialSelecionada?.id) {
+      Modal.warning({ title: 'Atenção', content: 'Nenhuma filial selecionada. Selecione uma filial após o login.' });
       return;
     }
     try {
+      const today = format(new Date(), 'yyyy-MM-dd');
       const usuarioData = {
         userName,
         senha,
-        numeroOrdem,
+        numeroOrdem: Number(numeroOrdem),
         estadoUsuario,
         tipoUsuario,
         funcaoId: Number(funcaoId),
         funcionarioId: Number(selectedPessoa.funcionarioId),
         ip,
+        usuarioId,
+        dataCadastro: today,
+        dataAtualizacao: today,
+        empresaId: Number(user.filialSelecionada.id),
       };
       console.log('Payload enviado para cadastro de usuário:', usuarioData);
-      const response = await api.post('api/auth/usuarios/cadastrar', usuarioData);
+      const response = await api.post('usuario/add', usuarioData);
       setUsuarios((prev) => [...prev, response.data]);
-      alert('Usuário cadastrado com sucesso!');
+      Modal.success({ title: 'Sucesso', content: 'Usuário cadastrado com sucesso!' });
       // Limpar campos do formulário
       setSelectedPessoa(null);
       setIsPessoaMarked(false);
@@ -338,7 +282,7 @@ function Usuario() {
       setStatus(true);
     } catch (error) {
       console.error('Erro ao cadastrar usuário:', error);
-      alert('Erro ao cadastrar usuário.');
+      Modal.error({ title: 'Erro', content: 'Erro ao cadastrar usuário.' });
     }
   };
 
@@ -374,113 +318,120 @@ function Usuario() {
           {activeTab === 'dashboard' && <h2 className="section-title">Dashboard</h2>}
           {activeTab === 'novo-usuario' && (
             <div className="novo-usuario-container">
-              <h2>Cadastrar Usuário Teste Novo</h2>
-              <div className="tipo-usuario-container">
-                <h3>Tipo de Usuário</h3>
-                <Radio.Group
-                  onChange={(e) => setTipoUsuario(e.target.value)}
-                  value={tipoUsuario}
-                  disabled={!isPessoaMarked || !selectedPessoa?.id}
-                >
-                  {tiposUsuario.map((tipo) => (
-                    <Radio key={tipo} value={tipo}>
-                      {tipo}
-                    </Radio>
-                  ))}
-                </Radio.Group>
-              </div>
-              <div className="search-container">
-                <Input
-                  placeholder="Pesquisar por nome ou NIF"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  suffix={<SearchOutlined onClick={abrirSearchModal} className="search-icon" />}
-                />
-              </div>
-              {selectedPessoa && (
-                <div className="pessoa-selecionada-container">
-                  <h3>Dados Pessoais</h3>
-                  <div className="pessoa-inputs">
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Typography.Title level={2} style={{ margin: 0 }}>Cadastrar Usuário Teste Novo</Typography.Title>
+
+                <Card title="Tipo de Usuário">
+                  <Radio.Group
+                    onChange={(e) => setTipoUsuario(e.target.value)}
+                    value={tipoUsuario}
+                    disabled={!isPessoaMarked || !selectedPessoa?.id}
+                  >
+                    {tiposUsuario.map((tipo) => (
+                      <Radio key={tipo} value={tipo}>
+                        {tipo}
+                      </Radio>
+                    ))}
+                  </Radio.Group>
+                </Card>
+
+                <Card title="Pesquisar/Selecionar Pessoa">
+                  <Input
+                    placeholder="Pesquisar por nome ou NIF"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    suffix={<SearchOutlined onClick={abrirSearchModal} className="search-icon" />}
+                  />
+                </Card>
+
+                {selectedPessoa && (
+                  <Card title="Dados Pessoais">
+                    <div className="pessoa-inputs">
+                      <div className="input-container">
+                        <label>Nome</label>
+                        <Input value={safeText(selectedPessoa.nome)} readOnly />
+                      </div>
+                      <div className="input-container">
+                        <label>NIF</label>
+                        <Input value={safeText(selectedPessoa.nif)} readOnly />
+                      </div>
+                      <div className="input-container">
+                        <label>Data de Nascimento</label>
+                        <Input value={safeText(selectedPessoa.dataNascimento)} readOnly />
+                      </div>
+                      <div className="input-container">
+                        <label>Telefone</label>
+                        <Input value={safeText(selectedPessoa.telefone)} readOnly />
+                      </div>
+                      <div className="input-container">
+                        <label>E-mail</label>
+                        <Input value={safeText(selectedPessoa.email)} readOnly />
+                      </div>
+                      <div className="input-container">
+                        <label>Endereço</label>
+                        <Input value={safeText(selectedPessoa.endereco)} readOnly />
+                      </div>
+                      <div className="input-container">
+                        <label>Gênero</label>
+                        <Input value={safeText(generos.find((g) => g.value === selectedPessoa.genero)?.label || selectedPessoa.genero)} readOnly />
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                <Card title="Dados de Acesso">
+                  <div className="usuario-form">
                     <div className="input-container">
-                      <label>Nome</label>
-                      <Input value={selectedPessoa.nome} readOnly />
+                      <label>Nome de Usuário</label>
+                      <Input value={userName} onChange={e => setUserName(e.target.value)} placeholder="Nome de usuário" disabled={!selectedPessoa} />
                     </div>
                     <div className="input-container">
-                      <label>NIF</label>
-                      <Input value={selectedPessoa.nif} readOnly />
+                      <label>Senha</label>
+                      <Input.Password value={senha} onChange={e => setSenha(e.target.value)} placeholder="Senha" disabled={!selectedPessoa} />
                     </div>
                     <div className="input-container">
-                      <label>Data de Nascimento</label>
-                      <Input value={selectedPessoa.dataNascimento} readOnly />
+                      <label>Número de Ordem</label>
+                      <Input value={numeroOrdem} onChange={e => setNumeroOrdem(e.target.value)} placeholder="Número de ordem" disabled={!selectedPessoa} />
                     </div>
                     <div className="input-container">
-                      <label>Telefone</label>
-                      <Input value={selectedPessoa.telefone} readOnly />
+                      <label>Estado do Usuário</label>
+                      <Select value={estadoUsuario} onChange={setEstadoUsuario} style={{ width: '100%' }} disabled={!selectedPessoa}>
+                        <Option value="ACTIVO">Ativo</Option>
+                        <Option value="DESACTIVO">Inativo</Option>
+                      </Select>
                     </div>
                     <div className="input-container">
-                      <label>E-mail</label>
-                      <Input value={selectedPessoa.email} readOnly />
+                      <label>Função</label>
+                      <Select value={funcaoId} onChange={setFuncaoId} style={{ width: '100%' }} disabled={!selectedPessoa}>
+                        {funcoes.map(f => (
+                          <Option key={f.id} value={f.id}>{f.designacao}</Option>
+                        ))}
+                      </Select>
                     </div>
                     <div className="input-container">
-                      <label>Endereço</label>
-                      <Input value={selectedPessoa.endereco} readOnly />
+                      <label>IP</label>
+                      <Input value={ip} placeholder="IP" readOnly />
                     </div>
                     <div className="input-container">
-                      <label>Gênero</label>
-                      <Input value={generos.find((g) => g.value === selectedPessoa.genero)?.label || selectedPessoa.genero} readOnly />
+                      <label>Status</label>
+                      <Select value={status} onChange={value => setStatus(value === true || value === 'true')} style={{ width: '100%' }} disabled={!selectedPessoa}>
+                        <Option value={true}>Ativo</Option>
+                        <Option value={false}>Inativo</Option>
+                      </Select>
                     </div>
                   </div>
+                </Card>
+
+                <div className="button-container">
+                  <Button
+                    type="primary"
+                    onClick={handleSubmitUsuario}
+                    disabled={!isPessoaMarked || !selectedPessoa?.id || !tipoUsuario}
+                  >
+                    Salvar Usuário
+                  </Button>
                 </div>
-              )}
-              <div className="usuario-form">
-                <div className="input-container">
-                  <label>Nome de Usuário</label>
-                  <Input value={userName} onChange={e => setUserName(e.target.value)} placeholder="Nome de usuário" disabled={!selectedPessoa} />
-                </div>
-                <div className="input-container">
-                  <label>Senha</label>
-                  <Input.Password value={senha} onChange={e => setSenha(e.target.value)} placeholder="Senha" disabled={!selectedPessoa} />
-                </div>
-                <div className="input-container">
-                  <label>Número de Ordem</label>
-                  <Input value={numeroOrdem} onChange={e => setNumeroOrdem(e.target.value)} placeholder="Número de ordem" disabled={!selectedPessoa} />
-                </div>
-                <div className="input-container">
-                  <label>Estado do Usuário</label>
-                  <Select value={estadoUsuario} onChange={setEstadoUsuario} style={{ width: '100%' }} disabled={!selectedPessoa}>
-                    <Option value="ACTIVO">Ativo</Option>
-                    <Option value="DESACTIVO">Inativo</Option>
-                  </Select>
-                </div>
-                <div className="input-container">
-                  <label>Função</label>
-                  <Select value={funcaoId} onChange={setFuncaoId} style={{ width: '100%' }} disabled={!selectedPessoa}>
-                    {funcoes.map(f => (
-                      <Option key={f.id} value={f.id}>{f.designacao}</Option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="input-container">
-                  <label>IP</label>
-                  <Input value={ip} placeholder="IP" readOnly />
-                </div>
-                <div className="input-container">
-                  <label>Status</label>
-                  <Select value={status} onChange={value => setStatus(value === true || value === 'true')} style={{ width: '100%' }} disabled={!selectedPessoa}>
-                    <Option value={true}>Ativo</Option>
-                    <Option value={false}>Inativo</Option>
-                  </Select>
-                </div>
-              </div>
-              <div className="button-container">
-                <Button
-                  type="primary"
-                  onClick={handleSubmitUsuario}
-                  disabled={!isPessoaMarked || !selectedPessoa?.id || !tipoUsuario}
-                >
-                  Salvar Usuário
-                </Button>
-              </div>
+              </Space>
             </div>
           )}
           {activeTab === 'listar-usuario' && (
@@ -497,84 +448,42 @@ function Usuario() {
         </Content>
       </div>
 
-      {/* Modal de Nova Pessoa */}
-      <Modal
-        title="Nova Pessoa"
-        visible={isModalOpen}
+      {/* Modal de Nova Pessoa (padronizada) */}
+      <NovaPessoaModal
+        open={isModalOpen}
         onCancel={fecharModal}
-        footer={null}
-      >
-        <Form onFinish={handleSubmitPessoa} layout="vertical">
-          <Form.Item label="Nome" required>
-            <Input name="nome" value={form.nome} onChange={handleInputChange} />
-          </Form.Item>
-          <Form.Item label="NIF" required>
-            <Input name="nif" value={form.nif} onChange={handleInputChange} />
-          </Form.Item>
-          <Form.Item label="Data de Nascimento" required>
-            <Input
-              type="date"
-              name="dataNascimento"
-              value={form.dataNascimento}
-              onChange={handleInputChange}
-            />
-          </Form.Item>
-          <Form.Item label="Telefone" required>
-            <Input name="telefone" value={form.telefone} onChange={handleInputChange} />
-          </Form.Item>
-          <Form.Item label="Email" required>
-            <Input name="email" value={form.email} onChange={handleInputChange} />
-          </Form.Item>
-          <Form.Item label="Endereço" required>
-            <Input name="endereco" value={form.endereco} onChange={handleInputChange} />
-          </Form.Item>
-          <Form.Item label="Gênero" required>
-            <Select
-              name="genero"
-              value={form.genero}
-              onChange={(value) => setForm((prev) => ({ ...prev, genero: value }))}
-            >
-              <Option value="">Selecione o Gênero</Option>
-              {generos.map((g) => (
-                <Option key={g.value} value={g.value}>
-                  {g.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit">
-              Salvar
-            </Button>
-            <Button onClick={fecharModal} style={{ marginLeft: 8 }}>
-              Fechar
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
+        user={user}
+        onSuccess={(newPessoa) => {
+          if (!newPessoa?.id) {
+            Modal.error({ title: 'Erro', content: 'ID da pessoa não retornado pelo backend.' });
+            return;
+          }
+          setPessoas((prev) => [...prev, newPessoa]);
+          const normalized = {
+            ...newPessoa,
+            nome: safeText(newPessoa.nome),
+            nif: safeText(newPessoa.nif),
+            telefone: safeText(newPessoa.telefone),
+            email: safeText(newPessoa.email),
+            endereco: safeText(newPessoa.endereco),
+            genero: safeText(newPessoa.genero),
+            dataNascimento: safeText(newPessoa.dataNascimento),
+          };
+          setSelectedPessoa(normalized);
+          setIsPessoaMarked(true);
+          fecharModal();
+          if (isSearchModalOpen) fecharSearchModal();
+        }}
+      />
 
       {/* Modal de Pesquisa */}
-      <Modal
-        title="Pesquisar Pessoa"
-        visible={isSearchModalOpen}
+      <PessoaSearchModal
+        open={isSearchModalOpen}
         onCancel={fecharSearchModal}
-        footer={[
-          <Button key="cancel" onClick={fecharSearchModal}>
-            Cancelar
-          </Button>,
-        ]}
-        className="search-modal"
-      >
-        <div className="add-person-icon-container">
-          <UserAddOutlined onClick={abrirModal} className="add-person-icon" title="Cadastrar Nova Pessoa" />
-        </div>
-        <Table
-          columns={columns}
-          dataSource={filteredPessoas}
-          rowKey="id"
-          pagination={{ pageSize: 5 }}
-        />
-      </Modal>
+        columns={columns}
+        dataSource={filteredPessoas}
+        onClickAddNovaPessoa={abrirModal}
+      />
 
       <Rodape />
     </div>
@@ -608,43 +517,6 @@ function SideMenu({ menu, onClick }) {
 
 function Content({ children }) {
   return <div className="main-content">{children}</div>;
-}
-
-function Header() {
-  return (
-    <div
-      style={{
-        height: 80,
-        backgroundColor: '#506175',
-        color: '#FFF',
-        marginBottom: 2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '24px',
-      }}
-    >
-      Painel de Usuários
-    </div>
-  );
-}
-
-function Footer() {
-  return (
-    <div
-      style={{
-        height: 60,
-        backgroundColor: 'lightskyblue',
-        color: 'white',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontWeight: 'bold',
-      }}
-    >
-      Footer
-    </div>
-  );
 }
 
 export default Usuario;

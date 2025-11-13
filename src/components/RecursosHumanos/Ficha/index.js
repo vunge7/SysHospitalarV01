@@ -290,7 +290,7 @@ const Ficha = () => {
       formData.append('nome', values.nome);
       formData.append('apelido', values.apelido);
       formData.append('nif', values.nif);
-      if (values.dataNascimento) formData.append('dataNascimento', values.dataNascimento.format('YYYY-MM-DD'));
+      if (values.dataNascimento) formData.append('dataNascimento', moment(values.dataNascimento).startOf('day').format('YYYY-MM-DD HH:mm:ss'));
       if (values.localNascimento) formData.append('localNascimento', values.localNascimento);
       if (values.telefone) formData.append('telefone', values.telefone);
       if (values.email) formData.append('email', values.email);
