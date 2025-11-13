@@ -26,6 +26,7 @@ const PacienteForm = () => {
  const [photoPreview, setPhotoPreview] = useState(null);
  const [errors, setErrors] = useState({});
  const [paciente, setPaciente] = useState({});
+ const [conveniosPendentes, setConveniosPendentes] = useState([]);
 
  useEffect(() => {
  const fetchLastQr = async () => {
@@ -235,6 +236,7 @@ const PacienteForm = () => {
  setErrors({});
  setPaciente({});
  setIdPaciente(0);
+ setConveniosPendentes([]);
  };
 
  const handleKeyDownID = async (e) => {
@@ -384,6 +386,8 @@ const PacienteForm = () => {
  mae={form.mae}
  nacionalidade={form.nacionalidade}
  empresaId={form.empresaId}
+ conveniosPendentes={conveniosPendentes}
+ setConveniosPendentes={setConveniosPendentes}
  handleChange={handleChange}
  errors={errors}
  />

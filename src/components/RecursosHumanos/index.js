@@ -31,21 +31,13 @@ function RecursosHumanos() {
   const { logout } = useContext(AuthContext);
 
   const fetchRecursosHumanos = async () => {
-    try {
-      const response = await api.get('recursoHumano/all');
-      setRecursosHumanos(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error('Erro ao buscar recursos humanos:', error);
-    }
+    // Endpoint ainda não existe; evitar 404
+    setRecursosHumanos([]);
   };
 
   const fetchPerfis = async () => {
-    try {
-      const response = await api.get('perfil/all');
-      setPerfis(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error('Erro ao buscar perfis:', error);
-    }
+    // Endpoint ainda não existe; evitar 404
+    setPerfis([]);
   };
 
   const fetchPessoas = async () => {
@@ -58,11 +50,13 @@ function RecursosHumanos() {
   };
 
   const fetchAllData = async () => {
-    await Promise.all([
-      fetchRecursosHumanos(),
-      fetchPerfis(),
-      fetchPessoas(),
-    ]);
+    // Temporariamente, só busca pessoas; demais endpoints ainda não existem no backend
+    try {
+      await fetchPessoas();
+    } finally {
+      setRecursosHumanos([]);
+      setPerfis([]);
+    }
   };
 
   useEffect(() => {

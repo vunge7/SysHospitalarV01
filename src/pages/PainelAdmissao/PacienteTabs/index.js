@@ -59,6 +59,13 @@ const PacienteTabs = (props) => {
     }, []);
 
     useEffect(() => {
+        // Mantém empresaSelecionada sincronizada com a prop
+        if (props.empresaId && props.empresaId !== empresaSelecionada) {
+            setEmpresaSelecionada(props.empresaId);
+        }
+    }, [props.empresaId]);
+
+    useEffect(() => {
         const fetchConvenios = async () => {
             if (!pacienteId) return;
             setLoadingConvenios(true);
@@ -73,6 +80,26 @@ const PacienteTabs = (props) => {
         };
         fetchConvenios();
     }, [pacienteId]);
+
+    // Ao obter um pacienteId válido, envia quaisquer convênios pendentes
+    useEffect(() => {
+        const flushPendentes = async () => {
+            if (!pacienteId || (props.conveniosPendentes || []).length === 0) return;
+            for (const pend of props.conveniosPendentes) {
+                try {
+                    await api.post('/pacienteSeguradora/add', { ...pend, pacienteId: Number(pacienteId) });
+                } catch (e) {
+                    // feedback mínimo; deixa para o usuário tentar novamente manualmente
+                }
+            }
+            try {
+                const res = await api.get(`/pacienteSeguradora/all/${pacienteId}`);
+                setConveniosPaciente(res.data || []);
+            } catch {}
+            props.setConveniosPendentes && props.setConveniosPendentes([]);
+        };
+        flushPendentes();
+    }, [pacienteId, props.conveniosPendentes ? props.conveniosPendentes.length : 0]);
 
     useEffect(() => {
         const updateIndicator = () => {
@@ -90,17 +117,28 @@ const PacienteTabs = (props) => {
     const adicionarConvenio = async () => {
         if (!novoConvenio.seguradoraId) return toast.warn('Selecione uma seguradora.');
         const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const empresaIdNum = Number(empresaSelecionada || props.empresaId);
+        const empresaIdFinal = Number.isNaN(empresaIdNum) ? null : empresaIdNum;
+        if (!empresaIdFinal) return toast.warn('Selecione a empresa na aba Empresa.');
         const payload = {
-            seguradoraId: novoConvenio.seguradoraId,
-            pacienteId,
+            seguradoraId: Number(novoConvenio.seguradoraId),
+            pacienteId: Number(pacienteId),
             numeroCartao: novoConvenio.numeroCartao || null,
             dataValidade: novoConvenio.validade ? `${novoConvenio.validade}-01` : null,
             dataCricao: now,
             dataActualizacao: now,
             usuarioIdCricao: 1,
             usuarioIdAtualizacao: 1,
-            empresaId: novoConvenio.empresaId || null
+            empresaId: empresaIdFinal
         };
+
+        // Se ainda não existe paciente, guarda como pendente e envia após criar ficha
+        if (!pacienteId) {
+            props.setConveniosPendentes && props.setConveniosPendentes(prev => ([...(prev || []), payload]));
+            toast.info('Convênio será salvo após criar a ficha do paciente.');
+            setNovoConvenio({ seguradoraId: null, numeroCartao: '', validade: '', empresaId: null });
+            return;
+        }
 
         try {
             await api.post('/pacienteSeguradora/add', payload);
@@ -109,7 +147,8 @@ const PacienteTabs = (props) => {
             toast.success('Convênio adicionado!');
             setNovoConvenio({ seguradoraId: null, numeroCartao: '', validade: '', empresaId: null });
         } catch (error) {
-            toast.error('Erro ao adicionar convênio.');
+            const msg = error?.response?.data || error?.message || 'Erro ao adicionar convênio.';
+            toast.error(typeof msg === 'string' ? msg : 'Erro ao adicionar convênio.');
         }
     };
 

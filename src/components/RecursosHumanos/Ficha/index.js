@@ -64,9 +64,11 @@ const Ficha = () => {
   const [pessoas, setPessoas] = useState([]);
   const [subsidios, setSubsidios] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubsidiosLoading, setIsSubsidiosLoading] = useState(false);
   const [isDepartamentosLoading, setIsDepartamentosLoading] = useState(false);
+  const [isEmpresasLoading, setIsEmpresasLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPessoa, setSelectedPessoa] = useState(null);
@@ -78,6 +80,8 @@ const Ficha = () => {
   const [sugestoes, setSugestoes] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [funcionarioId, setFuncionarioId] = useState(null);
+  const [fotoFile, setFotoFile] = useState(null);
+  const [fotoPreview, setFotoPreview] = useState('');
 
   const generos = [
     { value: 'MASCULINO', label: 'Masculino' },
@@ -96,6 +100,16 @@ const Ficha = () => {
       })
     );
   }, []);
+
+  const getPessoaFotoUrl = (nome) => {
+    if (!nome) return '';
+    try {
+      const base = (api?.defaults?.baseURL || '').replace(/\/+$/, '');
+      return `${base}/uploads/pessoa/fotos/${encodeURIComponent(nome)}`;
+    } catch (e) {
+      return `/uploads/pessoa/fotos/${encodeURIComponent(nome)}`;
+    }
+  };
 
   const fetchPessoas = useCallback(async () => {
     setIsLoading(true);
@@ -148,6 +162,23 @@ const Ficha = () => {
     }
   }, [cleanObject]);
 
+  const fetchEmpresas = useCallback(async () => {
+    setIsEmpresasLoading(true);
+    try {
+      const response = await api.get('empresa/all');
+      const empresasData = Array.isArray(response.data)
+        ? response.data.map(cleanObject)
+        : [];
+      setEmpresas(empresasData);
+    } catch (error) {
+      console.error('Erro ao carregar empresas:', error.response?.data || error);
+      toast.error(error.response?.data?.message || 'Erro ao carregar empresas.');
+      setEmpresas([]);
+    } finally {
+      setIsEmpresasLoading(false);
+    }
+  }, [cleanObject]);
+
   const fetchFuncionarioByPessoaId = useCallback(async (pessoaId) => {
     try {
       const response = await api.get(`funcionario/pessoa/${pessoaId}`);
@@ -181,6 +212,7 @@ const Ficha = () => {
           descricao: funcionario.descricao,
           cargo: funcionario.cargo,
           departamentoId: funcionario.departamentoId,
+          empresaId: funcionario.empresaId,
           segurancaSocial: funcionario.segurancaSocial,
           fechoContas: funcionario.fechoContas,
           estadoFuncionario: funcionario.estadoFuncionario,
@@ -226,12 +258,15 @@ const Ficha = () => {
     fetchPessoas();
     fetchSubsidios();
     fetchDepartamentos();
-  }, [fetchPessoas, fetchSubsidios, fetchDepartamentos]);
+    fetchEmpresas();
+  }, [fetchPessoas, fetchSubsidios, fetchDepartamentos, fetchEmpresas]);
 
   const abrirModal = () => setIsModalOpen(true);
   const fecharModal = () => {
     setIsModalOpen(false);
     form.resetFields();
+    setFotoFile(null);
+    setFotoPreview('');
   };
 
   const handleSelectSugestao = async (value, option) => {
@@ -251,35 +286,38 @@ const Ficha = () => {
 
   const handleSubmitPessoa = async (values) => {
     try {
-      const pessoaData = {
-        nome: values.nome,
-        apelido: values.apelido,
-        nif: values.nif,
-        dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD') : null,
-        localNascimento: values.localNascimento,
-        telefone: values.telefone,
-        email: values.email,
-        endereco: values.endereco,
-        genero: values.genero,
-        bairro: values.bairro,
-        estadoCivil: values.estadoCivil,
-        pai: values.pai,
-        mae: values.mae,
-        nacionalidade: values.nacionalidade,
-        raca: values.raca,
-        paisEndereco: values.paisEndereco,
-        provinciaEndereco: values.provinciaEndereco,
-        municipioEndereco: values.municipioEndereco,
-        paisNascimento: values.paisNascimento,
-        provinciaNascimento: values.provinciaNascimento,
-        municipioNascimento: values.municipioNascimento,
-        profissao: values.profissao,
-        habilitacao: values.habilitacao,
-        nomePhoto: values.nomePhoto,
-      };
+      const formData = new FormData();
+      formData.append('nome', values.nome);
+      formData.append('apelido', values.apelido);
+      formData.append('nif', values.nif);
+      if (values.dataNascimento) formData.append('dataNascimento', values.dataNascimento.format('YYYY-MM-DD'));
+      if (values.localNascimento) formData.append('localNascimento', values.localNascimento);
+      if (values.telefone) formData.append('telefone', values.telefone);
+      if (values.email) formData.append('email', values.email);
+      if (values.endereco) formData.append('endereco', values.endereco);
+      if (values.genero) formData.append('genero', values.genero);
+      if (values.bairro) formData.append('bairro', values.bairro);
+      if (values.estadoCivil) formData.append('estadoCivil', values.estadoCivil);
+      if (values.pai) formData.append('pai', values.pai);
+      if (values.mae) formData.append('mae', values.mae);
+      if (values.nacionalidade) formData.append('nacionalidade', values.nacionalidade);
+      if (values.raca) formData.append('raca', values.raca);
+      if (values.paisEndereco) formData.append('paisEndereco', values.paisEndereco);
+      if (values.provinciaEndereco) formData.append('provinciaEndereco', values.provinciaEndereco);
+      if (values.municipioEndereco) formData.append('municipioEndereco', values.municipioEndereco);
+      if (values.paisNascimento) formData.append('paisNascimento', values.paisNascimento);
+      if (values.provinciaNascimento) formData.append('provinciaNascimento', values.provinciaNascimento);
+      if (values.municipioNascimento) formData.append('municipioNascimento', values.municipioNascimento);
+      if (values.profissao) formData.append('profissao', values.profissao);
+      if (values.habilitacao) formData.append('habilitacao', values.habilitacao);
+      formData.append('empresaId', String(Number(values.empresaId)));
+      if (fotoFile) {
+        formData.append('file', fotoFile);
+        formData.append('nomePhoto', fotoFile.name);
+      }
 
-      console.log('Enviando pessoa para /pessoa/add:', JSON.stringify(pessoaData, null, 2));
-      const response = await api.post('pessoa/add', pessoaData);
+      console.log('Enviando pessoa para /pessoa/add (multipart/form-data)');
+      const response = await api.post('pessoa/add', formData);
       const novaPessoa = cleanObject(response.data);
       setPessoas((prev) => [...prev, novaPessoa]);
       setSelectedPessoa(novaPessoa);
@@ -299,6 +337,8 @@ const Ficha = () => {
           toast.error('Apelido é obrigatório.');
         } else if (errorMessage.includes('NIF')) {
           toast.error('NIF é obrigatório.');
+        } else if (errorMessage.toLowerCase().includes('empresa')) {
+          toast.error('Empresa é obrigatória.');
         } else {
           toast.error(errorMessage || 'Falha ao cadastrar pessoa.');
         }
@@ -330,6 +370,23 @@ const Ficha = () => {
       const formSubsidios = values.subsidios || [];
       console.log('Subsídios no formulário:', JSON.stringify(formSubsidios, null, 2));
 
+      const subsidiosPayload = formSubsidios.map((s) => {
+        const valor = parseFloat(s.valor);
+        const subsidio = subsidios.find((sub) => sub.descricao === s.descricao);
+        if (!subsidio?.id) {
+          throw new Error(`Subsídio ${s.descricao} não encontrado.`);
+        }
+        if (isNaN(valor) || valor <= 0) {
+          throw new Error(`Valor inválido para o subsídio ${s.descricao}. Deve ser maior que zero.`);
+        }
+        return {
+          subsidioId: Number(subsidio.id),
+          valor: valor,
+          usuarioId: null,
+          empresaId: Number(values.empresaId),
+        };
+      });
+
       const funcionarioData = {
         pessoaId: Number(selectedPessoa.id),
         tipoDeContrato: values.tipoDeContrato,
@@ -338,33 +395,18 @@ const Ficha = () => {
         descricao: values.descricao || '',
         cargo: values.cargo,
         departamentoId: Number(values.departamentoId),
+        empresaId: Number(values.empresaId),
         fechoContas: values.fechoContas,
         segurancaSocial: values.segurancaSocial,
         estadoFuncionario: values.estadoFuncionario,
-        subsidios: formSubsidios.map((s) => {
-          const valor = parseFloat(s.valor);
-          const subsidio = subsidios.find((sub) => sub.descricao === s.descricao);
-          if (!subsidio?.id) {
-            throw new Error(`Subsídio ${s.descricao} não encontrado.`);
-          }
-          if (isNaN(valor) || valor <= 0) {
-            throw new Error(`Valor inválido para o subsídio ${s.descricao}. Deve ser maior que zero.`);
-          }
-          return {
-            subsidioId: Number(subsidio.id),
-            valor: valor,
-            usuarioId: null,
-          };
-        }),
+        subsidios: subsidiosPayload,
       };
-
       console.log(
         editMode
           ? `Enviando dados para /funcionario/update/${funcionarioId}:`
           : 'Enviando dados para /funcionario/add:',
         JSON.stringify(funcionarioData, null, 2)
       );
-
       const response = editMode
         ? await api.put(`funcionario/update/${funcionarioId}`, funcionarioData)
         : await api.post('funcionario/add', funcionarioData);
@@ -420,7 +462,8 @@ const Ficha = () => {
   };
 
   const handleDeleteSubsidio = async (record, index) => {
-    const currentSubsidios = funcionarioForm.getFieldValue('subsidios') || [];
+    const raw = funcionarioForm.getFieldValue('subsidios');
+    const currentSubsidios = Array.isArray(raw) ? raw : [];
     funcionarioForm.setFieldsValue({
       subsidios: currentSubsidios.filter((_, i) => i !== index),
     });
@@ -430,7 +473,8 @@ const Ficha = () => {
   const handleAddSubsidio = () => {
     const valor = parseFloat(subsidioTemp.valor);
     if (subsidioTemp.id && subsidioTemp.descricao && !isNaN(valor) && valor > 0) {
-      const currentSubsidios = funcionarioForm.getFieldValue('subsidios') || [];
+      const raw = funcionarioForm.getFieldValue('subsidios');
+      const currentSubsidios = Array.isArray(raw) ? raw : [];
       const existingSubsidioIndex = currentSubsidios.findIndex((s) => s.descricao === subsidioTemp.descricao);
       let newSubsidios;
       if (existingSubsidioIndex !== -1) {
@@ -478,7 +522,7 @@ const Ficha = () => {
 
   return (
     <div className="form-container">
-      {isLoading || isSubsidiosLoading || isDepartamentosLoading ? (
+      {isLoading || isSubsidiosLoading || isDepartamentosLoading || isEmpresasLoading ? (
         <p>Carregando dados...</p>
       ) : (
         <>
@@ -625,8 +669,16 @@ const Ficha = () => {
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item label="Nome da Foto">
-                      <Input value={selectedPessoa.nomePhoto} />
+                    <Form.Item label="Foto">
+                      {selectedPessoa?.nomePhoto ? (
+                        <img
+                          src={getPessoaFotoUrl(selectedPessoa.nomePhoto)}
+                          alt="Foto"
+                          style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 12, border: '1px solid #e5e7eb' }}
+                        />
+                      ) : (
+                        <span>Sem foto</span>
+                      )}
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -648,8 +700,27 @@ const Ficha = () => {
 
           <div className="funcionario-form">
             <h3>Dados do Funcionário</h3>
-            <Form form={funcionarioForm} onFinish={handleSubmitFuncionario} layout="vertical">
+            <Form form={funcionarioForm} onFinish={handleSubmitFuncionario} layout="vertical" initialValues={{ subsidios: [] }}>
               <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="empresaId"
+                    label="Empresa"
+                    rules={[{ required: true, message: 'Selecione a empresa.' }]}
+                  >
+                    <Select
+                      loading={isEmpresasLoading}
+                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting || isEmpresasLoading || empresas.length === 0}
+                      placeholder={isEmpresasLoading ? 'Carregando...' : empresas.length === 0 ? 'Nenhuma empresa disponível' : 'Selecione uma empresa'}
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {empresas.map((e) => (
+                        <Option key={e.id} value={e.id}>{e.nome || e.descricao || `Empresa ${e.id}`}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
                 <Col span={12}>
                   <Form.Item
                     name="tipoDeContrato"
@@ -764,47 +835,52 @@ const Ficha = () => {
                 </Col>
                 <Col span={24}>
                   <Form.Item label="Subsídios" name="subsidios">
-                    <Space.Compact block>
-                      <Select
-                        value={subsidioTemp.descricao}
-                        onChange={(value) => {
-                          const subsidio = subsidios.find((sub) => sub.descricao === value);
-                          setSubsidioTemp({ id: subsidio?.id || null, descricao: value, valor: '' });
-                        }}
-                        style={{ width: '50%' }}
-                        loading={isSubsidiosLoading}
-                        disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
-                        placeholder={isSubsidiosLoading ? 'Carregando...' : subsidios.length === 0 ? 'Nenhum subsídio disponível' : 'Selecione um subsídio'}
-                      >
-                        {subsidios.map((sub) => (
-                          <Option key={sub.id} value={sub.descricao}>
-                            {tipoSubsidioMap[sub.descricao] || sub.descricao}
-                          </Option>
-                        ))}
-                      </Select>
-                      <Input
-                        type="number"
-                        placeholder="Valor (Kz)"
-                        value={subsidioTemp.valor}
-                        onChange={(e) => setSubsidioTemp({ ...subsidioTemp, valor: e.target.value })}
-                        style={{ width: '30%' }}
-                        disabled={!subsidioTemp.descricao || !isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
+                    <div>
+                      <Space.Compact block>
+                        <Select
+                          value={subsidioTemp.descricao}
+                          onChange={(value) => {
+                            const subsidio = subsidios.find((sub) => sub.descricao === value);
+                            setSubsidioTemp({ id: subsidio?.id || null, descricao: value, valor: '' });
+                          }}
+                          style={{ width: '50%' }}
+                          loading={isSubsidiosLoading}
+                          disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
+                          placeholder={isSubsidiosLoading ? 'Carregando...' : subsidios.length === 0 ? 'Nenhum subsídio disponível' : 'Selecione um subsídio'}
+                        >
+                          {subsidios.map((sub) => (
+                            <Option key={sub.id} value={sub.descricao}>
+                              {tipoSubsidioMap[sub.descricao] || sub.descricao}
+                            </Option>
+                          ))}
+                        </Select>
+                        <Input
+                          type="number"
+                          placeholder="Valor (Kz)"
+                          value={subsidioTemp.valor}
+                          onChange={(e) => setSubsidioTemp({ ...subsidioTemp, valor: e.target.value })}
+                          style={{ width: '30%' }}
+                          disabled={!subsidioTemp.descricao || !isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
+                        />
+                        <Button
+                          type="primary"
+                          onClick={handleAddSubsidio}
+                          disabled={!subsidioTemp.descricao || !subsidioTemp.valor || !isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
+                        >
+                          Adicionar
+                        </Button>
+                      </Space.Compact>
+                      <Table
+                        dataSource={(() => {
+                          const d = funcionarioForm.getFieldValue('subsidios');
+                          return Array.isArray(d) ? d : [];
+                        })()}
+                        columns={subsidiosColumns}
+                        rowKey={(record) => `${record.descricao}-${record.subsidioId ?? ''}`}
+                        pagination={false}
+                        style={{ marginTop: 16 }}
                       />
-                      <Button
-                        type="primary"
-                        onClick={handleAddSubsidio}
-                        disabled={!subsidioTemp.descricao || !subsidioTemp.valor || !isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
-                      >
-                        Adicionar
-                      </Button>
-                    </Space.Compact>
-                    <Table
-                      dataSource={funcionarioForm.getFieldValue('subsidios') || []}
-                      columns={subsidiosColumns}
-                      rowKey={(record, index) => `${record.descricao}-${index}`}
-                      pagination={false}
-                      style={{ marginTop: 16 }}
-                    />
+                    </div>
                   </Form.Item>
                 </Col>
                 <Col span={24}>
@@ -873,8 +949,8 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="dataNascimento"
-                    label="Data de Nascimento"
-                    rules={[{ required: true, message: 'Selecione a data de nascimento.' }]}
+                    label={<span>Data de Nascimento <span className="optional-label">Opcional</span></span>}
+                    rules={[]}
                   >
                     <DatePicker
                       format="YYYY-MM-DD"
@@ -886,7 +962,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="localNascimento"
-                    label="Local de Nascimento"
+                    label={<span>Local de Nascimento <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -895,9 +971,8 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="telefone"
-                    label="Telefone"
+                    label={<span>Telefone <span className="optional-label">Opcional</span></span>}
                     rules={[
-                      { required: true, message: 'Insira o telefone.' },
                       { max: 100, message: 'Máximo de 100 caracteres.' },
                     ]}
                   >
@@ -907,9 +982,8 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="email"
-                    label="Email"
+                    label={<span>Email <span className="optional-label">Opcional</span></span>}
                     rules={[
-                      { required: true, message: 'Insira o email.' },
                       { type: 'email', message: 'Insira um email válido.' },
                       { max: 100, message: 'Máximo de 100 caracteres.' },
                     ]}
@@ -920,9 +994,8 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="endereco"
-                    label="Endereço"
+                    label={<span>Endereço <span className="optional-label">Opcional</span></span>}
                     rules={[
-                      { required: true, message: 'Insira o endereço.' },
                       { max: 150, message: 'Máximo de 150 caracteres.' },
                     ]}
                   >
@@ -932,7 +1005,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="bairro"
-                    label="Bairro"
+                    label={<span>Bairro <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -940,11 +1013,29 @@ const Ficha = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    name="genero"
-                    label="Gênero"
-                    rules={[{ required: true, message: 'Selecione o gênero.' }]}
+                    name="empresaId"
+                    label="Empresa"
+                    rules={[{ required: true, message: 'Selecione a empresa.' }]}
                   >
-                    <Select>
+                    <Select
+                      loading={isEmpresasLoading}
+                      placeholder={isEmpresasLoading ? 'Carregando...' : empresas.length === 0 ? 'Nenhuma empresa disponível' : 'Selecione uma empresa'}
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {empresas.map((e) => (
+                        <Option key={e.id} value={e.id}>{e.nome || e.descricao || `Empresa ${e.id}`}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="genero"
+                    label={<span>Gênero <span className="optional-label">Opcional</span></span>}
+                    rules={[]}
+                  >
+                    <Select allowClear>
                       {generos.map((tipo) => (
                         <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
                       ))}
@@ -954,7 +1045,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="estadoCivil"
-                    label="Estado Civil"
+                    label={<span>Estado Civil <span className="optional-label">Opcional</span></span>}
                     rules={[{ required: false, message: 'Selecione o estado civil.' }]}
                   >
                     <Select allowClear>
@@ -967,7 +1058,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="pai"
-                    label="Nome do Pai"
+                    label={<span>Nome do Pai <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -976,7 +1067,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="mae"
-                    label="Nome da Mãe"
+                    label={<span>Nome da Mãe <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -985,7 +1076,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="nacionalidade"
-                    label="Nacionalidade"
+                    label={<span>Nacionalidade <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -994,7 +1085,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="raca"
-                    label="Raça"
+                    label={<span>Raça <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1003,7 +1094,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="paisEndereco"
-                    label="País (Endereço)"
+                    label={<span>País (Endereço) <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1012,7 +1103,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="provinciaEndereco"
-                    label="Província (Endereço)"
+                    label={<span>Província (Endereço) <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1021,7 +1112,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="municipioEndereco"
-                    label="Município (Endereço)"
+                    label={<span>Município (Endereço) <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1030,7 +1121,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="paisNascimento"
-                    label="País (Nascimento)"
+                    label={<span>País (Nascimento) <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1039,7 +1130,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="provinciaNascimento"
-                    label="Província (Nascimento)"
+                    label={<span>Província (Nascimento) <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1048,7 +1139,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="municipioNascimento"
-                    label="Município (Nascimento)"
+                    label={<span>Município (Nascimento) <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1057,7 +1148,7 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="profissao"
-                    label="Profissão"
+                    label={<span>Profissão <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
@@ -1066,19 +1157,28 @@ const Ficha = () => {
                 <Col span={12}>
                   <Form.Item
                     name="habilitacao"
-                    label="Habilitação"
+                    label={<span>Habilitação <span className="optional-label">Opcional</span></span>}
                     rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
                   >
                     <Input maxLength={100} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
-                    name="nomePhoto"
-                    label="Nome da Foto"
-                    rules={[{ max: 100, message: 'Máximo de 100 caracteres.' }]}
-                  >
-                    <Input maxLength={100} />
+                  <Form.Item label={<span>Foto <span className="optional-label">Opcional</span></span>}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files && e.target.files[0];
+                        setFotoFile(file || null);
+                        setFotoPreview(file ? URL.createObjectURL(file) : '');
+                      }}
+                    />
+                    {fotoPreview && (
+                      <div style={{ marginTop: 8 }}>
+                        <img src={fotoPreview} alt="Pré-visualização" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 12, border: '1px solid #e5e7eb' }} />
+                      </div>
+                    )}
                   </Form.Item>
                 </Col>
                 <Col span={24}>

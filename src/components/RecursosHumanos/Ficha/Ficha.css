@@ -306,6 +306,14 @@ h3 {
   background: #64748b;
 }
 
+.optional-label {
+  color: #b45309;
+  background: #fff7ed;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
 /* RESPONSIVIDADE */
 @media (max-width: 1200px) {
   .form-container {

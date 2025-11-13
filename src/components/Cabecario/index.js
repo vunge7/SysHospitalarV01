@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../contexts/auth';
 import './style.css';
 import logo from '../../assets/images/logo5.png';
-import user from '../../assets/images/user.png';
+import userImg from '../../assets/images/user.png';
 
 function Cabecario() {
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -44,7 +44,12 @@ function Cabecario() {
                 </Link>
 
                 <div className="navbar-user" onClick={toggleUserMenu}>
-                    <img src={user} alt="Usuário" style={{ cursor: 'pointer' }} />
+                    <img
+                        src={user?.fotoUrl || userImg}
+                        alt="Usuário"
+                        onError={(e) => { e.currentTarget.src = userImg; }}
+                        style={{ cursor: 'pointer', width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
+                    />
                     {user && (
                         <span style={{ marginLeft: '8px', color: '#fff' }}>
                             {user.nome || 'Usuário'}

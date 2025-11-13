@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Card, Table, Button, Space, Spin, Alert, Modal, Form, Input, Select, Switch, message, Popconfirm, Grid, Tabs } from 'antd';
+import { Layout, Card, Table, Button, Space, Spin, Alert, Modal, Form, Input, Select, Switch, message, Popconfirm, Grid, Tabs, Tag } from 'antd';
 import Cabecario from '../Cabecario';
 import Rodape from '../Rodape';
 import { fetchAllFiliais, fetchAllEmpresas, fetchEmpresaArvore, createEmpresa, updateEmpresa, deleteEmpresa, deleteEmpresaCascade } from '../../service/api';
@@ -86,6 +86,16 @@ const Empresas = () => {
       empresaMatrizId: item.empresa_matriz_id ?? item.empresaMatrizId,
     }));
 
+    // Backend returns children under node.empresas.empresas (or variations)
+    const getFiliaisFromNode = (node) => {
+      const e = node?.empresas;
+      if (!e) return [];
+      if (Array.isArray(e)) return e; // already an array of filiais
+      if (Array.isArray(e?.empresas)) return e.empresas; // common case
+      if (e?.empresas) return [e.empresas]; // single object
+      return [];
+    };
+
     const mapTree = (nodes) => (Array.isArray(nodes) ? nodes : []).map(node => ({
       key: String(node.id),
       id: node.id,
@@ -98,7 +108,7 @@ const Empresas = () => {
       status: (() => { const s = getStatusDeep(node); return typeof s === 'boolean' ? s : true; })(),
       seguradoraId: node.seguradora_id ?? node.seguradoraId,
       empresaMatrizId: node.empresa_matriz_id ?? node.empresaMatrizId,
-      children: mapFlat(node.filiais || node.children || []),
+      children: mapFlat(getFiliaisFromNode(node) || []),
     }));
 
     const load = async () => {
@@ -184,7 +194,9 @@ const Empresas = () => {
     { title: 'Telefone', dataIndex: 'telefone', key: 'telefone', width: 140 },
     { title: 'NIF', dataIndex: 'nif', key: 'nif', width: 160 },
     { title: 'Endereço', dataIndex: 'endereco', key: 'endereco', ellipsis: true },
-    { title: 'Tipo', dataIndex: 'tipo', key: 'tipo', width: 100 },
+    { title: 'Tipo', dataIndex: 'tipo', key: 'tipo', width: 100, render: (t) => (
+      t ? <Tag color={String(t).toUpperCase() === 'MATRIZ' ? 'geekblue' : 'green'}>{String(t).toUpperCase()}</Tag> : '—'
+    ) },
     ...(view === 'filiais' ? [
       { title: 'Empresa Matriz', dataIndex: 'empresaMatrizNome', key: 'empresaMatrizNome' },
       { title: 'Empresa Matriz ID', dataIndex: 'empresaMatrizId', key: 'empresaMatrizId', width: 140 },
@@ -315,7 +327,9 @@ const Empresas = () => {
                 <Table
                   columns={isMobile ? [
                     { title: 'Nome', dataIndex: 'nome', key: 'nome', ellipsis: true },
-                    { title: 'Tipo', dataIndex: 'tipo', key: 'tipo', width: 90 },
+                    { title: 'Tipo', dataIndex: 'tipo', key: 'tipo', width: 90, render: (t) => (
+                      t ? <Tag color={String(t).toUpperCase() === 'MATRIZ' ? 'geekblue' : 'green'}>{String(t).toUpperCase()}</Tag> : '—'
+                    ) },
                     ...(view === 'empresas' ? [{
                       title: 'Status', key: 'status', width: 100,
                       render: (_, record) => (
@@ -364,7 +378,12 @@ const Empresas = () => {
                   size={isMobile ? 'small' : 'middle'}
                   pagination={{ pageSize: 10, responsive: true }}
                   expandable={view === 'arvore' ? { defaultExpandAllRows: true } : undefined}
-                  rowKey="key"
+                  rowKey={(record) => String(record.key ?? record.id)}
+                  onRow={(record) => ({
+                    style: (record?.tipo && String(record.tipo).toUpperCase() === 'FILIAL')
+                      ? { background: '#f6ffed' }
+                      : {},
+                  })}
                   tableLayout="fixed"
                 />
               </Card>
