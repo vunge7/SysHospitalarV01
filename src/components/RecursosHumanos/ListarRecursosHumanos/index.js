@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { Button, message, Spin, Modal, Form, Input, Select, DatePicker, Space, Row, Col, Table, AutoComplete } from 'antd';
 import { api } from '../../../service/api';
 import moment from 'moment';
 import './Listar.css';
 import { toast } from 'react-toastify';
+import { AuthContext } from '../../../contexts/auth';
 
 const { Option } = Select;
 
@@ -75,6 +76,7 @@ const DynamicTable = ({ data, headers, detailHeaders, expandedRows, onToggleDeta
 );
 
 const Listar = () => {
+  const { user } = useContext(AuthContext) || {};
   const [pessoas, setPessoas] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [editandoFuncionarioId, setEditandoFuncionarioId] = useState(null);
@@ -127,6 +129,7 @@ const Listar = () => {
   ];
 
   const tiposDeContrato = [
+    { value: 'TEMPO_INDETERMINADO', label: 'Tempo Indeterminado' },
     { value: 'EFETIVO', label: 'Efetivo' },
     { value: 'TEMPORARIO', label: 'Temporário' },
     { value: 'ESTAGIO', label: 'Estágio' },
@@ -258,11 +261,15 @@ const Listar = () => {
   );
 
   const handleEditFuncionario = (row) => {
-    const funcionario = funcionarios.find((f) => Number(f.pessoaId) === Number(row.id));
+    const funcionario =
+      funcionarios.find((f) => Number(f.id) === Number(row.funcionarioId)) ||
+      funcionarios.find((f) => Number(f.pessoaId) === Number(row.id)) ||
+      funcionarios.find((f) => Number(f.pessoa?.id) === Number(row.id));
     if (!funcionario) {
       toast.error('Funcionário não encontrado.');
       return;
     }
+
     const pessoaAssociada = pessoas.find((p) => Number(p.id) === Number(funcionario.pessoaId));
     if (!pessoaAssociada) {
       toast.error('Pessoa associada ao funcionário não encontrada.');
@@ -277,9 +284,13 @@ const Listar = () => {
       email: pessoaAssociada.email || '',
       endereco: pessoaAssociada.endereco || '',
       genero: pessoaAssociada.genero || 'MASCULINO',
-      tipoDeContrato: funcionario.tipoDeContrato || '',
+      tipoDeContrato: funcionario.tipoDeContrato || funcionario.tipoContrato || '',
       salario: funcionario.salario || '',
       dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmissao) : null,
+      empresaId: funcionario.empresaId ?? (user?.filialSelecionada?.id ?? (JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}')?.filialSelecionada?.id)),
+      cargo: funcionario.cargo || '',
+      departamentoId: funcionario.departamentoId || undefined,
+      segurancaSocial: funcionario.segurancaSocial || undefined,
       subsidios: Array.isArray(funcionario.subsidios)
         ? funcionario.subsidios.map((s) => ({
             subsidioId: s.subsidioId,
@@ -288,14 +299,18 @@ const Listar = () => {
           }))
         : [],
       descricao: funcionario.descricao || '',
-      fechoDeContas: funcionario.fechoDeContas || '',
+      fechoDeContas: funcionario.fechoPeriodo || funcionario.fechoContas || '',
       estadoFuncionario: funcionario.estadoFuncionario || '',
     });
     setFuncionarioEditado({
       id: funcionario.id,
       pessoaId: funcionario.pessoaId,
+      empresaId: funcionario.empresaId,
+      departamentoId: funcionario.departamentoId,
+      segurancaSocial: funcionario.segurancaSocial,
+      cargo: funcionario.cargo,
       pessoa: cleanObject(pessoaAssociada),
-      tipoDeContrato: funcionario.tipoDeContrato || '',
+      tipoDeContrato: funcionario.tipoDeContrato || funcionario.tipoContrato || '',
       salario: funcionario.salario ? funcionario.salario.toString() : '',
       dataAdmissao: funcionario.dataAdmissao || null,
       subsidios: Array.isArray(funcionario.subsidios) ? funcionario.subsidios : [],
@@ -335,44 +350,88 @@ const Listar = () => {
       if (isNaN(salario) || salario <= 0) {
         throw new Error('O salário deve ser um número positivo maior que zero.');
       }
-      const pessoaData = {
-        id: funcionarioEditado.pessoa.id,
-        nome: values.nome.trim(),
-        nif: values.nif.trim(),
-        dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD') : null,
-        telefone: values.telefone.trim(),
-        email: values.email.trim(),
-        endereco: values.endereco.trim(),
-        genero: values.genero,
-      };
+      // Base da pessoa vinda do backend (inclui apelido e demais campos obrigatórios)
+      const pessoaData = { ...(funcionarioEditado.pessoa || {}) };
+      pessoaData.id = funcionarioEditado.pessoa.id;
+      // Sobrescrever apenas o que foi editado no formulário
+      if (values.nome && values.nome.trim() !== '') pessoaData.nome = values.nome.trim();
+      if (values.nif && values.nif.trim() !== '') pessoaData.nif = values.nif.trim();
+      if (values.dataNascimento) pessoaData.dataNascimento = values.dataNascimento.format('YYYY-MM-DD 00:00:00');
+      if (values.telefone) pessoaData.telefone = Number(values.telefone);
+      if (values.email && values.email.trim() !== '') pessoaData.email = values.email.trim();
+      if (values.endereco && values.endereco.trim() !== '') pessoaData.endereco = values.endereco.trim();
+      if (values.genero) pessoaData.genero = values.genero;
+      // Garantir que apelido não fique nulo (coluna NOT NULL no banco)
+      if (!pessoaData.apelido) pessoaData.apelido = '';
+
+      // Garantir obrigatórios do funcionário com fallback do registro atual
+      const empresaIdResolved = (values.empresaId ?? funcionarioEditado.empresaId ?? (user?.filialSelecionada?.id ?? (JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}')?.filialSelecionada?.id)));
+      const departamentoIdResolved = (values.departamentoId ?? funcionarioEditado.departamentoId);
+      const segurancaSocialResolved = (values.segurancaSocial ?? funcionarioEditado.segurancaSocial);
+      const cargoResolved = (values.cargo ?? funcionarioEditado.cargo);
+
       const funcionarioData = {
         id: editandoFuncionarioId,
         pessoaId: funcionarioEditado.pessoaId,
-        tipoDeContrato: values.tipoDeContrato,
+        tipoContrato: values.tipoDeContrato,
         salario,
-        dataAdmissao: values.dataAdmissao ? moment.utc(values.dataAdmissao).format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
-        subsidios: (values.subsidios || []).map((s) => {
-          const subsidio = subsidios.find((sub) => sub.descricao === s.descricao);
-          if (!subsidio) {
-            throw new Error(`Subsídio "${s.descricao}" não encontrado.`);
-          }
-          const valor = parseFloat(s.valor);
-          if (isNaN(valor) || valor <= 0) {
-            throw new Error(`Valor inválido para o subsídio "${s.descricao}". Deve ser positivo.`);
-          }
-          return {
-            subsidioId: Number(subsidio.id),
-            valor,
-          };
-        }),
+        dataAdmissao: values.dataAdmissao ? moment(values.dataAdmissao).format('YYYY-MM-DD HH:mm:ss') : null,
+        cargo: cargoResolved,
+        departamentoId: departamentoIdResolved ? Number(departamentoIdResolved) : undefined,
+        segurancaSocial: segurancaSocialResolved,
+        empresaId: empresaIdResolved ? Number(empresaIdResolved) : undefined,
         descricao: values.descricao.trim(),
-        fechoDeContas: values.fechoDeContas,
+        fechoPeriodo: values.fechoDeContas,
         estadoFuncionario: values.estadoFuncionario,
       };
-      await Promise.all([
-        api.put(`pessoa/${funcionarioEditado.pessoa.id}`, pessoaData),
-        api.put(`funcionario/${editandoFuncionarioId}`, funcionarioData),
-      ]);
+      console.log('Payload pessoa/edit (JSON):', JSON.stringify(pessoaData, null, 2));
+      try {
+        const respPessoa = await api.put(`pessoa/edit/${funcionarioEditado.pessoa.id}`, pessoaData);
+        console.log('Resposta pessoa/edit:', JSON.stringify(respPessoa?.data ?? {}, null, 2));
+      } catch (errPessoa) {
+        const serverMsg = errPessoa?.response?.data?.message || errPessoa?.response?.data || errPessoa?.message || 'Erro ao editar pessoa';
+        console.error('Erro pessoa/edit:', serverMsg);
+        toast.error(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
+        throw errPessoa; // interrompe
+      }
+
+      console.log('Payload funcionario/edit (JSON):', JSON.stringify(funcionarioData, null, 2));
+      try {
+        const respFunc = await api.put(`funcionario/edit/${editandoFuncionarioId}`, funcionarioData);
+        console.log('Resposta funcionario/edit:', JSON.stringify(respFunc?.data ?? {}, null, 2));
+      } catch (errFunc) {
+        const serverMsg = errFunc?.response?.data || errFunc?.message || 'Erro ao editar funcionário';
+        console.error('Erro funcionario/edit:', serverMsg);
+        toast.error(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
+        throw errFunc;
+      }
+
+      // Atualizar linhas de subsídio vinculadas ao funcionário
+      try {
+        const linhas = (values.subsidios || []).map((s) => {
+          const sub = subsidios.find((subItem) => subItem.descricao === s.descricao);
+          const subsidioId = sub ? Number(sub.id) : undefined;
+          const existente = (funcionarioEditado.subsidios || []).find((x) => Number(x.subsidioId) === Number(subsidioId));
+          const payload = {
+            id: existente?.id ?? null,
+            funcionarioId: Number(editandoFuncionarioId),
+            subsidioId: subsidioId,
+            usuarioId: null,
+            valor: parseFloat(s.valor),
+            empresaId: funcionarioEditado.empresaId ? Number(funcionarioEditado.empresaId) : undefined,
+          };
+          console.log('Payload linhasubsidio/edit (JSON):', JSON.stringify(payload, null, 2));
+          return payload;
+        }).filter((p) => Number.isFinite(p.subsidioId) && Number.isFinite(p.funcionarioId));
+
+        if (linhas.length > 0) {
+          await Promise.all(linhas.map((payload) => api.put('linhasubsidio/edit', payload)));
+        }
+      } catch (e) {
+        console.error('Falha ao atualizar linhas de subsídio:', e);
+        // Não interromper o fluxo principal; apenas informar
+        toast.warn('Algumas linhas de subsídio podem não ter sido atualizadas. Verifique os logs.');
+      }
       setEditandoFuncionarioId(null);
       editFuncionarioForm.resetFields();
       setFuncionarioEditado({
@@ -496,12 +555,13 @@ const Listar = () => {
       const pessoaData = {
         nome: values.nome.trim(),
         nif: values.nif.trim(),
-        dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD') : null,
+        dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD 00:00:00') : null,
         telefone: values.telefone.trim(),
         email: values.email.trim(),
         endereco: values.endereco.trim(),
         genero: values.genero,
       };
+      console.log('Payload pessoa/add (JSON):', JSON.stringify(pessoaData, null, 2));
       const response = await api.post('pessoa/add', pessoaData);
       const novaPessoaData = cleanObject(response.data);
       setPessoas((prev) => [...prev, novaPessoaData]);
@@ -553,13 +613,16 @@ const Listar = () => {
       }
       const funcionarioData = {
         pessoaId: Number(novaPessoa.id),
-        tipoDeContrato: values.tipoDeContrato,
+        tipoContrato: values.tipoDeContrato,
         salario,
-        dataAdmissao: values.dataAdmissao ? moment.utc(values.dataAdmissao).format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
+        dataAdmissao: values.dataAdmissao ? moment(values.dataAdmissao).format('YYYY-MM-DD HH:mm:ss') : null,
         descricao: values.descricao.trim(),
         empresaId: Number(values.empresaId),
-        fechoDeContas: values.fechoDeContas,
+        fechoPeriodo: values.fechoDeContas,
         estadoFuncionario: values.estadoFuncionario,
+        cargo: values.cargo,
+        departamentoId: values.departamentoId ? Number(values.departamentoId) : undefined,
+        segurancaSocial: values.segurancaSocial,
         subsidios: (values.subsidios || []).map((s) => {
           const subsidio = subsidios.find((sub) => sub.descricao === s.descricao);
           if (!subsidio) {
@@ -576,6 +639,7 @@ const Listar = () => {
           };
         }),
       };
+      console.log('Payload funcionario/add (JSON):', JSON.stringify(funcionarioData, null, 2));
       await api.post('funcionario/add', funcionarioData);
       novoFuncionarioForm.resetFields();
       setNovaPessoa(null);
@@ -652,8 +716,10 @@ const Listar = () => {
   const tableData = pessoas
     .map((pessoa) => {
       const funcionario = funcionarios.find((f) => Number(f.pessoaId) === Number(pessoa.id));
+      const tipoContratoValue = funcionario ? (funcionario.tipoContrato || funcionario.tipoDeContrato || '') : '';
       return {
         id: pessoa.id,
+        funcionarioId: funcionario ? funcionario.id : null,
         nome: pessoa.nome || '-',
         nif: pessoa.nif || '-',
         dataNascimento: pessoa.dataNascimento ? moment(pessoa.dataNascimento).format('YYYY-MM-DD') : '-',
@@ -662,7 +728,7 @@ const Listar = () => {
         endereco: pessoa.endereco || '-',
         genero: generos.find((g) => g.value === pessoa.genero)?.label || pessoa.genero || '-',
         tipoDeContrato: funcionario
-          ? tiposDeContrato.find((t) => t.value === funcionario.tipoDeContrato)?.label || funcionario.tipoDeContrato || '-'
+          ? tiposDeContrato.find((t) => t.value === tipoContratoValue)?.label || tipoContratoValue || '-'
           : '-',
         salario: funcionario && funcionario.salario ? Number(funcionario.salario).toFixed(2) : '-',
         dataAdmissao: funcionario && funcionario.dataAdmissao ? moment(funcionario.dataAdmissao).format('YYYY-MM-DD') : '-',
@@ -680,9 +746,10 @@ const Listar = () => {
           : '-',
         descricao: funcionario ? funcionario.descricao || '-' : '-',
         isFuncionarioAtivo: funcionario && funcionario.estadoFuncionario === 'ATIVO',
+        hasFuncionario: !!funcionario,
       };
     })
-    .filter((row) => row.tipoDeContrato !== '-')
+    .filter((row) => row.hasFuncionario)
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
 
   const filteredTableData = tableData.filter((row) => {
@@ -970,6 +1037,58 @@ const Listar = () => {
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
+                    name="empresaId"
+                    label="Empresa"
+                    rules={[{ required: true, message: 'Selecione a empresa.' }]}
+                  >
+                    <Select
+                      placeholder={isEmpresasLoading ? 'Carregando...' : empresas.length === 0 ? 'Nenhuma empresa' : 'Selecione uma empresa'}
+                      loading={isEmpresasLoading}
+                      disabled={isSubmitting || isEmpresasLoading || empresas.length === 0}
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {empresas.map((e) => (
+                        <Option key={e.id} value={e.id}>{e.nome || e.descricao || `Empresa ${e.id}`}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="cargo"
+                    label="Cargo"
+                    rules={[{ required: true, message: 'Informe o cargo.' }]}
+                  >
+                    <Input maxLength={100} disabled={isSubmitting} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="departamentoId"
+                    label="Departamento (ID)"
+                    rules={[{ required: true, message: 'Informe o ID do departamento.' }]}
+                  >
+                    <Input type="number" min={1} disabled={isSubmitting} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="segurancaSocial"
+                    label="Segurança Social"
+                    rules={[{ required: true, message: 'Selecione a segurança social.' }]}
+                  >
+                    <Select disabled={isSubmitting}>
+                      <Option value="SIM">Sim</Option>
+                      <Option value="NAO">Não</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+              <h3>Dados do Funcionário</h3>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
                     name="tipoDeContrato"
                     label="Tipo de Contrato"
                     rules={[
@@ -1188,6 +1307,13 @@ const Listar = () => {
                         size="small"
                       />
                     </div>
+                  </Form.Item>
+                </Col>
+                <Col span={25}>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit" disabled={isSubmitting} loading={isSubmitting}>
+                      Confirmar Edição
+                    </Button>
                   </Form.Item>
                 </Col>
               </Row>

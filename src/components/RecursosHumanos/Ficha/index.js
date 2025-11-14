@@ -208,7 +208,7 @@ const Ficha = () => {
         funcionarioForm.setFieldsValue({
           tipoDeContrato: funcionario.tipoDeContrato,
           salario: funcionario.salario,
-          dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmito) : null,
+          dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmissao) : null,
           descricao: funcionario.descricao,
           cargo: funcionario.cargo,
           departamentoId: funcionario.departamentoId,
@@ -218,6 +218,7 @@ const Ficha = () => {
           estadoFuncionario: funcionario.estadoFuncionario,
           subsidios: subsidiosConsolidados,
         });
+        setIsPessoaMarked(true);
         toast.info('Funcionário carregado para edição.');
       } else {
         setEditMode(false);
@@ -290,7 +291,11 @@ const Ficha = () => {
       formData.append('nome', values.nome);
       formData.append('apelido', values.apelido);
       formData.append('nif', values.nif);
-      if (values.dataNascimento) formData.append('dataNascimento', moment(values.dataNascimento).startOf('day').format('YYYY-MM-DD HH:mm:ss'));
+      if (values.dataNascimento && moment(values.dataNascimento).isValid()) {
+        const dateStr = moment(values.dataNascimento)
+          .format('YYYY-MM-DD HH:mm:ss');   // <-- ESPAÇO, não "T" nem hífen
+        formData.append('dataNascimento', dateStr);
+      }
       if (values.localNascimento) formData.append('localNascimento', values.localNascimento);
       if (values.telefone) formData.append('telefone', values.telefone);
       if (values.email) formData.append('email', values.email);
@@ -354,7 +359,7 @@ const Ficha = () => {
       toast.error('Nenhuma pessoa selecionada ou ID inválido.');
       return;
     }
-    if (!isPessoaMarked) {
+    if (!isPessoaMarked && !editMode) {
       toast.warning('Por favor, marque a pessoa selecionada!');
       return;
     }
@@ -702,6 +707,23 @@ const Ficha = () => {
             <h3>Dados do Funcionário</h3>
             <Form form={funcionarioForm} onFinish={handleSubmitFuncionario} layout="vertical" initialValues={{ subsidios: [] }}>
               <Row gutter={16}>
+                {editMode && (
+                  <Col span={24}>
+                    <Form.Item style={{ marginTop: 0, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          size="small"
+                          disabled={isSubmitting}
+                          loading={isSubmitting}
+                        >
+                          Atualizar Funcionário
+                        </Button>
+                      </div>
+                    </Form.Item>
+                  </Col>
+                )}
                 <Col span={12}>
                   <Form.Item
                     name="empresaId"
@@ -710,7 +732,7 @@ const Ficha = () => {
                   >
                     <Select
                       loading={isEmpresasLoading}
-                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting || isEmpresasLoading || empresas.length === 0}
+                      disabled={((!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode) || isEmpresasLoading || empresas.length === 0}
                       placeholder={isEmpresasLoading ? 'Carregando...' : empresas.length === 0 ? 'Nenhuma empresa disponível' : 'Selecione uma empresa'}
                       showSearch
                       optionFilterProp="children"
@@ -727,7 +749,7 @@ const Ficha = () => {
                     label="Tipo de Contrato"
                     rules={[{ required: true, message: 'Selecione o tipo de contrato.' }]}
                   >
-                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
+                    <Select disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode}>
                       {tiposDeContrato.map((tipo) => (
                         <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
                       ))}
@@ -743,7 +765,7 @@ const Ficha = () => {
                       { type: 'number', min: 0, message: 'O salário deve ser maior ou igual a zero.', transform: Number },
                     ]}
                   >
-                    <Input type="number" step="0.01" disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting} />
+                    <Input type="number" step="0.01" disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -752,7 +774,7 @@ const Ficha = () => {
                     label="Cargo"
                     rules={[{ required: true, message: 'O cargo é obrigatório.' }]}
                   >
-                    <Input disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting} />
+                    <Input disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -763,7 +785,7 @@ const Ficha = () => {
                   >
                     <Select
                       loading={isDepartamentosLoading}
-                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting || isDepartamentosLoading || departamentos.length === 0}
+                      disabled={((!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode) || isDepartamentosLoading || departamentos.length === 0}
                       placeholder={isDepartamentosLoading ? 'Carregando...' : departamentos.length === 0 ? 'Nenhum departamento disponível' : 'Selecione um departamento'}
                     >
                       {departamentos.map((dep) => (
@@ -778,7 +800,7 @@ const Ficha = () => {
                     label="Segurança Social"
                     rules={[{ required: true, message: 'Selecione a segurança social.' }]}
                   >
-                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
+                    <Select disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode}>
                       {segurancaSocialOpcoes.map((tipo) => (
                         <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
                       ))}
@@ -791,7 +813,7 @@ const Ficha = () => {
                     label="Fecho de Contas"
                     rules={[{ required: true, message: 'Selecione o fecho de contas.' }]}
                   >
-                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
+                    <Select disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode}>
                       {fechoDeContasOpcoes.map((tipo) => (
                         <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
                       ))}
@@ -804,7 +826,7 @@ const Ficha = () => {
                     label="Estado"
                     rules={[{ required: true, message: 'Selecione o estado.' }]}
                   >
-                    <Select disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}>
+                    <Select disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode}>
                       {estadosFuncionario.map((tipo) => (
                         <Option key={tipo.value} value={tipo.value}>{tipo.label}</Option>
                       ))}
@@ -820,7 +842,7 @@ const Ficha = () => {
                     <DatePicker
                       showTime
                       format="YYYY-MM-DD HH:mm:ss"
-                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}
+                      disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode}
                     />
                   </Form.Item>
                 </Col>
@@ -830,7 +852,7 @@ const Ficha = () => {
                     label="Descrição"
                     rules={[{ required: true, message: 'A descrição é obrigatória.' }]}
                   >
-                    <Input.TextArea disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting} />
+                    <Input.TextArea disabled={(!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode} />
                   </Form.Item>
                 </Col>
                 <Col span={24}>
@@ -845,7 +867,7 @@ const Ficha = () => {
                           }}
                           style={{ width: '50%' }}
                           loading={isSubsidiosLoading}
-                          disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
+                          disabled={((!isPessoaMarked || !selectedPessoa?.id || isSubmitting) && !editMode) || isSubsidiosLoading || subsidios.length === 0}
                           placeholder={isSubsidiosLoading ? 'Carregando...' : subsidios.length === 0 ? 'Nenhum subsídio disponível' : 'Selecione um subsídio'}
                         >
                           {subsidios.map((sub) => (
@@ -860,12 +882,26 @@ const Ficha = () => {
                           value={subsidioTemp.valor}
                           onChange={(e) => setSubsidioTemp({ ...subsidioTemp, valor: e.target.value })}
                           style={{ width: '30%' }}
-                          disabled={!subsidioTemp.descricao || !isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
+                          disabled={
+                            !subsidioTemp.descricao || (
+                              (!editMode && (!isPessoaMarked || !selectedPessoa?.id || isSubmitting)) ||
+                              isSubsidiosLoading ||
+                              subsidios.length === 0
+                            )
+                          }
                         />
                         <Button
                           type="primary"
                           onClick={handleAddSubsidio}
-                          disabled={!subsidioTemp.descricao || !subsidioTemp.valor || !isPessoaMarked || !selectedPessoa?.id || isSubmitting || isSubsidiosLoading || subsidios.length === 0}
+                          disabled={
+                            !subsidioTemp.descricao ||
+                            !subsidioTemp.valor ||
+                            (
+                              (!editMode && (!isPessoaMarked || !selectedPessoa?.id)) ||
+                              isSubsidiosLoading ||
+                              subsidios.length === 0
+                            )
+                          }
                         >
                           Adicionar
                         </Button>
@@ -884,11 +920,11 @@ const Ficha = () => {
                   </Form.Item>
                 </Col>
                 <Col span={24}>
-                  <Form.Item>
+                  <Form.Item className="sticky-actions">
                     <Button
                       type="primary"
                       htmlType="submit"
-                      disabled={!isPessoaMarked || !selectedPessoa?.id || isSubmitting}
+                      disabled={(editMode ? false : (!isPessoaMarked || !selectedPessoa?.id)) || isSubmitting}
                       loading={isSubmitting}
                     >
                       {editMode ? 'Atualizar Funcionário' : 'Salvar Funcionário'}
