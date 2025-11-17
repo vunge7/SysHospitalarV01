@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Modal, Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification, TreeSelect, Divider, Popconfirm, InputNumber } from 'antd';
-import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, XOutlined } from '@ant-design/icons';
 import { toast } from 'react-toastify';
 
 import { api } from '../../../service/api';
+import { AuthContext } from '../../../contexts/auth';
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import UnidadeMedidaForm from '../UnidadeMedidaForm';
+import './style.css';
 
 // Esquema de validação com Zod
 const schema = z.object({
@@ -57,6 +59,7 @@ const schema = z.object({
 });
 
 const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoParaEditar, onSuccess, initialValues, isFromExame }) => {
+  const { user } = useContext(AuthContext);
   const [carregar, setCarregar] = useState(false);
   const [gruposDeProduto, setGruposDeProduto] = useState([]);
   const [tipoProduto, setTipoProduto] = useState([]);
@@ -376,6 +379,21 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
     const unidadeSelecionada = unidades.find(u => u.descricao === produtoData.unidadeMedida);
     const unidadeMedidaId = unidadeSelecionada?.id;
 
+    // Resolver empresaId a partir da filial selecionada ou do localStorage
+    const storageUser = localStorage.getItem('@sysHospitalarPRO');
+    const userFromStorage = storageUser ? JSON.parse(storageUser) : null;
+    const empresaIdResolved = user?.filialSelecionada?.id
+      || userFromStorage?.filialSelecionada?.id
+      || null;
+
+    if (!empresaIdResolved) {
+      const msg = 'Nenhuma filial/empresa selecionada. Selecione uma filial antes de cadastrar produtos.';
+      console.error(msg);
+      setErrosNoFront(prev => [...prev, msg]);
+      toast.error(msg, { autoClose: 2000 });
+      throw new Error(msg);
+    }
+
     // Validação do productGroupId
     if (!productGroupId) {
       const errorMessage = `Grupo de produto "${produtoData.productGroup}" não encontrado. Verifique se o grupo está cadastrado.`;
@@ -384,7 +402,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
       throw new Error(errorMessage);
     }
 
-    const payload = {
+    const payloadBase = {
       productType: produtoData.productType,
       productCode: produtoData.productCode,
       productGroup: produtoData.productGroup,
@@ -398,22 +416,80 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
       productGroupId: productGroupId, // Inclui o productGroupId no payload
       unidadeMedidaId: unidadeMedidaId,
       produtoPaiId: produtoPaiId,
-      imagem: null,
+      empresaId: Number(empresaIdResolved),
       intervaloReferencia: produtoData.intervaloReferencia,
     };
 
-    console.log('Payload enviado para /produto/add:', payload); // Log para verificar o payload
+    // Verifica se há imagem selecionada no formulário (field "imagem")
+    const hasImage = Array.isArray(produtoData.imagem) && produtoData.imagem.length > 0 && produtoData.imagem[0]?.originFileObj;
+
+    console.log('Payload base para produto:', payloadBase, 'HasImage:', !!hasImage);
 
     let produtoId = null;
     try {
-      if (produtoIdExistente) {
-        await api.put(`/produto/${produtoIdExistente}`, { ...payload, produtoPaiId });
-        produtoId = produtoIdExistente;
+      if (hasImage) {
+        // Há imagem selecionada
+        if (produtoIdExistente) {
+          // Edição: backend já aceita multipart em /produto/{id}
+          const formData = new FormData();
+          Object.entries(payloadBase).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+              formData.append(key, String(value));
+            }
+          });
+          formData.append('status', payloadBase.status ? '1' : '0');
+          formData.append('imagem', produtoData.imagem[0].originFileObj);
+
+          console.log('Enviando FormData para produto existente (com imagem)...');
+          await api.put(`/produto/${produtoIdExistente}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          produtoId = produtoIdExistente;
+        } else {
+          // Criação: primeiro envia JSON (sem imagem) para /produto/add
+          console.log('Enviando JSON para /produto/add (sem imagem)...', payloadBase);
+          const res = await api.post('/produto/add', payloadBase);
+          produtoId = res?.data?.id || null;
+
+          if (!produtoId) {
+            // Fallback: busca pelo productDescription
+            const busca = await api.get('/produto/all');
+            const produtoSalvo = (busca.data || []).find(p => p.productDescription === produtoData.productDescription);
+            produtoId = produtoSalvo?.id;
+          }
+
+          // Se conseguiu obter o ID, envia imagem via PUT multipart
+          if (produtoId) {
+            const formData = new FormData();
+            Object.entries(payloadBase).forEach(([key, value]) => {
+              if (value !== undefined && value !== null) {
+                formData.append(key, String(value));
+              }
+            });
+            formData.append('status', payloadBase.status ? '1' : '0');
+            formData.append('imagem', produtoData.imagem[0].originFileObj);
+
+            console.log('Enviando FormData para /produto/' + produtoId + ' (anexando imagem)...');
+            await api.put(`/produto/${produtoId}`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          }
+        }
       } else {
-        await api.post('/produto/add', payload);
-        const busca = await api.get('/produto/all');
-        const produtoSalvo = (busca.data || []).find(p => p.productDescription === produtoData.productDescription);
-        produtoId = produtoSalvo?.id;
+        // Sem imagem, usa JSON simples (payloadBase)
+        console.log('Enviando JSON para produto (sem imagem)...', payloadBase);
+        if (produtoIdExistente) {
+          await api.put(`/produto/${produtoIdExistente}`, { ...payloadBase, produtoPaiId });
+          produtoId = produtoIdExistente;
+        } else {
+          const res = await api.post('/produto/add', payloadBase);
+          produtoId = res?.data?.id || null;
+          if (!produtoId) {
+            const busca = await api.get('/produto/all');
+            const produtoSalvo = (busca.data || []).find(p => p.productDescription === produtoData.productDescription);
+            produtoId = produtoSalvo?.id;
+          }
+        }
       }
     } catch (e) {
       const action = produtoIdExistente ? 'atualizar' : 'cadastrar';
@@ -522,14 +598,16 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
         </Button>
       )}
       <Modal
-        title={modalTitle || "Novo Produto"}
         open={visible !== undefined ? visible : modalIsOpen}
         onCancel={onClose || closeModal}
-        footer={null}
         className="product-form-modal"
-        width={900}
+        footer={null}
       >
-        <Spin spinning={carregar}>
+        <div className="modal-header">
+          <h3 className="modal-title">{modalTitle || "Novo Produto"}</h3>
+        </div>
+
+        <Spin spinning={carregar} className="modal-body">
           {errosNoFront.length > 0 && (
             <Alert
               message="Erros"
@@ -848,6 +926,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
             </Form.Item>
           </Form>
         </Spin>
+
       </Modal>
     </div>
   );

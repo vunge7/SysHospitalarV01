@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { Form, Input, InputNumber, Button, Select, Table, Modal, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs, Row, Col, Statistic } from 'antd';
-import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined, CheckCircleOutlined, CloseCircleOutlined, XOutlined } from '@ant-design/icons';
 import moment from 'moment-timezone';
 import debounce from 'lodash/debounce';
 import { api } from '../../../service/api';
@@ -1519,28 +1519,32 @@ const Farmacia = () => {
         </div>
       )}
       <Modal
-        title={
-          <Space>
+        isOpen={showProdutosLoteModal}
+        onRequestClose={() => setShowProdutosLoteModal(false)}
+        onAfterClose={() => setShowProdutosLoteModal(false)}
+        className="modal-content"
+        overlayClassName="modal-overlay"
+        closeTimeoutMS={481}
+      >
+        <div className="modal-header">
+          <h3 className="modal-title">
             <UnorderedListOutlined />
             <span>Produtos do Lote: {produtosLoteModalTitle}</span>
-          </Space>
-        }
-        open={showProdutosLoteModal}
-        onCancel={() => setShowProdutosLoteModal(false)}
-        footer={null}
-        style={{ top: 25 }}
-        width={800}
-      >
+          </h3>
+        </div>
+
         {produtosLoteModal.length === 0 ? (
-          <Alert
-            message="Nenhum produto encontrado"
-            description="Este lote não possui produtos cadastrados."
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
+          <div className="modal-body">
+            <Alert
+              message="Nenhum produto encontrado"
+              description="Este lote não possui produtos cadastrados."
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          </div>
         ) : (
-          <>
+          <div className="modal-body">
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
               <Col span={8}>
                 <Statistic
@@ -1572,8 +1576,13 @@ const Farmacia = () => {
               size="small"
               scroll={{ y: 300 }}
             />
-          </>
+          </div>
         )}
+
+        <button onClick={() => setShowProdutosLoteModal(false)} className="modal-close-btn">
+          <XOutlined /> Fechar
+        </button>
+
       </Modal>
     </div>
   );
@@ -1600,74 +1609,101 @@ const Farmacia = () => {
           </>
         )}
         <Modal
-          title={editLoteId ? 'Editar Lote' : 'Adicionar Lote'}
-          open={showLoteModal}
-          onCancel={() => {
+          isOpen={showLoteModal}
+          onRequestClose={() => {
             setShowLoteModal(false);
             setEditLoteId(null);
             loteForm.resetFields();
           }}
-          footer={null}
-          style={{ top: 25 }}
-          width={600}
+          onAfterClose={() => {
+            setShowLoteModal(false);
+            setEditLoteId(null);
+            loteForm.resetFields();
+          }}
+          className="modal-content"
+          overlayClassName="modal-overlay"
+          closeTimeoutMS={481}
         >
-          <div style={{ position: 'absolute', top: 16, right: 24, color: '#888', fontSize: 13 }}>
-            Data de Entrada: {loteForm.getFieldValue('dataEntrada') ? moment(loteForm.getFieldValue('dataEntrada')).tz('Africa/Luanda').format('YYYY-MM-DD HH:mm') : moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm')}
+          <div className="modal-header">
+            <h3 className="modal-title">{editLoteId ? 'Editar Lote' : 'Adicionar Lote'}</h3>
           </div>
-          <Form form={loteForm} layout="vertical" onFinish={handleAddLote}>
-            <Form.Item
-              name="designacao"
-              label="Designação"
-              rules={[{ required: true, message: 'Digite a designação' }]}
-            >
-              <Input placeholder="Digite a designação" />
-            </Form.Item>
-            <Form.Item
-              name="dataCriacao"
-              label="Data de Criação"
-              rules={[{ required: true, message: 'Selecione a data de criação' }]}
-            >
-              <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item
-              name="dataVencimento"
-              label="Data de Vencimento"
-              rules={[{ required: true, message: 'Selecione a data de vencimento' }]}
-            >
-              <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item
-              name="status"
-              label="Status"
-              valuePropName="checked"
-            >
-              <Switch checkedChildren="Ativo" unCheckedChildren="Inativo" />
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
-                <Button type="default" onClick={() => {
-                    setShowLoteModal(false);
-                    setEditLoteId(null);
-                    loteForm.resetFields();
-                  }} icon={<CloseOutlined />} />
-              </Space>
-            </Form.Item>
-          </Form>
+
+          <div className="modal-body">
+            <div style={{ position: 'absolute', top: 16, right: 24, color: '#888', fontSize: 13 }}>
+              Data de Entrada: {loteForm.getFieldValue('dataEntrada') ? moment(loteForm.getFieldValue('dataEntrada')).tz('Africa/Luanda').format('YYYY-MM-DD HH:mm') : moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm')}
+            </div>
+            <Form form={loteForm} layout="vertical" onFinish={handleAddLote}>
+              <Form.Item
+                name="designacao"
+                label="Designação"
+                rules={[{ required: true, message: 'Digite a designação' }]}
+              >
+                <Input placeholder="Digite a designação" />
+              </Form.Item>
+              <Form.Item
+                name="dataCriacao"
+                label="Data de Criação"
+                rules={[{ required: true, message: 'Selecione a data de criação' }]}
+              >
+                <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                name="dataVencimento"
+                label="Data de Vencimento"
+                rules={[{ required: true, message: 'Selecione a data de vencimento' }]}
+              >
+                <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                name="status"
+                label="Status"
+                valuePropName="checked"
+              >
+                <Switch checkedChildren="Ativo" unCheckedChildren="Inativo" />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
+                  <Button type="default" onClick={() => {
+                      setShowLoteModal(false);
+                      setEditLoteId(null);
+                      loteForm.resetFields();
+                    }} icon={<CloseOutlined />} />
+                </Space>
+              </Form.Item>
+            </Form>
+          </div>
+
+          <button onClick={() => {
+            setShowLoteModal(false);
+            setEditLoteId(null);
+            loteForm.resetFields();
+          }} className="modal-close-btn">
+            <XOutlined /> Fechar
+          </button>
+
         </Modal>
         <Modal
-          title={editFornecedorId ? 'Editar Fornecedor' : 'Adicionar Fornecedor'}
-          open={showFornecedorModal}
-          onCancel={() => {
+          isOpen={showFornecedorModal}
+          onRequestClose={() => {
             setShowFornecedorModal(false);
             setEditFornecedorId(null);
             fornecedorForm.resetFields();
           }}
-          footer={null}
-          style={{ top: 25 }}
-          width={600}
+          onAfterClose={() => {
+            setShowFornecedorModal(false);
+            setEditFornecedorId(null);
+            fornecedorForm.resetFields();
+          }}
+          className="modal-content"
+          overlayClassName="modal-overlay"
+          closeTimeoutMS={481}
         >
-          <Form form={fornecedorForm} layout="vertical" onFinish={handleAddFornecedor}>
+          <div className="modal-header">
+            <h3 className="modal-title">{editFornecedorId ? 'Editar Fornecedor' : 'Adicionar Fornecedor'}</h3>
+          </div>
+
+          <Form form={fornecedorForm} layout="vertical" onFinish={handleAddFornecedor} className="modal-body">
             <Form.Item
               name="nome"
               label="Nome"
@@ -1728,20 +1764,37 @@ const Farmacia = () => {
               </Space>
             </Form.Item>
           </Form>
+
+          <button onClick={() => {
+            setShowFornecedorModal(false);
+            setEditFornecedorId(null);
+            fornecedorForm.resetFields();
+          }} className="modal-close-btn">
+            <XOutlined /> Fechar
+          </button>
+
         </Modal>
         <Modal
-          title={editLinhasLotesId ? 'Editar Linha de Lote' : 'Adicionar Linha de Lote'}
-          open={showLinhasLotesModal}
-          onCancel={() => {
+          isOpen={showLinhasLotesModal}
+          onRequestClose={() => {
             setShowLinhasLotesModal(false);
             setEditLinhasLotesId(null);
             linhasLotesForm.resetFields();
           }}
-          footer={null}
-          style={{ top: 25 }}
-          width={600}
+          onAfterClose={() => {
+            setShowLinhasLotesModal(false);
+            setEditLinhasLotesId(null);
+            linhasLotesForm.resetFields();
+          }}
+          className="modal-content"
+          overlayClassName="modal-overlay"
+          closeTimeoutMS={481}
         >
-          <Form form={linhasLotesForm} layout="vertical" onFinish={handleAddLinhasLotes}>
+          <div className="modal-header">
+            <h3 className="modal-title">{editLinhasLotesId ? 'Editar Linha de Lote' : 'Adicionar Linha de Lote'}</h3>
+          </div>
+
+          <Form form={linhasLotesForm} layout="vertical" onFinish={handleAddLinhasLotes} className="modal-body">
             <Form.Item
               name="lotes_id"
               label="Lote"
@@ -1797,6 +1850,15 @@ const Farmacia = () => {
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} />
             </Form.Item>
           </Form>
+
+          <button onClick={() => {
+            setShowLinhasLotesModal(false);
+            setEditLinhasLotesId(null);
+            linhasLotesForm.resetFields();
+          }} className="modal-close-btn">
+            <XOutlined /> Fechar
+          </button>
+
         </Modal>
       </Spin>
     </div>

@@ -6,7 +6,7 @@ import {
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined, NodeExpandOutlined, SearchOutlined,
   FilterOutlined, DownloadOutlined, UploadOutlined, InfoCircleOutlined, ExclamationCircleOutlined,
-  CheckCircleOutlined, ClockCircleOutlined
+  CheckCircleOutlined, ClockCircleOutlined, XOutlined
 } from '@ant-design/icons';
 import moment from 'moment';
 import { api } from '../../service/api';
@@ -588,27 +588,46 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
         />
 
         <Modal
-          title={`Filhos de ${produtoPaiSelecionado?.productDescription || ''}`}
-          open={modalFilhosVisible}
-          onCancel={() => setModalFilhosVisible(false)}
-          footer={<Button onClick={() => setModalFilhosVisible(false)}>Fechar</Button>}
+          isOpen={modalFilhosVisible}
+          onRequestClose={() => setModalFilhosVisible(false)}
+          onAfterClose={() => setModalFilhosVisible(false)}
+          className="modal-content"
+          overlayClassName="modal-overlay"
+          closeTimeoutMS={481}
         >
+          <div className="modal-header">
+            <h3 className="modal-title">Filhos de {produtoPaiSelecionado?.productDescription || ''}</h3>
+          </div>
+
           {filhosProduto.length === 0 ? (
-            <div>Nenhum filho cadastrado.</div>
+            <div className="modal-body">Nenhum filho cadastrado.</div>
           ) : (
-            renderFilhosArvore(filhosProduto)
+            <div className="modal-body">
+              {renderFilhosArvore(filhosProduto)}
+            </div>
           )}
+
+          <button onClick={() => setModalFilhosVisible(false)} className="modal-close-btn">
+            <XOutlined /> Fechar
+          </button>
+
         </Modal>
       </Card>
 
       <Modal
-        title="Detalhes do Produto"
-        open={showProdutoDetails}
-        onCancel={() => setShowProdutoDetails(false)}
-        footer={<Button onClick={() => setShowProdutoDetails(false)}>Fechar</Button>}
+        isOpen={showProdutoDetails}
+        onRequestClose={() => setShowProdutoDetails(false)}
+        onAfterClose={() => setShowProdutoDetails(false)}
+        className="modal-content"
+        overlayClassName="modal-overlay"
+        closeTimeoutMS={481}
       >
+        <div className="modal-header">
+          <h3 className="modal-title">Detalhes do Produto</h3>
+        </div>
+
         {produtoSelecionado && (
-          <div>
+          <div className="modal-body">
             <p><b>Descrição:</b> {produtoSelecionado.productDescription}</p>
             <p><b>Grupo:</b> {produtoSelecionado.productGroup}</p>
             <p><b>Tipo:</b> {produtoSelecionado.productType}</p>
@@ -628,6 +647,11 @@ function Exame({ exames, medicos, setExames, fetchAllData, createExame, updateEx
             )}
           </div>
         )}
+
+        <button onClick={() => setShowProdutoDetails(false)} className="modal-close-btn">
+          <XOutlined /> Fechar
+        </button>
+
       </Modal>
     </div>
   );

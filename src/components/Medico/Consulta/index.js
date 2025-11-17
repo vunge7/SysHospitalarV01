@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Modal from 'react-modal'; // Adicionado
 import { api } from '../../../service/api';
 import Receituario from '../Receituario';
 import Procedimento from '../../Procedimento';
@@ -10,18 +11,20 @@ import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
 import { viewPdfGenerico, ModalTriagem, ModalFinalizarAtendimento } from '../../util/utilitarios';
 import {
-    List, Button, Modal, Tabs, Form, message, Tooltip,
+    List, Button, Tabs, Form, message, Tooltip, // Removido Modal do antd
     Card, Row, Tag, Space, Avatar, Typography,
     Table, Input, Spin, Empty
 } from 'antd';
 import {
     MedicineBoxOutlined, CloseCircleOutlined, FileSearchOutlined,
-    ClockCircleOutlined, UserOutlined, PlusOutlined, SearchOutlined, LoadingOutlined
+    ClockCircleOutlined, UserOutlined, PlusOutlined, SearchOutlined, LoadingOutlined, XOutlined
 } from '@ant-design/icons';
 import { format } from 'date-fns';
 import './Consulta.css';
 
 const { Title, Text } = Typography;
+
+Modal.setAppElement('#root'); // Adicionado
 
 function Consulta() {
     const [id, setId] = useState(0);
@@ -305,23 +308,29 @@ function Consulta() {
 
                     {/* MODAL ADICIONAR EXAME */}
                     <Modal
-                        title={
-                            <div className="exames-modal-title">
-                                <MedicineBoxOutlined />
-                                Adicionar Exame Complementar
-                            </div>
-                        }
-                        open={isModalExameOpen}
-                        onCancel={() => {
+                        isOpen={isModalExameOpen}
+                        onRequestClose={() => {
                             setIsModalExameOpen(false);
                             setSearchExame('');
                             setExameOptions([]);
                             setLoadingExames(false);
                         }}
-                        footer={null}
-                        width={720}
-                        className="exames-modal"
+                        onAfterClose={() => {
+                            setIsModalExameOpen(false);
+                            setSearchExame('');
+                            setExameOptions([]);
+                            setLoadingExames(false);
+                        }}
+                        className="modal-content"
+                        overlayClassName="modal-overlay"
+                        closeTimeoutMS={481} // Tempo do modal de Faturação
                     >
+                        <div className="modal-header">
+                            <h3 className="modal-title">
+                                <MedicineBoxOutlined />
+                                Adicionar Exame Complementar
+                            </h3>
+                        </div>
                         <div className="exames-search-container">
                             <Input
                                 prefix={<SearchOutlined className="exames-search-icon" />}
@@ -385,6 +394,16 @@ function Consulta() {
                                 </div>
                             )}
                         </div>
+
+                        <button onClick={() => {
+                            setIsModalExameOpen(false);
+                            setSearchExame('');
+                            setExameOptions([]);
+                            setLoadingExames(false);
+                        }} className="modal-close-btn">
+                            <XOutlined /> Fechar
+                        </button>
+
                     </Modal>
                 </div>
             ),

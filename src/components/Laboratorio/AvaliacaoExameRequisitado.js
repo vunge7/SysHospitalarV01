@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import Modal from 'react-modal';
 import { remove as removeDiacritics } from 'diacritics';
-import { Table, Button, Modal, Form, Input, Card, Typography, InputNumber, Space, Popconfirm, Tag } from 'antd';
-import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, PlusCircleOutlined, MedicineBoxOutlined } from '@ant-design/icons';
+import { Table, Button, Form, Input, Card, Typography, InputNumber, Space, Popconfirm, Tag } from 'antd';
+import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, PlusCircleOutlined, MedicineBoxOutlined, XOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { api } from '../../service/api';
@@ -1114,28 +1115,17 @@ function AvaliacaoExameRequisitado({
       )}
 
       <Modal
-        title="Registrar Resultado do Exame"
-        open={isModalVisible}
-        onCancel={handleCancel}
-        footer={null}
-        style={{ borderRadius: '12px', overflow: 'hidden' }}
-        styles={{
-          body: {
-            backgroundColor: '#ffffff',
-            padding: '24px',
-            borderRadius: '0 0 12px 12px',
-          },
-          header: {
-            background: 'linear-gradient(90deg, #e6f0fa 0%, #d6e6ff 100%)',
-            color: '#0052cc',
-            fontWeight: 600,
-            fontSize: '18px',
-            padding: '16px 24px',
-            borderRadius: '12px 12px 0 0',
-            borderBottom: '2px solid #007bff',
-          },
-        }}
+        isOpen={isModalVisible}
+        onRequestClose={handleCancel}
+        onAfterClose={handleCancel}
+        className="modal-content"
+        overlayClassName="modal-overlay"
+        closeTimeoutMS={481}
       >
+        <div className="modal-header">
+          <h3 className="modal-title">Registrar Resultado do Exame</h3>
+        </div>
+
         {selectedExame && (
           <Form
             form={form}
@@ -1257,6 +1247,11 @@ function AvaliacaoExameRequisitado({
             </Form.Item>
           </Form>
         )}
+
+        <button onClick={handleCancel} className="modal-close-btn">
+          <XOutlined /> Fechar
+        </button>
+
       </Modal>
 
       <Modal

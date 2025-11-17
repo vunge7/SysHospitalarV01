@@ -73,7 +73,7 @@ const PainelPermissoes = () => {
                     style={{
                         background: '#fff',
                         borderRight: '1px solid #f0f0f0',
-                        height: '100vh',
+                        height: '100vh', 
                         position: 'sticky',
                         top: 0,
                         overflow: 'auto'

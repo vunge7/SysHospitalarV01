@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Modal, Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification } from 'antd';
-import { EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import Modal from 'react-modal';
+import { Form, Select, Input, Button, Checkbox, Spin, Alert, Space, Upload, notification } from 'antd';
+import { EditOutlined, DeleteOutlined, UploadOutlined, XOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import ProdutoTypeForm from '../ProdutoTypeForm';
 import UnidadeMedidaForm from '../UnidadeMedidaForm';
 import DynamicTable from '../DynamicTable';
 import { toast } from 'react-toastify';
+import "./style.css"
+
+Modal.setAppElement('#root');
 
 // Esquema de validação com Zod
 const schema = z.object({
@@ -205,8 +209,11 @@ const ListarProduto = () => {
       fetchData();
     } catch (error) {
       console.error('Erro ao processar o formulário:', error);
-      const errorMessage = error.response?.data?.message || error.response?.data || error.message;
+      let errorMessage = error.response?.data?.message || error.response?.data || error.message;
       console.log('Detalhes do erro:', error.response); // Depuração
+      if (typeof errorMessage === 'object') {
+        errorMessage = errorMessage.message || JSON.stringify(errorMessage);
+      }
       setErrosNoFront(prev => [...prev, errorMessage]);
       toast.error(errorMessage, { autoClose: 2000 });
     } finally {
@@ -372,53 +379,30 @@ const ListarProduto = () => {
         </div>
       )}
       <Modal
-        title="Editar Produto"
-        open={modalIsOpen}
-        onCancel={() => {
+        isOpen={modalIsOpen}
+        onRequestClose={() => {
           setModalIsOpen(false);
           reset();
           setPreview(null);
           setExistingImage(null);
           setErrosNoFront([]);
         }}
-        footer={
-          <Space>
-            <Button
-              type="primary"
-              htmlType="submit"
-              form="editProductForm"
-              loading={carregar}
-              className="form-button form-button-primary"
-            >
-              {btnEnviar}
-            </Button>
-            <Button
-              onClick={() => reset()}
-              disabled={carregar}
-              className="form-button"
-            >
-              Limpar
-            </Button>
-            <Button
-              onClick={() => {
-                setModalIsOpen(false);
-                reset();
-                setPreview(null);
-                setExistingImage(null);
-                setErrosNoFront([]);
-              }}
-              disabled={carregar}
-              className="form-button"
-            >
-              Fechar
-            </Button>
-          </Space>
-        }
-        className="produto-form-modal"
-        width={600}
-        styles={{ body: { height: 'auto', overflow: 'auto' } }}
+        onAfterClose={() => {
+          setModalIsOpen(false);
+          reset();
+          setPreview(null);
+          setExistingImage(null);
+          setErrosNoFront([]);
+        }}
+        className="modal-content"
+        overlayClassName="modal-overlay"
+        closeTimeoutMS={481}
       >
-        <Spin spinning={carregar}>
+        <div className="modal-header">
+          <h3 className="modal-title">Editar Produto</h3>
+        </div>
+
+        <Spin spinning={carregar} className="modal-body">
           {errosNoFront.length > 0 && (
             <Alert
               message="Erros"
@@ -659,17 +643,70 @@ const ListarProduto = () => {
             </Form.Item>
           </Form>
         </Spin>
+
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #f0f0f0', textAlign: 'right' }}>
+          <Space>
+            <Button type="primary" htmlType="submit" form="editProductForm" loading={carregar} className="form-button form-button-primary">
+              {btnEnviar}
+            </Button>
+            <Button onClick={() => reset()} disabled={carregar} className="form-button">
+              Limpar
+            </Button>
+            <Button onClick={() => {
+              setModalIsOpen(false);
+              reset();
+              setPreview(null);
+              setExistingImage(null);
+              setErrosNoFront([]);
+            }} disabled={carregar} className="form-button">
+              Fechar
+            </Button>
+          </Space>
+        </div>
+
+        <button onClick={() => {
+          setModalIsOpen(false);
+          reset();
+          setPreview(null);
+          setExistingImage(null);
+          setErrosNoFront([]);
+        }} className="modal-close-btn">
+          <XOutlined /> Fechar
+        </button>
+
       </Modal>
       <Modal
-        title="Deseja Remover Este Produto?"
-        open={modalIsOpenRemove}
-        onOk={onConfirmar}
-        onCancel={() => setModalIsOpenRemove(false)}
-        okText="Confirmar"
-        cancelText="Cancelar"
-        confirmLoading={carregar}
-        className='confi'
-      />
+        isOpen={modalIsOpenRemove}
+        onRequestClose={() => setModalIsOpenRemove(false)}
+        onAfterClose={() => setModalIsOpenRemove(false)}
+        className="modal-content"
+        overlayClassName="modal-overlay"
+        closeTimeoutMS={481}
+      >
+        <div className="modal-header">
+          <h3 className="modal-title">Deseja Remover Este Produto?</h3>
+        </div>
+
+        <div className="modal-body">
+          <p>Tem certeza que deseja remover o produto <strong>{produtoRemover?.productDescription}</strong>?</p>
+        </div>
+
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #f0f0f0', textAlign: 'right' }}>
+          <Space>
+            <Button onClick={() => setModalIsOpenRemove(false)} disabled={carregar} className="form-button">
+              Cancelar
+            </Button>
+            <Button type="primary" danger onClick={onConfirmar} loading={carregar} className="form-button form-button-primary">
+              Confirmar
+            </Button>
+          </Space>
+        </div>
+
+        <button onClick={() => setModalIsOpenRemove(false)} className="modal-close-btn">
+          <XOutlined /> Fechar
+        </button>
+
+      </Modal>
     </div>
   );
 };

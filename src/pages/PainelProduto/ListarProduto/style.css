@@ -65,6 +65,30 @@
   text-align: right;
 }
 
+/* Layout do modal de edição de produto (react-modal: className="modal-content" / "modal-body") */
+.modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-height: 90vh;
+  width: 900px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+  overflow-y: auto;
+
+}
+
+.modal-body {
+  padding: 12px 18px;
+  max-height: calc(90vh - 140px); /* espaço para header + footer do modal */
+  overflow-y: auto;
+}
+
 /* Estilo para alerta de erro */
 .form-error-alert {
   border-radius: 6px;

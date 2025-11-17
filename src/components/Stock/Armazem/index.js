@@ -1,11 +1,14 @@
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
-import { Table, Input, Button, Modal, Form, Select, Space, Spin, Popconfirm, Tooltip, Card, Row, Col, Typography, Alert } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, SaveOutlined, ExportOutlined } from '@ant-design/icons';
+import Modal from 'react-modal';
+import { Table, Input, Button, Form, Select, Space, Spin, Popconfirm, Tooltip, Card, Row, Col, Typography, Alert } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, SaveOutlined, ExportOutlined, XOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
 import moment from 'moment';
 import './Armazem.css';
 import { toast } from 'react-toastify';
+
+Modal.setAppElement('#root');
 
 const { Title } = Typography;
 
@@ -276,20 +279,30 @@ const Armazem = () => {
         </Card>
 
         <Modal
-          title={selectedArmazem ? 'Editar Armazém' : 'Novo Armazém'}
-          open={showArmazemModal}
-          onCancel={() => {
+          isOpen={showArmazemModal}
+          onRequestClose={() => {
             setShowArmazemModal(false);
             setSelectedArmazem(null);
             form.resetFields();
           }}
-          footer={null}
-          width={600}
+          onAfterClose={() => {
+            setShowArmazemModal(false);
+            setSelectedArmazem(null);
+            form.resetFields();
+          }}
+          className="modal-content"
+          overlayClassName="modal-overlay"
+          closeTimeoutMS={481}
         >
+          <div className="modal-header">
+            <h3 className="modal-title">{selectedArmazem ? 'Editar Armazém' : 'Novo Armazém'}</h3>
+          </div>
+
           <Form
             form={form}
             onFinish={selectedArmazem ? handleArmazemEditSubmit : handleArmazemSubmit}
             layout="vertical"
+            className="modal-body"
           >
             <Form.Item
               name="designacao"
@@ -315,13 +328,26 @@ const Armazem = () => {
 
             <Form.Item style={{ textAlign: 'right' }}>
               <Space>
-                <Button onClick={() => setShowArmazemModal(false)}>Cancelar</Button>
+                <Button onClick={() => {
+                  setShowArmazemModal(false);
+                  setSelectedArmazem(null);
+                  form.resetFields();
+                }}>Cancelar</Button>
                 <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
                   {selectedArmazem ? 'Atualizar' : 'Salvar'}
                 </Button>
               </Space>
             </Form.Item>
           </Form>
+
+          <button onClick={() => {
+            setShowArmazemModal(false);
+            setSelectedArmazem(null);
+            form.resetFields();
+          }} className="modal-close-btn">
+            <XOutlined /> Fechar
+          </button>
+
         </Modal>
       </Spin>
     </div>
