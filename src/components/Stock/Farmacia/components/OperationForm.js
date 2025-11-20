@@ -326,7 +326,7 @@ const OperationForm = ({
         }}
       >
         <Form form={form} layout="vertical" className="operation-form">
-          <Row gutter={[16, 16]}>
+          <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
             {/* Tipo de Operação */}
             <Col xs={24} md={12}>
               <Form.Item
@@ -369,6 +369,7 @@ const OperationForm = ({
                 name="armazemId"
                 label="Armazém Origem"
                 rules={[{ required: true, message: 'Selecione o armazém de origem' }]}
+                style={{ marginBottom: 32 }}
               >
                 <Select 
                   placeholder="Selecione o armazém"
@@ -454,6 +455,7 @@ const OperationForm = ({
                 name="loteId"
                 label="Lote"
                 rules={[{ required: true, message: 'Selecione o lote' }]}
+                style={{ marginBottom: 32 }}
               >
                 <Select
                   placeholder="Selecione o lote"
@@ -485,6 +487,7 @@ const OperationForm = ({
                 name="produtoId"
                 label="Produto"
                 rules={[{ required: true, message: 'Selecione o produto' }]}
+                style={{ marginBottom: 32 }}
               >
                 <Select
                   placeholder={selectedLoteId ? "Selecione o produto" : "Selecione o lote primeiro"}
@@ -540,18 +543,20 @@ const OperationForm = ({
                   { required: true, message: 'Insira a quantidade' },
                   { type: 'number', min: 1, message: 'Quantidade deve ser maior que zero' }
                 ]}
+                style={{ marginBottom: 32 }}
               >
                 <InputNumber 
                   min={1} 
                   placeholder="Quantidade" 
                   style={{ width: '100%' }}
+                  className="quantidade-input"
                 />
               </Form.Item>
             </Col>
           </Row>
 
           {/* Botões de Ação */}
-          <Space style={{ marginBottom: 16 }}>
+          <Space style={{ marginTop: 8, marginBottom: 16 }}>
             <Button 
               type="primary" 
               icon={<PlusOutlined />} 

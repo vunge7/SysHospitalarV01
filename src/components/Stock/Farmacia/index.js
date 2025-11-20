@@ -1,10 +1,14 @@
 import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import { Form, Input, InputNumber, Button, Select, Table, Modal, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs, Row, Col, Statistic } from 'antd';
+import { Form, Input, InputNumber, Button, Select, Table, Space, Tag, Popconfirm, Alert, Switch, Spin, Typography, DatePicker, Tabs, Row, Col, Statistic } from 'antd';
+import Modal from 'react-modal';
+
 import { PlusOutlined, SaveOutlined, CloseOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined, CheckCircleOutlined, CloseCircleOutlined, XOutlined } from '@ant-design/icons';
 import moment from 'moment-timezone';
 import debounce from 'lodash/debounce';
 import { api } from '../../../service/api';
 import { StockContext } from '../../../contexts/StockContext';
+import { AuthContext } from '../../../contexts/auth';
+
 import './Farmacia.css';
 import { toast } from 'react-toastify';
 import OperationForm from './components/OperationForm';
@@ -13,6 +17,8 @@ const { Option } = Select;
 const { TabPane } = Tabs;
 const { RangePicker } = DatePicker;
 const { Title } = Typography;
+
+Modal.setAppElement('#root');
 
 const responsiveStyle = {
   farmaciaContainer: {
@@ -43,6 +49,7 @@ const responsiveStyle = {
 };
 
 const Farmacia = () => {
+  const { user } = useContext(AuthContext);
   const {
     armazens, produtos, lotes, fornecedores, linhasLotes, operacoesList, productTypes,
     setFornecedores,
@@ -79,6 +86,12 @@ const Farmacia = () => {
   const [produtosLoteModal, setProdutosLoteModal] = useState([]);
   const [showProdutosLoteModal, setShowProdutosLoteModal] = useState(false);
   const [produtosLoteModalTitle, setProdutosLoteModalTitle] = useState('');
+
+  const resolveEmpresaId = () => {
+    const storageUser = localStorage.getItem('@sysHospitalarPRO');
+    const userFromStorage = storageUser ? JSON.parse(storageUser) : null;
+    return user?.filialSelecionada?.id || userFromStorage?.filialSelecionada?.id || null;
+  };
 
   useEffect(() => {
     console.log('Produtos no Farmacia.js:', produtos);
@@ -378,7 +391,7 @@ const Farmacia = () => {
           
           const existingLinha = linhasLotes.find(
             (linha) => Number(linha.lotes_id) === Number(item.loteId) && 
-                       Number(linha.produto_id) === Number(item.produtoId) &&
+                       Number(linha.produto_id) === Number(item.produtoId) && 
                        Number(linha.armazem_id) === Number(values.armazemId)
           );
           
@@ -420,6 +433,12 @@ const Farmacia = () => {
         return distribuicao;
       };
 
+      const empresaIdResolved = resolveEmpresaId();
+      if (!empresaIdResolved) {
+        toast.error('Nenhuma filial/empresa selecionada. Selecione uma filial antes de registrar operações de stock.');
+        return;
+      }
+
       const linhasOperacao = tempItens.map((item) => {
         const produto = produtos.find((p) => p.id === item.produtoId);
         const lote = lotes.find((l) => l.id === item.loteId);
@@ -433,24 +452,28 @@ const Farmacia = () => {
         
         const linhasDoProduto = linhasLotes.filter(
           (linha) => Number(linha.lotes_id) === Number(item.loteId) && 
-                     Number(linha.produto_id) === Number(produto.id) &&
+                     Number(linha.produto_id) === Number(produto.id) && 
                      Number(linha.armazem_id) === Number(values.armazemId)
         );
         
         const qtdAnterior = linhasDoProduto.reduce((total, linha) => total + Number(linha.quantidade || 0), 0);
         let qtdActual = qtdAnterior;
-        let qtdOperacao = Number(item.quantidade);
+        const qtdOperacaoReal = Number(item.quantidade);
+        let qtdOperacao = qtdOperacaoReal;
 
         if (tipoOperacao === 'ENTRADA') {
+          // ENTRADA aumenta stock e registra a quantidade movimentada
           qtdActual = qtdAnterior + qtdOperacao;
-        } else if (['SAIDA', 'TRANSFERENCIA', 'ANULACAO'].includes(tipoOperacao)) {
+        } else if (tipoOperacao === 'ANULACAO') {
+          // Para ANULACAO, o backend exige qtdOperacao = 0.
+          // O ajuste real de stock é feito nas linhas de lote (linhaslotes).
+          qtdOperacao = 0;
+          qtdActual = qtdAnterior;
+        } else if (['SAIDA', 'TRANSFERENCIA'].includes(tipoOperacao)) {
           if (qtdAnterior < qtdOperacao) {
             throw new Error(`Quantidade insuficiente para o produto ${produto.productDescription || 'Sem Descrição'} no lote ${lote.designacao || 'Desconhecido'} (Disponível: ${qtdAnterior})`);
           }
           qtdActual = qtdAnterior - qtdOperacao;
-          if (tipoOperacao === 'ANULACAO') {
-            qtdActual = Math.max(0, qtdActual);
-          }
         }
 
         const linha = {
@@ -462,6 +485,8 @@ const Farmacia = () => {
           qtdOperacao: qtdOperacao.toString(),
           qtdActual: qtdActual.toString(),
           operacaoStockId: null,
+          empresaId: Number(empresaIdResolved),
+          qtdOperacaoReal: qtdOperacaoReal,
         };
 
         if (tipoOperacao === 'TRANSFERENCIA') {
@@ -474,11 +499,12 @@ const Farmacia = () => {
 
       const OperacaoStockDTO = {
         id: editOperacaoId || null,
-        dataOperacao: moment().tz('Africa/Luanda').format('YYYY-MM-DD HH:mm:ss'),
+        dataOperacao: moment().subtract(1, 'hours').format('YYYY-MM-DD HH:mm:ss'),
         tipoOperacao: values.tipoOperacao,
         usuarioId: 1,
         armazemId: values.armazemId,
         descricao: values.descricao || `Operação ${values.tipoOperacao}`,
+        empresaId: Number(empresaIdResolved),
         linhas: linhasOperacao,
       };
 
@@ -498,6 +524,11 @@ const Farmacia = () => {
 
       const atualizarLinhasLotes = async () => {
         try {
+          const empresaIdResolvedInner = resolveEmpresaId();
+          if (!empresaIdResolvedInner) {
+            toast.error('Nenhuma filial/empresa selecionada. Selecione uma filial antes de atualizar as linhas de lote.');
+            return;
+          }
           for (const linha of OperacaoStockDTO.linhas) {
             if (!linha || !linha.loteIdOrigem || !linha.produtoId) {
               console.error('Linha inválida:', linha);
@@ -524,6 +555,7 @@ const Farmacia = () => {
                   produto_id: linha.produtoId,
                   quantidade: linha.qtdActual,
                   armazem_id: values.armazemId,
+                  empresaId: Number(empresaIdResolvedInner),
                 };
                 await api.put(`/linhaslotes/edit`, linhasLotesDTOOrigem);
               }
@@ -536,6 +568,7 @@ const Farmacia = () => {
                   produto_id: linha.produtoId,
                   quantidade: novaQuantidadeDestino,
                   armazem_id: values.armazemDestinoId,
+                  empresaId: Number(empresaIdResolvedInner),
                 };
                 await api.put(`/linhaslotes/edit`, linhasLotesDTODestino);
               } else {
@@ -544,6 +577,7 @@ const Farmacia = () => {
                   produto_id: linha.produtoId,
                   quantidade: Number(linha.qtdOperacao),
                   armazem_id: values.armazemDestinoId,
+                  empresaId: Number(empresaIdResolvedInner),
                 };
                 await api.post('/linhaslotes/add', linhasLotesDTODestino);
               }
@@ -554,15 +588,18 @@ const Farmacia = () => {
                        Number(l.armazem_id) === Number(values.armazemId)
               );
               
-              if (tipoOperacao === 'ENTRADA') {
+              if (tipoOperacao === 'ENTRADA' || tipoOperacao === 'ANULACAO') {
+                // ENTRADA e ANULACAO aumentam a quantidade no lote/armazém actual
                 const linhasLotesDTO = {
                   lotes_id: linha.loteIdOrigem,
                   produto_id: linha.produtoId,
                   quantidade: linha.qtdOperacao,
                   armazem_id: values.armazemId,
+                  empresaId: Number(empresaIdResolvedInner),
                 };
                 await api.post('/linhaslotes/add', linhasLotesDTO);
               } else if (linhasDoProduto.length > 0) {
+                // SAIDA distribui a retirada entre as linhas existentes
                 const distribuicao = distribuirRetirada(linhasDoProduto, Number(linha.qtdOperacao));
                 for (const item of distribuicao) {
                   const linhaOriginal = linhasDoProduto.find(l => l.id === item.linhaId);
@@ -573,6 +610,7 @@ const Farmacia = () => {
                       produto_id: linha.produtoId,
                       quantidade: item.quantidadeRestante,
                       armazem_id: values.armazemId,
+                      empresaId: Number(empresaIdResolvedInner),
                     };
                     await api.put(`/linhaslotes/edit`, linhasLotesDTO);
                   }
@@ -708,6 +746,11 @@ const Farmacia = () => {
   const handleAddFornecedor = async (values) => {
     setLoading(true);
     try {
+      const empresaIdResolved = resolveEmpresaId();
+      if (!empresaIdResolved) {
+        toast.error('Nenhuma filial/empresa selecionada. Selecione uma filial antes de cadastrar fornecedores.');
+        return;
+      }
       const fornecedorDTO = {
         id: editFornecedorId || null,
         nome: values.nome,
@@ -717,6 +760,7 @@ const Farmacia = () => {
         regimeTributario: values.regimeTributario,
         estadoFornecedor: values.estadoFornecedor || 'ATIVO',
         dataCriacao: editFornecedorId ? undefined : moment().tz('Africa/Luanda').toISOString(),
+        empresaId: Number(empresaIdResolved),
       };
       if (editFornecedorId) {
         await api.put(`/fornecedor/${editFornecedorId}`, fornecedorDTO);
@@ -761,6 +805,11 @@ const Farmacia = () => {
   const handleAddLote = async (values) => {
     setLoading(true);
     try {
+      const empresaIdResolved = resolveEmpresaId();
+      if (!empresaIdResolved) {
+        toast.error('Nenhuma filial/empresa selecionada. Selecione uma filial antes de cadastrar lotes.');
+        return;
+      }
       const loteDTO = {
         id: editLoteId || null,
         usuarioId: 1,
@@ -769,6 +818,7 @@ const Farmacia = () => {
         dataVencimento: values.dataVencimento ? values.dataVencimento.toISOString() : null,
         dataEntrada: moment().tz('Africa/Luanda').toISOString(),
         status: values.status !== undefined ? values.status : true,
+        empresaId: Number(empresaIdResolved),
       };
       if (editLoteId) {
         await api.put(`/lotes/${editLoteId}`, loteDTO);
