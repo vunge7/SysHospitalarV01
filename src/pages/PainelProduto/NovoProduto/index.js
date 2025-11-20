@@ -169,6 +169,14 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
         } else {
           unidadeValue = produtoParaEditar.unidadeMedida || '';
         }
+        // Se já existir imagem no produto, monta a URL correta (uploads/produtos)
+        if (produtoParaEditar.imagem) {
+          if (produtoParaEditar.imagem.startsWith('http')) {
+            setPreview(produtoParaEditar.imagem);
+          } else {
+            setPreview(`${api.defaults.baseURL}uploads/produtos/${produtoParaEditar.imagem}`);
+          }
+        }
         const statusValue = (
           produtoParaEditar.status === true ||
           produtoParaEditar.status === '1' ||
@@ -441,9 +449,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
           formData.append('imagem', produtoData.imagem[0].originFileObj);
 
           console.log('Enviando FormData para produto existente (com imagem)...');
-          await api.put(`/produto/${produtoIdExistente}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          await api.put(`/produto/${produtoIdExistente}`, formData);
           produtoId = produtoIdExistente;
         } else {
           // Criação: primeiro envia JSON (sem imagem) para /produto/add
@@ -470,9 +476,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
             formData.append('imagem', produtoData.imagem[0].originFileObj);
 
             console.log('Enviando FormData para /produto/' + produtoId + ' (anexando imagem)...');
-            await api.put(`/produto/${produtoId}`, formData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            await api.put(`/produto/${produtoId}`, formData);
           }
         }
       } else {
