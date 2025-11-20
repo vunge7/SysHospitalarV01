@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Button, Menu, Input, Select, Radio, Modal, Typography, Card, Space } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
 import { api } from '../../service/api';
 import ListarUsuario from './ListarUsuario';
 import Cabecario from '../Cabecario';
@@ -21,6 +21,19 @@ import {
 import { AuthContext } from '../../contexts/auth';
 
 const { Option } = Select;
+
+const CardHeader = ({ title, description }) => (
+  <div className="card-header">
+    <Typography.Title level={4} className="card-header__title">
+      {title}
+    </Typography.Title>
+    {description && (
+      <Typography.Text type="secondary" className="card-header__description">
+        {description}
+      </Typography.Text>
+    )}
+  </div>
+);
 
 function Usuario() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -77,6 +90,9 @@ function Usuario() {
     'ANALISTA',
     'DIVERSO',
   ];
+
+  // Tipos de usuário que requerem número de ordem
+  const tiposUsuarioComOrdem = ['FARMACEUTICO', 'MEDICO', 'ANALISTA', 'ENFERMEIRO'];
 
   // Funções de busca de dados
   const fetchUsuarios = async () => {
@@ -241,8 +257,15 @@ function Usuario() {
       Modal.warning({ title: 'Atenção', content: 'Selecione um tipo de usuário.' });
       return;
     }
-    if (!userName || !senha || !numeroOrdem || !funcaoId) {
-      Modal.warning({ title: 'Atenção', content: 'Preencha todos os campos obrigatórios do usuário.' });
+    // Verifica se o tipo de usuário requer número de ordem
+    const requerNumeroOrdem = tiposUsuarioComOrdem.includes(tipoUsuario);
+    const camposObrigatorios = !userName || !senha || !funcaoId || (requerNumeroOrdem && !numeroOrdem);
+    
+    if (camposObrigatorios) {
+      const mensagem = requerNumeroOrdem && !numeroOrdem
+        ? 'Preencha todos os campos obrigatórios do usuário, incluindo o número de ordem.'
+        : 'Preencha todos os campos obrigatórios do usuário.';
+      Modal.warning({ title: 'Atenção', content: mensagem });
       return;
     }
     if (!user?.filialSelecionada?.id) {
@@ -251,15 +274,17 @@ function Usuario() {
     }
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
+      const requerNumeroOrdem = tiposUsuarioComOrdem.includes(tipoUsuario);
       const usuarioData = {
         userName,
         senha,
-        numeroOrdem: Number(numeroOrdem),
+        numeroOrdem: requerNumeroOrdem ? Number(numeroOrdem) : 0,
         estadoUsuario,
         tipoUsuario,
         funcaoId: Number(funcaoId),
         funcionarioId: Number(selectedPessoa.funcionarioId),
-        ip,
+        ip, // IP capturado automaticamente nos bastidores
+        status, // Status definido automaticamente nos bastidores (redundante com estadoUsuario)
         usuarioId,
         dataCadastro: today,
         dataAtualizacao: today,
@@ -318,119 +343,190 @@ function Usuario() {
           {activeTab === 'dashboard' && <h2 className="section-title">Dashboard</h2>}
           {activeTab === 'novo-usuario' && (
             <div className="novo-usuario-container">
-              <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                <Typography.Title level={2} style={{ margin: 0 }}>Cadastrar Usuário Teste Novo</Typography.Title>
+              <Space direction="vertical" size="large" style={{ width: '100%' }} className="novo-usuario-stack">
+                <div className="section-heading">
+                  <Typography.Title level={2} className="section-heading__title">Cadastrar Usuário</Typography.Title>
+                  <Typography.Text type="secondary">
+                    Selecione um funcionário elegível, defina o perfil e finalize o acesso em poucos passos.
+                  </Typography.Text>
+                </div>
 
-                <Card title="Tipo de Usuário">
-                  <Radio.Group
-                    onChange={(e) => setTipoUsuario(e.target.value)}
-                    value={tipoUsuario}
-                    disabled={!isPessoaMarked || !selectedPessoa?.id}
-                  >
-                    {tiposUsuario.map((tipo) => (
-                      <Radio key={tipo} value={tipo}>
-                        {tipo}
-                      </Radio>
-                    ))}
-                  </Radio.Group>
+                <Card
+                  className="usuario-card"
+                  title={
+                    <CardHeader
+                      title="Pesquisar e selecionar pessoa"
+                      description="Busque por funcionários sem usuário ou cadastre uma nova pessoa."
+                    />
+                  }
+                >
+                  <div className="search-row">
+                    <Input
+                      placeholder="Pesquisar por nome ou NIF"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      allowClear
+                      prefix={<SearchOutlined className="search-icon" />}
+                      onPressEnter={abrirSearchModal}
+                    />
+                    <Button type="primary" icon={<SearchOutlined />} onClick={abrirSearchModal}>
+                      Buscar funcionários
+                    </Button>
+                  </div>
+                  <div className="search-actions">
+                    <Button type="dashed" icon={<PlusOutlined />} onClick={abrirModal}>
+                      Cadastrar nova pessoa
+                    </Button>
+                    <Typography.Text type="secondary" className="card-hint">
+                      Mostrando apenas funcionários que ainda não possuem usuário ativo.
+                    </Typography.Text>
+                  </div>
                 </Card>
 
-                <Card title="Pesquisar/Selecionar Pessoa">
-                  <Input
-                    placeholder="Pesquisar por nome ou NIF"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    suffix={<SearchOutlined onClick={abrirSearchModal} className="search-icon" />}
-                  />
-                </Card>
+                {selectedPessoa && isPessoaMarked && (
+                  <div className="dados-usuario-wrapper">
+                    <Card
+                      className="usuario-card"
+                      title={
+                        <CardHeader
+                          title="Tipo de Usuário"
+                          description="Escolha o nível de acesso que será aplicado para este usuário."
+                        />
+                      }
+                    >
+                      <Radio.Group
+                        onChange={(e) => {
+                          const novoTipo = e.target.value;
+                          setTipoUsuario(novoTipo);
+                          // Limpa o número de ordem se o novo tipo não requer
+                          if (!tiposUsuarioComOrdem.includes(novoTipo)) {
+                            setNumeroOrdem('');
+                          }
+                        }}
+                        value={tipoUsuario}
+                      >
+                        {tiposUsuario.map((tipo) => (
+                          <Radio key={tipo} value={tipo}>
+                            {tipo}
+                          </Radio>
+                        ))}
+                      </Radio.Group>
+                    </Card>
 
-                {selectedPessoa && (
-                  <Card title="Dados Pessoais">
-                    <div className="pessoa-inputs">
-                      <div className="input-container">
-                        <label>Nome</label>
-                        <Input value={safeText(selectedPessoa.nome)} readOnly />
+                    <Card
+                      className="usuario-card"
+                      title={
+                        <CardHeader
+                          title="Dados pessoais"
+                          description="Informações carregadas automaticamente do cadastro da pessoa."
+                        />
+                      }
+                    >
+                      <div className="selected-pessoa-banner">
+                        <span className="selected-pessoa-banner__icon">
+                          <UserOutlined />
+                        </span>
+                        <div>
+                          <Typography.Text className="selected-pessoa-banner__title">
+                            {safeText(selectedPessoa.nome)}
+                          </Typography.Text>
+                          <Typography.Text type="secondary" className="selected-pessoa-banner__subtitle">
+                            NIF {safeText(selectedPessoa.nif)} • Funcionário {safeText(selectedPessoa.funcionarioId || '-')}
+                          </Typography.Text>
+                        </div>
                       </div>
-                      <div className="input-container">
-                        <label>NIF</label>
-                        <Input value={safeText(selectedPessoa.nif)} readOnly />
+                      <div className="pessoa-inputs">
+                        <div className="input-container">
+                          <label>Nome</label>
+                          <Input value={safeText(selectedPessoa.nome)} readOnly />
+                        </div>
+                        <div className="input-container">
+                          <label>NIF</label>
+                          <Input value={safeText(selectedPessoa.nif)} readOnly />
+                        </div>
+                        <div className="input-container">
+                          <label>Data de Nascimento</label>
+                          <Input value={safeText(selectedPessoa.dataNascimento)} readOnly />
+                        </div>
+                        <div className="input-container">
+                          <label>Telefone</label>
+                          <Input value={safeText(selectedPessoa.telefone)} readOnly />
+                        </div>
+                        <div className="input-container">
+                          <label>E-mail</label>
+                          <Input value={safeText(selectedPessoa.email)} readOnly />
+                        </div>
+                        <div className="input-container">
+                          <label>Endereço</label>
+                          <Input value={safeText(selectedPessoa.endereco)} readOnly />
+                        </div>
+                        <div className="input-container">
+                          <label>Gênero</label>
+                          <Input value={safeText(generos.find((g) => g.value === selectedPessoa.genero)?.label || selectedPessoa.genero)} readOnly />
+                        </div>
                       </div>
-                      <div className="input-container">
-                        <label>Data de Nascimento</label>
-                        <Input value={safeText(selectedPessoa.dataNascimento)} readOnly />
-                      </div>
-                      <div className="input-container">
-                        <label>Telefone</label>
-                        <Input value={safeText(selectedPessoa.telefone)} readOnly />
-                      </div>
-                      <div className="input-container">
-                        <label>E-mail</label>
-                        <Input value={safeText(selectedPessoa.email)} readOnly />
-                      </div>
-                      <div className="input-container">
-                        <label>Endereço</label>
-                        <Input value={safeText(selectedPessoa.endereco)} readOnly />
-                      </div>
-                      <div className="input-container">
-                        <label>Gênero</label>
-                        <Input value={safeText(generos.find((g) => g.value === selectedPessoa.genero)?.label || selectedPessoa.genero)} readOnly />
-                      </div>
-                    </div>
-                  </Card>
-                )}
+                    </Card>
 
-                <Card title="Dados de Acesso">
+                    <Card
+                      className="usuario-card"
+                      title={
+                        <CardHeader
+                          title="Dados de acesso"
+                          description="Complete as credenciais que serão enviadas ao usuário."
+                        />
+                      }
+                    >
                   <div className="usuario-form">
                     <div className="input-container">
-                      <label>Nome de Usuário</label>
-                      <Input value={userName} onChange={e => setUserName(e.target.value)} placeholder="Nome de usuário" disabled={!selectedPessoa} />
+                      <label>Nome de usuário</label>
+                      <Input value={userName} onChange={e => setUserName(e.target.value)} placeholder="ex: joao.silva" />
                     </div>
                     <div className="input-container">
                       <label>Senha</label>
-                      <Input.Password value={senha} onChange={e => setSenha(e.target.value)} placeholder="Senha" disabled={!selectedPessoa} />
+                      <Input.Password value={senha} onChange={e => setSenha(e.target.value)} placeholder="Defina uma senha segura" />
                     </div>
+                    {tiposUsuarioComOrdem.includes(tipoUsuario) && (
+                      <div className="input-container">
+                        <label>Número de ordem</label>
+                        <Input value={numeroOrdem} onChange={e => setNumeroOrdem(e.target.value)} placeholder="Informe o número de ordem" />
+                      </div>
+                    )}
                     <div className="input-container">
-                      <label>Número de Ordem</label>
-                      <Input value={numeroOrdem} onChange={e => setNumeroOrdem(e.target.value)} placeholder="Número de ordem" disabled={!selectedPessoa} />
-                    </div>
-                    <div className="input-container">
-                      <label>Estado do Usuário</label>
-                      <Select value={estadoUsuario} onChange={setEstadoUsuario} style={{ width: '100%' }} disabled={!selectedPessoa}>
+                      <label>Estado do usuário</label>
+                      <Select value={estadoUsuario} onChange={setEstadoUsuario} style={{ width: '100%' }}>
                         <Option value="ACTIVO">Ativo</Option>
                         <Option value="DESACTIVO">Inativo</Option>
                       </Select>
                     </div>
                     <div className="input-container">
                       <label>Função</label>
-                      <Select value={funcaoId} onChange={setFuncaoId} style={{ width: '100%' }} disabled={!selectedPessoa}>
+                      <Select value={funcaoId} onChange={setFuncaoId} style={{ width: '100%' }}>
                         {funcoes.map(f => (
                           <Option key={f.id} value={f.id}>{f.designacao}</Option>
                         ))}
                       </Select>
                     </div>
-                    <div className="input-container">
-                      <label>IP</label>
-                      <Input value={ip} placeholder="IP" readOnly />
-                    </div>
-                    <div className="input-container">
-                      <label>Status</label>
-                      <Select value={status} onChange={value => setStatus(value === true || value === 'true')} style={{ width: '100%' }} disabled={!selectedPessoa}>
-                        <Option value={true}>Ativo</Option>
-                        <Option value={false}>Inativo</Option>
-                      </Select>
+                  </div>
+                  <Typography.Text type="secondary" className="card-hint">
+                    {tiposUsuarioComOrdem.includes(tipoUsuario) 
+                      ? 'Todos os campos são obrigatórios para liberar o acesso, incluindo o número de ordem.' 
+                      : 'Todos os campos são obrigatórios para liberar o acesso.'}
+                  </Typography.Text>
+                    </Card>
+
+                    <div className="button-container">
+                      <Button
+                        type="primary"
+                        size="large"
+                        className="save-button"
+                        onClick={handleSubmitUsuario}
+                        disabled={!isPessoaMarked || !selectedPessoa?.id || !tipoUsuario}
+                      >
+                        Salvar Usuário
+                      </Button>
                     </div>
                   </div>
-                </Card>
-
-                <div className="button-container">
-                  <Button
-                    type="primary"
-                    onClick={handleSubmitUsuario}
-                    disabled={!isPessoaMarked || !selectedPessoa?.id || !tipoUsuario}
-                  >
-                    Salvar Usuário
-                  </Button>
-                </div>
+                )}
               </Space>
             </div>
           )}

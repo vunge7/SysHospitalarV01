@@ -206,7 +206,7 @@ const Ficha = () => {
         setEditMode(true);
         setFuncionarioId(funcionario.id);
         funcionarioForm.setFieldsValue({
-          tipoDeContrato: funcionario.tipoDeContrato,
+          tipoContrato: funcionario.tipoDeContrato,
           salario: funcionario.salario,
           dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmissao) : null,
           descricao: funcionario.descricao,
@@ -214,7 +214,7 @@ const Ficha = () => {
           departamentoId: funcionario.departamentoId,
           empresaId: funcionario.empresaId,
           segurancaSocial: funcionario.segurancaSocial,
-          fechoContas: funcionario.fechoContas,
+          fechoPeriodo: funcionario.fechoContas,
           estadoFuncionario: funcionario.estadoFuncionario,
           subsidios: subsidiosConsolidados,
         });
@@ -394,14 +394,14 @@ const Ficha = () => {
 
       const funcionarioData = {
         pessoaId: Number(selectedPessoa.id),
-        tipoDeContrato: values.tipoDeContrato,
+        tipoContrato: values.tipoDeContrato,
         salario: salario,
         dataAdmissao: moment.utc(values.dataAdmissao).format('YYYY-MM-DD HH:mm:ss'),
         descricao: values.descricao || '',
         cargo: values.cargo,
         departamentoId: Number(values.departamentoId),
         empresaId: Number(values.empresaId),
-        fechoContas: values.fechoContas,
+        fechoPeriodo: values.fechoContas,
         segurancaSocial: values.segurancaSocial,
         estadoFuncionario: values.estadoFuncionario,
         subsidios: subsidiosPayload,
