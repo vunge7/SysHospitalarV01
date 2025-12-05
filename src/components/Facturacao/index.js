@@ -334,7 +334,7 @@ function Facturacao() {
             hash: hash,
             hashControl: hashControl,
             invoiceDate: invoiceDate,
-            invoiceType: documentType,
+            invoiceType: invoiceType,
             selfBillingIndicator: selfBillingIndicator,
             cashVatschemeIndicator: cashVatschemeIndicator,
             thirdPartiesBillingIndicator: thirdPartiesBillingIndicator,
@@ -542,4 +542,4 @@ const columns = [
     { title: 'Preço c/Iva', dataIndex: 'subTotal', key: 'subTotal' },
 ];
 
-export default Facturacao;
+export default Facturacao;
