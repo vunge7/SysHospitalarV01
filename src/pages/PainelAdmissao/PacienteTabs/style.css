@@ -51,14 +51,12 @@
   flex-shrink: 0 !important;
 }
 
-/* EFEITO HOVER: ELEVAÇÃO + SOMBRA + COR */
+/* EFEITO HOVER: COR */
 .tab:hover {
   background: #e6f7ff !important;
   color: #1890ff !important;
-  transform: translateY(-4px) !important;
-  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.25) !important;
+  box-shadow: 0 4px 10px rgba(24, 144, 255, 0.15) !important;
   border-color: #1890ff !important;
-  z-index: 3 !important;
 }
 
 /* ABA ATIVA */
@@ -66,9 +64,7 @@
   background: #1890ff !important;
   color: white !important;
   font-weight: 700 !important;
-  box-shadow: 0 6px 24px rgba(24, 144, 255, 0.35) !important;
-  z-index: 2 !important;
-  transform: translateY(-2px) !important;
+  box-shadow: 0 3px 10px rgba(24, 144, 255, 0.25) !important;
 }
 
 .tab.active .tab-icon,
@@ -116,16 +112,9 @@
   margin-left: 6px !important;
 }
 
-/* INDICADOR ANIMADO */
+/* INDICADOR DESATIVADO (SEM TRAÇO) */
 .tab-indicator {
-  position: absolute !important;
-  bottom: 0 !important;
-  height: 4px !important;
-  background: linear-gradient(90deg, #1890ff, #40a9ff) !important;
-  border-radius: 2px !important;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3) !important;
-  z-index: 1 !important;
+  display: none !important;
 }
 
 /* RESPONSIVO */

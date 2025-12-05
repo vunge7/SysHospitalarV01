@@ -592,7 +592,7 @@ const NovoProduto = ({ visible, onClose, modalTitle, submitButtonText, produtoPa
   };
 
   // Verifica se o grupo selecionado é "Exame" (case-insensitive)
-  const isExameGroup = watchedProductGroup && watchedProductGroup.toLowerCase() === 'exame';
+  const isExameGroup = watchedProductGroup && (watchedProductGroup.toLowerCase() === 'exame' || watchedProductGroup.toLowerCase() === 'exames');
 
   return (
     <div className="product-container">

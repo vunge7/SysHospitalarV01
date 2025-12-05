@@ -73,6 +73,12 @@
   border-radius: var(--radius);
 }
 
+.form-group .ant-select-selection-item,
+.form-group .ant-select-selection-placeholder {
+  line-height: 28px;
+  font-size: 13px;
+}
+
 .error {
   color: var(--error);
   font-size: 12px;

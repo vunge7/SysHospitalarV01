@@ -328,7 +328,7 @@ const ListarProduto = () => {
             imagemUrl = `${api.defaults.baseURL}uploads/produtos/${item.imagem}`;
           }
         }
-        console.log(`Produto ID ${item.id} - Imagem: ${item.imagem} - URL: ${imagemUrl}`); // Depuração
+       
         orderedItem[key] = imagemUrl;
       } else {
         orderedItem[key] = item[key];

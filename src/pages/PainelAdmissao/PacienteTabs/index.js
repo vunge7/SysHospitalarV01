@@ -29,6 +29,16 @@ const PacienteTabs = (props) => {
     const [conveniosPaciente, setConveniosPaciente] = useState([]);
     const [loadingConvenios, setLoadingConvenios] = useState(false);
 
+    // Combina convênios já salvos com os pendentes (ainda não enviados ao backend)
+    const conveniosCombinados = [
+        ...conveniosPaciente,
+        ...(props.conveniosPendentes || []).map((c, index) => ({
+            ...c,
+            id: `pendente-${index}`,
+            _pendente: true,
+        })),
+    ];
+
     const [mostrarFormNovaSeguradora, setMostrarFormNovaSeguradora] = useState(false);
     const [editandoSeguradora, setEditandoSeguradora] = useState(null);
     const [loadingSeguradora, setLoadingSeguradora] = useState(false);
@@ -38,7 +48,7 @@ const PacienteTabs = (props) => {
         { key: 'endereco', label: 'Endereço', icon: <HomeOutlined /> },
         { key: 'fiscal', label: 'Fiscal', icon: <FileTextOutlined /> },
         { key: 'nascimento', label: 'Nascimento', icon: <HeartOutlined /> },
-        { key: 'seguradora', label: 'Convênio', icon: <InsuranceOutlined />, badge: conveniosPaciente.length },
+        { key: 'seguradora', label: 'Convênio', icon: <InsuranceOutlined />, badge: conveniosCombinados.length },
         { key: 'empresa', label: 'Empresa', icon: <BankOutlined /> },
     ];
 
@@ -112,7 +122,7 @@ const PacienteTabs = (props) => {
         updateIndicator();
         window.addEventListener('resize', updateIndicator);
         return () => window.removeEventListener('resize', updateIndicator);
-    }, [activeTab, conveniosPaciente.length]);
+    }, [activeTab, conveniosCombinados.length]);
 
     const adicionarConvenio = async () => {
         if (!novoConvenio.seguradoraId) return toast.warn('Selecione uma seguradora.');
@@ -152,10 +162,21 @@ const PacienteTabs = (props) => {
         }
     };
 
-    const excluirConvenio = async (id) => {
+    const excluirConvenio = async (registro) => {
+        // Se for um convênio pendente (ainda não salvo no backend), remove apenas da lista local
+        if (registro._pendente) {
+            if (props.setConveniosPendentes) {
+                props.setConveniosPendentes((prev = []) =>
+                    prev.filter((c, idx) => `pendente-${idx}` !== registro.id)
+                );
+            }
+            toast.info('Convênio pendente removido.');
+            return;
+        }
+
         try {
-            await api.delete(`/pacienteSeguradora/${id}`);
-            setConveniosPaciente(prev => prev.filter(c => c.id !== id));
+            await api.delete(`/pacienteSeguradora/${registro.id}`);
+            setConveniosPaciente(prev => prev.filter(c => c.id !== registro.id));
             toast.success('Convênio removido.');
         } catch (error) {
             toast.error('Erro ao remover convênio.');
@@ -187,14 +208,40 @@ const PacienteTabs = (props) => {
     };
 
     const columns = [
-        { title: 'Seguradora', render: (_, r) => seguradoras.find(s => s.id === r.seguradoraId)?.nome || '—' },
+        {
+            title: 'Seguradora',
+            render: (_, r) => {
+                const nome = seguradoras.find(s => s.id === r.seguradoraId)?.nome || '—';
+                return (
+                    <span>
+                        {nome}{' '}
+                        {r._pendente && (
+                            <Tag color="orange" style={{ marginLeft: 4 }}>
+                                PENDENTE
+                            </Tag>
+                        )}
+                    </span>
+                );
+            }
+        },
         { title: 'Nº Cartão', dataIndex: 'numeroCartao', render: t => t || '—' },
         { title: 'Validade', dataIndex: 'dataValidade', render: d => d ? format(new Date(d), 'MM/yyyy') : '—' },
-        { title: 'Ações', render: (_, r) => (
-            <Popconfirm title="Excluir?" onConfirm={() => excluirConvenio(r.id)}>
-                <DeleteOutlined style={{ color: '#ff4d4f', cursor: 'pointer' }} />
-            </Popconfirm>
-        )}
+        {
+            title: 'Ações',
+            render: (_, r) => (
+                <Popconfirm
+                    title={r._pendente ? 'Remover convênio pendente?' : 'Excluir convênio?'}
+                    onConfirm={() => excluirConvenio(r)}
+                >
+                    <DeleteOutlined
+                        style={{
+                            color: r._pendente ? '#fa8c16' : '#ff4d4f',
+                            cursor: 'pointer'
+                        }}
+                    />
+                </Popconfirm>
+            )
+        }
     ];
 
     const renderContent = () => {
@@ -481,7 +528,7 @@ const PacienteTabs = (props) => {
                                 <LoadingOutlined style={{ fontSize: 24 }} spin />
                             </div>
                         ) : (
-                            <Table dataSource={conveniosPaciente} columns={columns} rowKey="id" pagination={false} />
+                            <Table dataSource={conveniosCombinados} columns={columns} rowKey="id" pagination={false} />
                         )}
 
                         {mostrarFormNovaSeguradora && (

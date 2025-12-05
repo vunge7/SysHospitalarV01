@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import { AutoComplete, Select, Input, Modal, Flex, Card, Row, Col, Slider, InputNumber, Radio, Space } from 'antd';
 import { toast } from 'react-toastify';
 import TriagemManchester from '../TriagemManchester';
 import { api } from '../../service/api';
 import { format } from 'date-fns';
+import { useAuth } from '../../hooks/auth';
 
 // === FUNÇÕES DE PDF ===
 export const viewPdf = async (fileName, id) => {
@@ -312,6 +313,7 @@ export const ModalTriagem = ({
     exibirEncaminhamento = false,
     carregarDados, // Corrigido: "carrgar" → "carregar"
 }) => {
+    const { user } = useAuth();
     const [pressaoArterialS, setPressaoArterialS] = useState(120);
     const [pressaoArterialD, setPressaoArterialD] = useState(80);
     const [temperatura, setTemperatura] = useState(37);
@@ -321,6 +323,12 @@ export const ModalTriagem = ({
     const [respiracao, setRespiracao] = useState();
     const [dor, setDor] = useState();
     const [encaminhamento, setEncaminhamento] = useState('CONSULTORIO');
+
+    // Get empresaId from user's selected filial
+    const getEmpresaId = () => {
+        const userFromStorage = JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}');
+        return user?.filialSelecionada?.id || userFromStorage?.filialSelecionada?.id || 1;
+    };
 
     const marks = { 0: '0°C', 37: '37°C', 100: { style: { color: '#f50' }, label: <strong>100°C</strong> } };
     const sliderStyle = { width: 250 };
@@ -347,7 +355,7 @@ export const ModalTriagem = ({
     const campoPulso = 'PULSO';
 
     // === FUNÇÃO getItem ADICIONADA ===
-    const getItem = (id, campo, valor, unidade) => ({ campo, valor, unidade, triagemId: id });
+    const getItem = (id, campo, valor, unidade, empresaId) => ({ campo, valor, unidade, triagemId: id, empresaId });
 
     const salvarTriagem = async () => {
         if (!pressaoArterialS) { toast.error('Preencha a Pressão Arterial Sistólica!'); pressaoArterialSRef.current?.focus(); return; }
@@ -374,21 +382,23 @@ export const ModalTriagem = ({
         }
 
         try {
+            const empresaId = getEmpresaId();
             const triagem = {
                 dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
                 inscricaoId,
                 usuarioId,
+                empresaId,
             };
 
             const r = await api.post('triagem/add', triagem);
             const id = r.data.id;
             const _linhasTriagem = [
-                getItem(id, campoPressaoArterial, `${pressaoArterialS}/${pressaoArterialD}`, 'mmHg'),
-                getItem(id, campoTemperatura, temperatura, '°C'),
-                getItem(id, campoPulso, pulso, 'bpm'),
-                getItem(id, campoSaturacaiOxigenio, so, '%'),
-                getItem(id, campoFrequenciaRespiratoria, respiracao, 'ipm'),
-                getItem(id, campoDor, dor, 'Un.'),
+                getItem(id, campoPressaoArterial, `${pressaoArterialS}/${pressaoArterialD}`, 'mmHg', empresaId),
+                getItem(id, campoTemperatura, temperatura, '°C', empresaId),
+                getItem(id, campoPulso, pulso, 'bpm', empresaId),
+                getItem(id, campoSaturacaiOxigenio, so, '%', empresaId),
+                getItem(id, campoFrequenciaRespiratoria, respiracao, 'ipm', empresaId),
+                getItem(id, campoDor, dor, 'Un.', empresaId),
             ];
             await api.post('linhatriagem/add/all', _linhasTriagem);
 
@@ -405,7 +415,9 @@ export const ModalTriagem = ({
 
     const encaminhar = async () => {
         try {
+            console.log('Encaminhando paciente ID:', inscricaoId, 'para:', encaminhamento);
             await api.put(`inscricao/edit/${inscricaoId}/TRIADO/${encaminhamento}`);
+            console.log('Paciente encaminhado com sucesso');
             viewPdfPacienteFita('paciente_fita', inscricaoId);
         } catch (e) {
             console.log('Falha ao encaminhar:', e);

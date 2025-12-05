@@ -6,6 +6,7 @@ import { CheckCircleOutlined, DeleteOutlined, UndoOutlined, PlusCircleOutlined, 
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { api } from '../../service/api';
+import { useAuth } from '../../hooks/auth';
 
 const { Title, Text } = Typography;
 
@@ -32,6 +33,7 @@ function AvaliacaoExameRequisitado({
   setExamesRequisitados,
   fetchAllData,
 }) {
+  const { user } = useAuth();
   const [form] = Form.useForm();
   const [reopenForm] = Form.useForm();
   const [selectedExame, setSelectedExame] = useState(null);
@@ -51,6 +53,12 @@ function AvaliacaoExameRequisitado({
   const [unidades, setUnidades] = useState([]);
   const [inscricoes, setInscricoes] = useState([]);
   const [requisicoesStatus, setRequisicoesStatus] = useState({});
+
+  // Função para obter empresaId do usuário
+  const getEmpresaId = () => {
+    const userFromStorage = JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}');
+    return user?.filialSelecionada?.id || userFromStorage?.filialSelecionada?.id;
+  };
 
   const normalizeName = (name) => {
     if (!name) return '';
@@ -137,6 +145,7 @@ function AvaliacaoExameRequisitado({
         api.get('inscricao/all'),
       ]);
       const produtos = produtoRes.data || [];
+      console.log('Produtos carregados:', produtos.length, produtos.slice(0, 3)); // Log para debug
       setProdutos(produtos);
       setProdutosHierarquia(buildProdutoHierarchy(produtos));
       setPacientes(pacienteRes.data || []);
@@ -157,7 +166,15 @@ function AvaliacaoExameRequisitado({
         examesRequisitados.map(async (req) => {
           try {
             const response = await api.get(`/linharequisicaoexame/all/requisicao/${req.id}`);
-            const linhas = response.data.map((item) => ({
+            const linhas = response.data;
+            
+            // Verificar se a requisição tem linhas
+            if (!linhas || linhas.length === 0) {
+              statusMap[req.id] = false; // Não mostrar requisições sem linhas
+              return;
+            }
+            
+            const mappedLinhas = linhas.map((item) => ({
               id: String(item.id),
               produtoId: item.produtoId || item.produto_id,
               exame: item.exame || item.designacao || 'N/A',
@@ -167,7 +184,7 @@ function AvaliacaoExameRequisitado({
               status: item.status !== undefined ? item.status : true,
               finalizado: item.finalizado !== undefined ? item.finalizado : false,
             }));
-            statusMap[req.id] = linhas.some((linha) => !linha.finalizado);
+            statusMap[req.id] = mappedLinhas.some((linha) => !linha.finalizado);
           } catch (error) {
             console.error(`Erro ao buscar linhas para requisição ${req.id}:`, error);
             statusMap[req.id] = false;
@@ -471,17 +488,17 @@ function AvaliacaoExameRequisitado({
 
   const getUnidadeId = (linha) => {
     if (!linha.produtoId) {
-      toast.error('Produto ID não encontrado para o exame.', { autoClose: 2000 });
+      console.error('Produto ID não encontrado para o exame.');
       return null;
     }
     const produto = produtos.find((p) => p.id === linha.produtoId);
     if (!produto) {
-      toast.error(`Produto com ID ${linha.produtoId} não encontrado.`, { autoClose: 2000 });
+      console.error(`Produto com ID ${linha.produtoId} não encontrado. Produtos disponíveis:`, produtos.map(p => p.id));
       return null;
     }
     const unidadeId = produto.unidadeMedidaId || produto.unidade_medida_id || null;
     if (!unidadeId) {
-      toast.error(`Unidade de medida não encontrada para o produto ID ${linha.produtoId}.`, { autoClose: 2000 });
+      console.error(`Unidade de medida não encontrada para o produto ID ${linha.produtoId}.`);
     }
     return unidadeId;
   };
@@ -547,10 +564,12 @@ function AvaliacaoExameRequisitado({
         toast.error('Nenhum resultado no cache para salvar!', { autoClose: 2000 });
         return;
       }
+      const empresaId = getEmpresaId();
       const resultadoPayload = {
         requisicaoExameId: selectedRequisicao.id,
         pacienteId: pacienteId,
         usuarioId: usuarioId,
+        empresaId: empresaId,
         dataResultado: moment().format('YYYY-MM-DD HH:mm:ss'),
       };
       const resultadoResponse = await api.post('/resultado/add', resultadoPayload);
@@ -563,6 +582,7 @@ function AvaliacaoExameRequisitado({
         resultadoId: resultadoId,
         parentId: linha.parentId || null,
         produtoId: linha.produtoId,
+        empresaId: empresaId,
       }));
       console.log('Enviando linhasResultadoPayload:', JSON.stringify(linhasResultadoPayload, null, 2));
       await Promise.all(linhasResultadoPayload.map((payload) => api.post('/linharesultado/add', payload)));
@@ -598,7 +618,7 @@ function AvaliacaoExameRequisitado({
             estado: 'efetuado', // Ajustado para corresponder ao enum
             hora: moment().format('YYYY-MM-DDTHH:mm:ss'), // Formato correto sem milissegundos
             requisicaoExameId: parseInt(linha.requisicaoExameId, 10), // Garante que seja um número
-            empresaId: linha.empresaId ? parseInt(linha.empresaId, 10) : null,
+            empresaId: empresaId, // Usar o mesmo empresaId obtido anteriormente
             status: linha.status !== undefined ? linha.status : true,
             finalizado: true,
           };
@@ -745,9 +765,20 @@ function AvaliacaoExameRequisitado({
       key: 'unidade',
       width: 150,
       render: (_, record) => {
-        const unidadeId = getUnidadeId(record);
+        // Versão segura para render - sem toast
+        if (!record.produtoId) {
+          return 'Sem produto';
+        }
+        const produto = produtos.find((p) => p.id === record.produtoId);
+        if (!produto) {
+          return 'Produto não encontrado';
+        }
+        const unidadeId = produto.unidadeMedidaId || produto.unidade_medida_id || null;
+        if (!unidadeId) {
+          return 'Sem unidade';
+        }
         const unidade = unidades.find((u) => u.id === unidadeId);
-        return unidade ? `${unidade.descricao} (${unidade.abrevicao})` : unidadeId || 'Sem unidade';
+        return unidade ? `${unidade.descricao} (${unidade.abrevicao})` : 'Unidade não encontrada';
       },
     },
     {
@@ -886,7 +917,14 @@ function AvaliacaoExameRequisitado({
       .filter((linha) => isLeafNode(linha.produtoId))
       .every((linha) => isLinhaInserida(linha));
 
-  const nonFinalizedRequisicoes = examesRequisitados.filter((req) => requisicoesStatus[req.id]);
+  // Filtrar requisições que têm linhas e não estão finalizadas
+  const nonFinalizedRequisicoes = examesRequisitados.filter((req) => {
+    const hasStatus = requisicoesStatus[req.id];
+    if (!hasStatus) return false; // Não mostrar se não tiver status (sem linhas)
+    
+    // Verificação adicional para garantir que a requisição tenha linhas
+    return hasStatus && req.id && requisicoesStatus[req.id] === true;
+  });
 
   return (
     <div

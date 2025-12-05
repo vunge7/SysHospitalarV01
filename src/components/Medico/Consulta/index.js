@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Modal from 'react-modal'; // Adicionado
 import { api } from '../../../service/api';
 import Receituario from '../Receituario';
 import Procedimento from '../../Procedimento';
@@ -10,10 +9,11 @@ import { ConfigProvider } from 'antd';
 import ptPT from 'antd/lib/locale/pt_PT';
 import TextToSpeech from '../../TextToSpeech';
 import { viewPdfGenerico, ModalTriagem, ModalFinalizarAtendimento } from '../../util/utilitarios';
+import { toast } from 'react-toastify';
 import {
-    List, Button, Tabs, Form, message, Tooltip, // Removido Modal do antd
+    List, Button, Tabs, Form, message, Tooltip,
     Card, Row, Tag, Space, Avatar, Typography,
-    Table, Input, Spin, Empty
+    Table, Input, Spin, Empty, Modal
 } from 'antd';
 import {
     MedicineBoxOutlined, CloseCircleOutlined, FileSearchOutlined,
@@ -21,12 +21,12 @@ import {
 } from '@ant-design/icons';
 import { format } from 'date-fns';
 import './Consulta.css';
+import { useAuth } from '../../../hooks/auth';
 
 const { Title, Text } = Typography;
 
-Modal.setAppElement('#root'); // Adicionado
-
 function Consulta() {
+    const { user } = useAuth();
     const [id, setId] = useState(0);
     const [data, setData] = useState([]);
     const [dataCIDInicial, setdataCIDInicial] = useState([]);
@@ -47,39 +47,64 @@ function Consulta() {
     const [isModalFinalizarAtendimento, setIsModalFinalizarAtendimento] = useState(false);
     const [inscricaoIdTriagem, setInscricaoIdTriagem] = useState(null);
 
+    // Função para obter empresaId
+    const getEmpresaId = () => {
+        const userFromStorage = JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}');
+        return user?.filialSelecionada?.id || userFromStorage?.filialSelecionada?.id;
+    };
+
     // === MODAL ADICIONAR EXAME ===
     const [isModalExameOpen, setIsModalExameOpen] = useState(false);
     const [searchExame, setSearchExame] = useState('');
     const [exameOptions, setExameOptions] = useState([]);
     const [loadingExames, setLoadingExames] = useState(false);
+    const [todosExames, setTodosExames] = useState([]);
 
-    // Mock de exames (substitua por API real)
-    const mockExames = [
-        { id: 1, nome: 'Hemograma Completo', categoria: 'Hematologia' },
-        { id: 2, nome: 'Glicemia em Jejum', categoria: 'Bioquímica' },
-        { id: 3, nome: 'Raio-X Tórax', categoria: 'Imagem' },
-        { id: 4, nome: 'Eletrocardiograma', categoria: 'Cardiologia' },
-        { id: 5, nome: 'Urina Tipo I', categoria: 'Urinálise' },
-        { id: 6, nome: 'Colesterol Total', categoria: 'Bioquímica' },
-        { id: 7, nome: 'Tomografia de Crânio', categoria: 'Imagem' },
-        { id: 8, nome: 'Ecocardiograma', categoria: 'Cardiologia' },
-    ];
+    // Buscar exames da API
+    useEffect(() => {
+        const fetchExames = async () => {
+            try {
+                const response = await api.get('produto/all');
+                const exames = response.data || [];
+                console.log('Todos os produtos:', exames.length, exames.slice(0, 3));
+                
+                // Verificar se há produtos com productGroup
+                const comGroup = exames.filter(p => p.productGroup);
+                console.log('Produtos com productGroup:', comGroup.length, comGroup.slice(0, 3));
+                
+                // Filtrar apenas produtos que são exames (usando mesmo filtro do Exame.js)
+                const examesFiltrados = exames.filter(produto => 
+                    produto.productGroup === 'Exames'
+                ).map(produto => ({
+                    id: produto.id,
+                    nome: produto.productDescription || produto.nome || produto.designacao || 'N/A',
+                    categoria: produto.categoria || 'Geral'
+                }));
+                setTodosExames(examesFiltrados);
+                console.log('Exames filtrados (productGroup === "Exames"):', examesFiltrados.length, examesFiltrados.slice(0, 3));
+            } catch (error) {
+                console.error('Erro ao buscar exames:', error);
+                toast.error('Erro ao carregar lista de exames');
+            }
+        };
+        fetchExames();
+    }, []);
+
+    // Carregar exames ao abrir o modal
+    useEffect(() => {
+        if (isModalExameOpen && todosExames.length > 0) {
+            setExameOptions(todosExames);
+        }
+    }, [isModalExameOpen, todosExames]);
 
     const handleSearchExame = (value) => {
         setSearchExame(value);
-        if (value.length >= 2) {
-            setLoadingExames(true);
-            setTimeout(() => {
-                const filtered = mockExames
-                    .filter(ex => ex.nome.toLowerCase().includes(value.toLowerCase()))
-                    .map(ex => ({ id: ex.id, nome: ex.nome, categoria: ex.categoria }));
-                setExameOptions(filtered);
-                setLoadingExames(false);
-            }, 400); // Simula delay de API
-        } else {
-            setExameOptions([]);
-            setLoadingExames(false);
-        }
+        // Filtrar exames baseado na pesquisa, ou mostrar todos se não houver pesquisa
+        const filtered = value.length >= 2 
+            ? todosExames.filter(ex => ex.nome.toLowerCase().includes(value.toLowerCase()))
+            : todosExames;
+        setExameOptions(filtered);
+        setLoadingExames(false);
     };
 
     const handleAddExame = (exame) => {
@@ -167,19 +192,30 @@ function Consulta() {
     useEffect(() => { _carrgarDados(); }, []);
 
     useEffect(() => {
-        formConsulta.setFieldsValue({ motivoConsulta, historiaClinica, exameFisico, receita });
-    }, [motivoConsulta, historiaClinica, exameFisico, receita]);
+        if (isModalConsulta) {
+            formConsulta.setFieldsValue({ motivoConsulta, historiaClinica, exameFisico, receita });
+        }
+    }, [motivoConsulta, historiaClinica, exameFisico, receita, isModalConsulta, formConsulta]);
 
     const _showModalConsulta = async (idInscricao, nome) => {
+        console.log('Abrindo modal de consulta para inscrição ID:', idInscricao, 'nome:', nome);
         limpar(); setNomePaciente(nome);
-        await api.get(`/consulta/${idInscricao}/ABERTO`)
-            .then(r => {
-                setIsConsultaCriada(true); updateFieldsInForm(r.data);
-                setdataCIDInicial(tryParse(r.data.diagnosticoInicial));
-                setdataCIDFinal(tryParse(r.data.diagnosticoFinal));
-            })
-            .catch(() => limpar());
-        setIdInscricao(idInscricao); setIsModalConsulta(true);
+        try {
+            console.log('Buscando consulta existente...');
+            const response = await api.get(`/consulta/${idInscricao}/ABERTO`);
+            console.log('Consulta encontrada:', response.data);
+            setIsConsultaCriada(true); 
+            updateFieldsInForm(response.data);
+            setdataCIDInicial(tryParse(response.data.diagnosticoInicial));
+            setdataCIDFinal(tryParse(response.data.diagnosticoFinal));
+        } catch (error) {
+            console.log('Consulta não encontrada (erro esperado), criando nova...');
+            console.log('Erro detalhado:', error.response?.status, error.response?.data);
+            limpar();
+        }
+        setIdInscricao(idInscricao); 
+        setIsModalConsulta(true);
+        console.log('Modal de consulta aberto - isModalConsulta:', true);
     };
 
     const tryParse = (json) => typeof json === 'string' ? (JSON.parse(json) || []) : (json || []);
@@ -196,17 +232,33 @@ function Consulta() {
     };
 
     const _carrgarDados = async () => {
-        await api.get('inscricao/all/consulta')
-            .then(r => setData((r.data || []).filter(i => i).map(i => ({ ...i, tempo: i.dataCriacao }))))
-            .catch(() => {});
+        try {
+            console.log('Carregando dados para consulta...');
+            const response = await api.get('inscricao/all/consulta');
+            console.log('Resposta da API:', response.data);
+            const dadosFiltrados = (response.data || []).filter(i => i).map(i => ({ ...i, tempo: i.dataCriacao }));
+            console.log('Dados filtrados:', dadosFiltrados);
+            setData(dadosFiltrados);
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+        }
     };
 
-    const prepararConsulta = (values) => ({
-        ...values, dataConsulta: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-        estadoConsulta: 'ABERTO', inscricaoId: idInscricao,
-        diagnosticoInicial: JSON.stringify(dataCIDInicial), diagnosticoFinal: JSON.stringify(dataCIDFinal),
-        usuarioId: 1
-    });
+    const prepararConsulta = (values) => {
+        const empresaId = getEmpresaId();
+        console.log('Preparando consulta com empresaId:', empresaId);
+        
+        return {
+            ...values, 
+            dataConsulta: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+            estadoConsulta: 'ABERTO', 
+            inscricaoId: idInscricao,
+            diagnosticoInicial: JSON.stringify(dataCIDInicial), 
+            diagnosticoFinal: JSON.stringify(dataCIDFinal),
+            usuarioId: 1,
+            empresaId
+        };
+    };
 
     const _onFinishCriar = async (values) => {
         setLoading(true);
@@ -237,11 +289,15 @@ function Consulta() {
     // === CORRIGIDO: ERRO 400 ===
     const salvarRequisicao = async () => {
         try {
+            const empresaId = getEmpresaId();
+            console.log('Salvando requisição com empresaId:', empresaId);
+            
             const req = {
                 dataRequisicao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
                 status: true,
                 usuarioId: 1,
                 inscricaoId: idInscricao,
+                empresaId: empresaId,
                 finalizado: false
             };
 
@@ -250,14 +306,25 @@ function Consulta() {
 
             // Salvar linhas
             for (const item of listaExamesRequisitado) {
-                await api.post('linharequisicaoexame/add', {
+                console.log('Item original:', item);
+                const linhaData = {
+                    // Não enviar ID - backend vai gerar automaticamente
                     estado: 'nao_efetuado',
                     exame: item.designacao,
                     produtoId: item.produtoId || null, // Garantir que exista
                     requisicaoExameId: requisicaoId,
                     status: false,
-                    finalizado: false
-                });
+                    finalizado: false,
+                    empresaId,
+                    hora: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss") // Formato LocalDateTime
+                };
+                console.log('Enviando linha da requisição (sem ID):', linhaData);
+                try {
+                    await api.post('linharequisicaoexame/add', linhaData);
+                } catch (err) {
+                    console.error('Erro detalhado do backend:', err.response?.data);
+                    throw err;
+                }
             }
 
             setListaExamesRequisitado([]);
@@ -308,102 +375,77 @@ function Consulta() {
 
                     {/* MODAL ADICIONAR EXAME */}
                     <Modal
-                        isOpen={isModalExameOpen}
-                        onRequestClose={() => {
+                        open={isModalExameOpen}
+                        onCancel={() => {
                             setIsModalExameOpen(false);
                             setSearchExame('');
                             setExameOptions([]);
                             setLoadingExames(false);
                         }}
-                        onAfterClose={() => {
-                            setIsModalExameOpen(false);
-                            setSearchExame('');
-                            setExameOptions([]);
-                            setLoadingExames(false);
-                        }}
-                        className="modal-content"
-                        overlayClassName="modal-overlay"
-                        closeTimeoutMS={481} // Tempo do modal de Faturação
+                        footer={null}
+                        width={800}
+                        title="Adicionar Exame Complementar"
                     >
-                        <div className="modal-header">
-                            <h3 className="modal-title">
-                                <MedicineBoxOutlined />
-                                Adicionar Exame Complementar
-                            </h3>
-                        </div>
                         <div className="exames-search-container">
                             <Input
-                                prefix={<SearchOutlined className="exames-search-icon" />}
+                                prefix={<SearchOutlined />}
                                 placeholder="Digite o nome do exame..."
                                 value={searchExame}
                                 onChange={(e) => handleSearchExame(e.target.value)}
                                 size="large"
-                                className="exames-search-input"
                                 addonAfter={loadingExames ? <LoadingOutlined spin /> : null}
                             />
                         </div>
 
-                        <div className="exames-lista">
+                        <div style={{ marginTop: 20, maxHeight: 300, overflowY: 'auto' }}>
                             {loadingExames ? (
-                                <div className="exames-loading">
+                                <div style={{ textAlign: 'center', padding: 20 }}>
                                     <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} />
-                                    <p>Buscando exames...</p>
+                                    <p>Carregando exames...</p>
                                 </div>
                             ) : exameOptions.length > 0 ? (
-                                exameOptions.map((exame) => {
-                                    const categoriaClass = exame.categoria.toLowerCase().replace(/[^a-z]/g, '');
-                                    return (
+                                <>
+                                    <div style={{ marginBottom: 10, color: '#666' }}>
+                                        {searchExame.length >= 2 
+                                            ? `${exameOptions.length} exames encontrados para "${searchExame}"`
+                                            : `Mostrando todos ${exameOptions.length} exames disponíveis`
+                                        }
+                                    </div>
+                                    {exameOptions.map((exame) => (
                                         <div
                                             key={exame.id}
-                                            className="exame-card"
+                                            style={{
+                                                padding: 12,
+                                                border: '1px solid #d9d9d9',
+                                                borderRadius: 8,
+                                                marginBottom: 8,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}
                                             onClick={() => handleAddExame(exame)}
                                         >
-                                            <div className="exame-info">
-                                                <div className={`exame-icon ${categoriaClass}`}>
-                                                    {exame.categoria[0]}
-                                                </div>
-                                                <div className="exame-detalhes">
-                                                    <h5>{exame.nome}</h5>
-                                                    <p>Exame de {exame.categoria}</p>
-                                                </div>
+                                            <div>
+                                                <strong>{exame.nome}</strong>
+                                                <br />
+                                                <Tag color="blue" style={{ marginTop: 4, fontSize: 11 }}>{exame.categoria}</Tag>
                                             </div>
-                                            <div className="exame-tags">
-                                                <span className={`exame-categoria ${categoriaClass}`}>
-                                                    {exame.categoria}
-                                                </span>
-                                                <Button
-                                                    className="exame-add-btn"
-                                                    icon={<PlusOutlined />}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleAddExame(exame);
-                                                    }}
-                                                />
-                                            </div>
+                                            <Button
+                                                type="primary"
+                                                icon={<PlusOutlined />}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAddExame(exame);
+                                                }}
+                                            />
                                         </div>
-                                    );
-                                })
-                            ) : searchExame.length >= 2 ? (
-                                <div className="exames-empty">
-                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Nenhum exame encontrado" />
-                                </div>
+                                    ))}
+                                </>
                             ) : (
-                                <div className="exames-empty">
-                                    <SearchOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
-                                    <p>Digite pelo menos 2 caracteres para buscar</p>
-                                </div>
+                                <Empty description={searchExame.length >= 2 ? "Nenhum exame encontrado para esta pesquisa" : "Nenhum exame disponível"} />
                             )}
                         </div>
-
-                        <button onClick={() => {
-                            setIsModalExameOpen(false);
-                            setSearchExame('');
-                            setExameOptions([]);
-                            setLoadingExames(false);
-                        }} className="modal-close-btn">
-                            <XOutlined /> Fechar
-                        </button>
-
                     </Modal>
                 </div>
             ),
@@ -418,6 +460,7 @@ function Consulta() {
     return (
         <>
             {contextHolder}
+            {console.log('Renderizando Consulta - isModalConsulta:', isModalConsulta)}
 
             {/* Fila de Consulta */}
             <div className="consulta-container">
@@ -472,7 +515,15 @@ function Consulta() {
                 </Form>
             </Modal>
 
-            <ModalTriagem estado={isModalTriagem} inscricaoId={inscricaoIdTriagem} usuarioId={1} onCancel={() => { setIsModalTriagem(false); setInscricaoIdTriagem(null); }} exibirEncaminhamento={false} exibirManchester={false} />
+            <ModalTriagem 
+                estado={isModalTriagem} 
+                inscricaoId={inscricaoIdTriagem} 
+                usuarioId={1} 
+                onCancel={() => { setIsModalTriagem(false); setInscricaoIdTriagem(null); }} 
+                exibirEncaminhamento={true} 
+                exibirManchester={false} 
+                carrgarDados={_carrgarDados}
+            />
             <ModalFinalizarAtendimento estado={isModalFinalizarAtendimento} onCancel={() => setIsModalFinalizarAtendimento(false)} onFinalizar={_onFinalizarInscricao} />
         </>
     );
