@@ -1,85 +1,300 @@
+/* Container Principal */
 .listar-agenda-container {
-  padding: 40px;
-  background-color: #f5f9ff;
+  padding: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: relative;
+  overflow-x: hidden;
 }
 
+.listar-agenda-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.05"><path d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/></g></g></svg>') repeat;
+  pointer-events: none;
+}
+
+/* Card Principal */
+.listar-agenda-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+.listar-agenda-container > div:first-child {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Título */
 h2 {
-  font-size: 1.8rem;
-  color: #2d3748;
-  margin-bottom: 24px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 32px;
+  text-align: center;
+  position: relative;
 }
 
+h2::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 2px;
+}
+
+/* Filtros */
 .filtros-status {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
 }
 
+.filtros-status .ant-btn {
+  border-radius: 12px;
+  border: 2px solid transparent;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 10px 20px;
+  height: auto;
+}
+
+.filtros-status .ant-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.filtros-status .ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.filtros-status .ant-btn-default {
+  background: rgba(255, 255, 255, 0.9);
+  color: #4a5568;
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+.filtros-status .ant-btn-default:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+
+/* Container de Filtro */
 .filter-container {
-  display: flex;
-  justify-content: flex-start;
-  width: 100%;
-  max-width: 1200px;
+  margin-bottom: 24px;
 }
 
+.filter-container .ant-input {
+  border-radius: 12px;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  padding: 12px 20px;
+  font-size: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.filter-container .ant-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+}
+
+.filter-container .ant-input::placeholder {
+  color: #a0aec0;
+}
+
+/* Tabela */
 .agenda-table {
-  width: 100%;
-  max-width: 1200px;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.agenda-table .ant-table {
+  background: transparent;
 }
 
 .agenda-table .ant-table-thead > tr > th {
-  background: linear-gradient(145deg, #f9fafc, #ffffff);
-  font-weight: 600;
-  color: #2d3748;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 20px 16px;
+  border: none;
 }
 
-.agenda-table .ant-table-tbody > tr > td {
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.date-time-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.date-time-container .ant-select {
-  border-radius: 4px;
+.agenda-table .ant-table-tbody > tr {
   transition: all 0.3s ease;
 }
 
-.date-time-container .ant-select:hover {
-  box-shadow: 0 0 8px rgba(24, 144, 255, 0.3);
+.agenda-table .ant-table-tbody > tr:hover {
+  background: rgba(102, 126, 234, 0.05);
+  transform: scale(1.01);
 }
 
+.agenda-table .ant-table-tbody > tr > td {
+  padding: 16px;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.agenda-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+/* Botões de Ação */
 .action-buttons {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.custom-message .ant-message-notice {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  animation: slideInRight 0.5s ease-in-out;
-  max-width: 300px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
+.action-buttons .ant-btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+  height: auto;
+  padding: 8px 16px;
 }
 
+.action-buttons .ant-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.action-buttons .ant-btn-primary {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.action-buttons .ant-btn-primary:hover {
+  box-shadow: 0 6px 25px rgba(72, 187, 120, 0.4);
+}
+
+.action-buttons .ant-btn-danger {
+  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+}
+
+.action-buttons .ant-btn-danger:hover {
+  box-shadow: 0 6px 25px rgba(245, 101, 101, 0.4);
+}
+
+.action-buttons .ant-btn-default {
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+}
+
+.action-buttons .ant-btn-default:hover {
+  box-shadow: 0 6px 25px rgba(66, 153, 225, 0.4);
+}
+
+/* Input de Data */
+input[type="datetime-local"] {
+  border-radius: 10px;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  padding: 8px 12px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+  color: #2d3748;
+}
+
+input[type="datetime-local"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Spinner */
+.spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.spinner .ant-spin-dot-item {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Alert */
+.ant-alert {
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.ant-alert-error {
+  background: linear-gradient(135deg, rgba(245, 101, 101, 0.1), rgba(229, 62, 62, 0.1));
+  border-left: 4px solid #f56565;
+}
+
+/* Messages */
+.custom-message .ant-message-notice {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.custom-message .ant-message-success {
+  background: linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(56, 161, 105, 0.1));
+  border-left: 4px solid #48bb78;
+}
+
+.custom-message .ant-message-error {
+  background: linear-gradient(135deg, rgba(245, 101, 101, 0.1), rgba(229, 62, 62, 0.1));
+  border-left: 4px solid #f56565;
+}
+
+.custom-message .ant-message-warning {
+  background: linear-gradient(135deg, rgba(237, 137, 54, 0.1), rgba(221, 107, 32, 0.1));
+  border-left: 4px solid #ed8936;
+}
+
+/* Animações */
 @keyframes slideInRight {
   from {
-    transform: translateX(100vw);
+    transform: translateX(100%);
     opacity: 0;
   }
   to {
@@ -88,36 +303,76 @@ h2 {
   }
 }
 
-.spinner {
-  margin-top: 40px;
+@keyframes fadeInUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
-/* Responsive Adjustments */
+.listar-agenda-container > div:first-child {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .listar-agenda-container {
+    padding: 24px;
+  }
+  
+  .listar-agenda-container > div:first-child {
+    padding: 24px;
+  }
+}
+
 @media (max-width: 768px) {
   .listar-agenda-container {
     padding: 16px;
   }
-
-  .agenda-table {
-    width: 100%;
+  
+  .listar-agenda-container > div:first-child {
+    padding: 20px;
   }
-
+  
+  h2 {
+    font-size: 2rem;
+  }
+  
   .filtros-status {
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
+    padding: 16px;
   }
-
-  .filter-container {
+  
+  .filtros-status .ant-btn {
+    width: 100%;
     justify-content: center;
   }
-
-  .date-time-container .ant-select {
-    width: 80px !important;
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 6px;
   }
-
-  .custom-message .ant-message-notice {
-    max-width: 90vw;
-    right: 10px;
+  
+  .action-buttons .ant-btn {
+    width: 100%;
+  }
+  
+  .agenda-table {
+    font-size: 14px;
+  }
+  
+  .agenda-table .ant-table-thead > tr > th {
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+  
+  .agenda-table .ant-table-tbody > tr > td {
+    padding: 12px 8px;
   }
 }
 
@@ -125,18 +380,21 @@ h2 {
   .listar-agenda-container {
     padding: 12px;
   }
-
+  
+  .listar-agenda-container > div:first-child {
+    padding: 16px;
+  }
+  
   h2 {
     font-size: 1.5rem;
   }
-
-  .date-time-container .ant-select {
-    width: 70px !important;
-    font-size: 12px;
+  
+  .filtros-status {
+    padding: 12px;
   }
-
-  .action-buttons .ant-btn {
-    font-size: 12px;
-    padding: 4px 8px;
+  
+  .filter-container .ant-input {
+    padding: 10px 16px;
+    font-size: 14px;
   }
 }
