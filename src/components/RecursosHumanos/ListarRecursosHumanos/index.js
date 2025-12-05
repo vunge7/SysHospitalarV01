@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { Button, message, Spin, Modal, Form, Input, Select, DatePicker, Space, Row, Col, Table, AutoComplete } from 'antd';
 import { api } from '../../../service/api';
 import moment from 'moment';
 import './Listar.css';
 import { toast } from 'react-toastify';
+import { AuthContext } from '../../../contexts/auth';
 
 const { Option } = Select;
 
@@ -75,6 +76,7 @@ const DynamicTable = ({ data, headers, detailHeaders, expandedRows, onToggleDeta
 );
 
 const Listar = () => {
+  const { user } = useContext(AuthContext) || {};
   const [pessoas, setPessoas] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [editandoFuncionarioId, setEditandoFuncionarioId] = useState(null);
@@ -115,6 +117,8 @@ const Listar = () => {
   const [editFuncionarioForm] = Form.useForm();
   const [novoFuncionarioForm] = Form.useForm();
   const [subsidios, setSubsidios] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [isEmpresasLoading, setIsEmpresasLoading] = useState(false);
   const [sugestoes, setSugestoes] = useState([]);
   const [filtroPessoa, setFiltroPessoa] = useState('');
 
@@ -125,6 +129,7 @@ const Listar = () => {
   ];
 
   const tiposDeContrato = [
+    { value: 'TEMPO_INDETERMINADO', label: 'Tempo Indeterminado' },
     { value: 'EFETIVO', label: 'Efetivo' },
     { value: 'TEMPORARIO', label: 'Temporário' },
     { value: 'ESTAGIO', label: 'Estágio' },
@@ -162,17 +167,21 @@ const Listar = () => {
     setError(null);
     setEmptyMessage('');
     try {
-      const [pessoasRes, funcionariosRes, subsidiosRes] = await Promise.all([
+      setIsEmpresasLoading(true);
+      const [pessoasRes, funcionariosRes, subsidiosRes, empresasRes] = await Promise.all([
         api.get('pessoa/all'),
         api.get('funcionario/all'),
         api.get('subsidio/all'),
+        api.get('empresa/all'),
       ]);
       const pessoasData = Array.isArray(pessoasRes.data) ? pessoasRes.data.map(cleanObject) : [];
       const funcionariosData = Array.isArray(funcionariosRes.data) ? funcionariosRes.data.map(cleanObject) : [];
       const subsidiosData = Array.isArray(subsidiosRes.data) ? subsidiosRes.data.map(cleanObject) : [];
+      const empresasData = Array.isArray(empresasRes.data) ? empresasRes.data.map(cleanObject) : [];
       setPessoas(pessoasData);
       setFuncionarios(funcionariosData);
       setSubsidios(subsidiosData);
+      setEmpresas(empresasData);
       if (funcionariosData.length === 0) {
         setEmptyMessage('Nenhum funcionário encontrado.');
       }
@@ -182,9 +191,11 @@ const Listar = () => {
       setPessoas([]);
       setFuncionarios([]);
       setSubsidios([]);
+      setEmpresas([]);
     } finally {
       setIsLoading(false);
       hasLoaded.current = true;
+      setIsEmpresasLoading(false);
     }
   }, [cleanObject]);
 
@@ -250,11 +261,15 @@ const Listar = () => {
   );
 
   const handleEditFuncionario = (row) => {
-    const funcionario = funcionarios.find((f) => Number(f.pessoaId) === Number(row.id));
+    const funcionario =
+      funcionarios.find((f) => Number(f.id) === Number(row.funcionarioId)) ||
+      funcionarios.find((f) => Number(f.pessoaId) === Number(row.id)) ||
+      funcionarios.find((f) => Number(f.pessoa?.id) === Number(row.id));
     if (!funcionario) {
       toast.error('Funcionário não encontrado.');
       return;
     }
+
     const pessoaAssociada = pessoas.find((p) => Number(p.id) === Number(funcionario.pessoaId));
     if (!pessoaAssociada) {
       toast.error('Pessoa associada ao funcionário não encontrada.');
@@ -269,9 +284,13 @@ const Listar = () => {
       email: pessoaAssociada.email || '',
       endereco: pessoaAssociada.endereco || '',
       genero: pessoaAssociada.genero || 'MASCULINO',
-      tipoDeContrato: funcionario.tipoDeContrato || '',
+      tipoDeContrato: funcionario.tipoDeContrato || funcionario.tipoContrato || '',
       salario: funcionario.salario || '',
       dataAdmissao: funcionario.dataAdmissao ? moment(funcionario.dataAdmissao) : null,
+      empresaId: funcionario.empresaId ?? (user?.filialSelecionada?.id ?? (JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}')?.filialSelecionada?.id)),
+      cargo: funcionario.cargo || '',
+      departamentoId: funcionario.departamentoId || undefined,
+      segurancaSocial: funcionario.segurancaSocial || undefined,
       subsidios: Array.isArray(funcionario.subsidios)
         ? funcionario.subsidios.map((s) => ({
             subsidioId: s.subsidioId,
@@ -280,14 +299,18 @@ const Listar = () => {
           }))
         : [],
       descricao: funcionario.descricao || '',
-      fechoDeContas: funcionario.fechoDeContas || '',
+      fechoDeContas: funcionario.fechoPeriodo || funcionario.fechoContas || '',
       estadoFuncionario: funcionario.estadoFuncionario || '',
     });
     setFuncionarioEditado({
       id: funcionario.id,
       pessoaId: funcionario.pessoaId,
+      empresaId: funcionario.empresaId,
+      departamentoId: funcionario.departamentoId,
+      segurancaSocial: funcionario.segurancaSocial,
+      cargo: funcionario.cargo,
       pessoa: cleanObject(pessoaAssociada),
-      tipoDeContrato: funcionario.tipoDeContrato || '',
+      tipoDeContrato: funcionario.tipoDeContrato || funcionario.tipoContrato || '',
       salario: funcionario.salario ? funcionario.salario.toString() : '',
       dataAdmissao: funcionario.dataAdmissao || null,
       subsidios: Array.isArray(funcionario.subsidios) ? funcionario.subsidios : [],
@@ -327,44 +350,88 @@ const Listar = () => {
       if (isNaN(salario) || salario <= 0) {
         throw new Error('O salário deve ser um número positivo maior que zero.');
       }
-      const pessoaData = {
-        id: funcionarioEditado.pessoa.id,
-        nome: values.nome.trim(),
-        nif: values.nif.trim(),
-        dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD') : null,
-        telefone: values.telefone.trim(),
-        email: values.email.trim(),
-        endereco: values.endereco.trim(),
-        genero: values.genero,
-      };
+      // Base da pessoa vinda do backend (inclui apelido e demais campos obrigatórios)
+      const pessoaData = { ...(funcionarioEditado.pessoa || {}) };
+      pessoaData.id = funcionarioEditado.pessoa.id;
+      // Sobrescrever apenas o que foi editado no formulário
+      if (values.nome && values.nome.trim() !== '') pessoaData.nome = values.nome.trim();
+      if (values.nif && values.nif.trim() !== '') pessoaData.nif = values.nif.trim();
+      if (values.dataNascimento) pessoaData.dataNascimento = values.dataNascimento.format('YYYY-MM-DD 00:00:00');
+      if (values.telefone) pessoaData.telefone = Number(values.telefone);
+      if (values.email && values.email.trim() !== '') pessoaData.email = values.email.trim();
+      if (values.endereco && values.endereco.trim() !== '') pessoaData.endereco = values.endereco.trim();
+      if (values.genero) pessoaData.genero = values.genero;
+      // Garantir que apelido não fique nulo (coluna NOT NULL no banco)
+      if (!pessoaData.apelido) pessoaData.apelido = '';
+
+      // Garantir obrigatórios do funcionário com fallback do registro atual
+      const empresaIdResolved = (values.empresaId ?? funcionarioEditado.empresaId ?? (user?.filialSelecionada?.id ?? (JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}')?.filialSelecionada?.id)));
+      const departamentoIdResolved = (values.departamentoId ?? funcionarioEditado.departamentoId);
+      const segurancaSocialResolved = (values.segurancaSocial ?? funcionarioEditado.segurancaSocial);
+      const cargoResolved = (values.cargo ?? funcionarioEditado.cargo);
+
       const funcionarioData = {
         id: editandoFuncionarioId,
         pessoaId: funcionarioEditado.pessoaId,
-        tipoDeContrato: values.tipoDeContrato,
+        tipoContrato: values.tipoDeContrato,
         salario,
-        dataAdmissao: values.dataAdmissao ? moment.utc(values.dataAdmissao).format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
-        subsidios: (values.subsidios || []).map((s) => {
-          const subsidio = subsidios.find((sub) => sub.descricao === s.descricao);
-          if (!subsidio) {
-            throw new Error(`Subsídio "${s.descricao}" não encontrado.`);
-          }
-          const valor = parseFloat(s.valor);
-          if (isNaN(valor) || valor <= 0) {
-            throw new Error(`Valor inválido para o subsídio "${s.descricao}". Deve ser positivo.`);
-          }
-          return {
-            subsidioId: Number(subsidio.id),
-            valor,
-          };
-        }),
+        dataAdmissao: values.dataAdmissao ? moment(values.dataAdmissao).format('YYYY-MM-DD HH:mm:ss') : null,
+        cargo: cargoResolved,
+        departamentoId: departamentoIdResolved ? Number(departamentoIdResolved) : undefined,
+        segurancaSocial: segurancaSocialResolved,
+        empresaId: empresaIdResolved ? Number(empresaIdResolved) : undefined,
         descricao: values.descricao.trim(),
-        fechoDeContas: values.fechoDeContas,
+        fechoPeriodo: values.fechoDeContas,
         estadoFuncionario: values.estadoFuncionario,
       };
-      await Promise.all([
-        api.put(`pessoa/${funcionarioEditado.pessoa.id}`, pessoaData),
-        api.put(`funcionario/${editandoFuncionarioId}`, funcionarioData),
-      ]);
+      console.log('Payload pessoa/edit (JSON):', JSON.stringify(pessoaData, null, 2));
+      try {
+        const respPessoa = await api.put(`pessoa/edit/${funcionarioEditado.pessoa.id}`, pessoaData);
+        console.log('Resposta pessoa/edit:', JSON.stringify(respPessoa?.data ?? {}, null, 2));
+      } catch (errPessoa) {
+        const serverMsg = errPessoa?.response?.data?.message || errPessoa?.response?.data || errPessoa?.message || 'Erro ao editar pessoa';
+        console.error('Erro pessoa/edit:', serverMsg);
+        toast.error(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
+        throw errPessoa; // interrompe
+      }
+
+      console.log('Payload funcionario/edit (JSON):', JSON.stringify(funcionarioData, null, 2));
+      try {
+        const respFunc = await api.put(`funcionario/edit/${editandoFuncionarioId}`, funcionarioData);
+        console.log('Resposta funcionario/edit:', JSON.stringify(respFunc?.data ?? {}, null, 2));
+      } catch (errFunc) {
+        const serverMsg = errFunc?.response?.data || errFunc?.message || 'Erro ao editar funcionário';
+        console.error('Erro funcionario/edit:', serverMsg);
+        toast.error(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
+        throw errFunc;
+      }
+
+      // Atualizar linhas de subsídio vinculadas ao funcionário
+      try {
+        const linhas = (values.subsidios || []).map((s) => {
+          const sub = subsidios.find((subItem) => subItem.descricao === s.descricao);
+          const subsidioId = sub ? Number(sub.id) : undefined;
+          const existente = (funcionarioEditado.subsidios || []).find((x) => Number(x.subsidioId) === Number(subsidioId));
+          const payload = {
+            id: existente?.id ?? null,
+            funcionarioId: Number(editandoFuncionarioId),
+            subsidioId: subsidioId,
+            usuarioId: null,
+            valor: parseFloat(s.valor),
+            empresaId: funcionarioEditado.empresaId ? Number(funcionarioEditado.empresaId) : undefined,
+          };
+          console.log('Payload linhasubsidio/edit (JSON):', JSON.stringify(payload, null, 2));
+          return payload;
+        }).filter((p) => Number.isFinite(p.subsidioId) && Number.isFinite(p.funcionarioId));
+
+        if (linhas.length > 0) {
+          await Promise.all(linhas.map((payload) => api.put('linhasubsidio/edit', payload)));
+        }
+      } catch (e) {
+        console.error('Falha ao atualizar linhas de subsídio:', e);
+        // Não interromper o fluxo principal; apenas informar
+        toast.warn('Algumas linhas de subsídio podem não ter sido atualizadas. Verifique os logs.');
+      }
       setEditandoFuncionarioId(null);
       editFuncionarioForm.resetFields();
       setFuncionarioEditado({
@@ -488,12 +555,13 @@ const Listar = () => {
       const pessoaData = {
         nome: values.nome.trim(),
         nif: values.nif.trim(),
-        dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD') : null,
+        dataNascimento: values.dataNascimento ? values.dataNascimento.format('YYYY-MM-DD 00:00:00') : null,
         telefone: values.telefone.trim(),
         email: values.email.trim(),
         endereco: values.endereco.trim(),
         genero: values.genero,
       };
+      console.log('Payload pessoa/add (JSON):', JSON.stringify(pessoaData, null, 2));
       const response = await api.post('pessoa/add', pessoaData);
       const novaPessoaData = cleanObject(response.data);
       setPessoas((prev) => [...prev, novaPessoaData]);
@@ -545,12 +613,16 @@ const Listar = () => {
       }
       const funcionarioData = {
         pessoaId: Number(novaPessoa.id),
-        tipoDeContrato: values.tipoDeContrato,
+        tipoContrato: values.tipoDeContrato,
         salario,
-        dataAdmissao: values.dataAdmissao ? moment.utc(values.dataAdmissao).format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
+        dataAdmissao: values.dataAdmissao ? moment(values.dataAdmissao).format('YYYY-MM-DD HH:mm:ss') : null,
         descricao: values.descricao.trim(),
-        fechoDeContas: values.fechoDeContas,
+        empresaId: Number(values.empresaId),
+        fechoPeriodo: values.fechoDeContas,
         estadoFuncionario: values.estadoFuncionario,
+        cargo: values.cargo,
+        departamentoId: values.departamentoId ? Number(values.departamentoId) : undefined,
+        segurancaSocial: values.segurancaSocial,
         subsidios: (values.subsidios || []).map((s) => {
           const subsidio = subsidios.find((sub) => sub.descricao === s.descricao);
           if (!subsidio) {
@@ -563,9 +635,11 @@ const Listar = () => {
           return {
             subsidioId: Number(subsidio.id),
             valor,
+            empresaId: Number(values.empresaId),
           };
         }),
       };
+      console.log('Payload funcionario/add (JSON):', JSON.stringify(funcionarioData, null, 2));
       await api.post('funcionario/add', funcionarioData);
       novoFuncionarioForm.resetFields();
       setNovaPessoa(null);
@@ -602,7 +676,8 @@ const Listar = () => {
   };
 
   const handleDeleteSubsidio = (index, form) => {
-    const currentSubsidios = form.getFieldValue('subsidios') || [];
+    const raw = form.getFieldValue('subsidios');
+    const currentSubsidios = Array.isArray(raw) ? raw : [];
     form.setFieldsValue({
       subsidios: currentSubsidios.filter((_, i) => i !== index),
     });
@@ -641,8 +716,10 @@ const Listar = () => {
   const tableData = pessoas
     .map((pessoa) => {
       const funcionario = funcionarios.find((f) => Number(f.pessoaId) === Number(pessoa.id));
+      const tipoContratoValue = funcionario ? (funcionario.tipoContrato || funcionario.tipoDeContrato || '') : '';
       return {
         id: pessoa.id,
+        funcionarioId: funcionario ? funcionario.id : null,
         nome: pessoa.nome || '-',
         nif: pessoa.nif || '-',
         dataNascimento: pessoa.dataNascimento ? moment(pessoa.dataNascimento).format('YYYY-MM-DD') : '-',
@@ -651,7 +728,7 @@ const Listar = () => {
         endereco: pessoa.endereco || '-',
         genero: generos.find((g) => g.value === pessoa.genero)?.label || pessoa.genero || '-',
         tipoDeContrato: funcionario
-          ? tiposDeContrato.find((t) => t.value === funcionario.tipoDeContrato)?.label || funcionario.tipoDeContrato || '-'
+          ? tiposDeContrato.find((t) => t.value === tipoContratoValue)?.label || tipoContratoValue || '-'
           : '-',
         salario: funcionario && funcionario.salario ? Number(funcionario.salario).toFixed(2) : '-',
         dataAdmissao: funcionario && funcionario.dataAdmissao ? moment(funcionario.dataAdmissao).format('YYYY-MM-DD') : '-',
@@ -669,9 +746,10 @@ const Listar = () => {
           : '-',
         descricao: funcionario ? funcionario.descricao || '-' : '-',
         isFuncionarioAtivo: funcionario && funcionario.estadoFuncionario === 'ATIVO',
+        hasFuncionario: !!funcionario,
       };
     })
-    .filter((row) => row.tipoDeContrato !== '-')
+    .filter((row) => row.hasFuncionario)
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
 
   const filteredTableData = tableData.filter((row) => {
@@ -755,9 +833,7 @@ const Listar = () => {
             <Option value="ativos">Funcionários Ativos</Option>
             <Option value="inativos">Funcionários Inativos/Suspensos</Option>
           </Select>
-          <Button type="primary" onClick={handleNovoFuncionario} disabled={isSubmitting}>
-            Novo Funcionário
-          </Button>
+          {/* Criação de funcionário desativada nesta lista */}
         </div>
 
         {emptyMessage && !error && <p>{emptyMessage}</p>}
@@ -826,488 +902,6 @@ const Listar = () => {
             )}
           />
         )}
-
-        {/* Modal de Nova Pessoa */}
-        <Modal
-          title="Cadastrar ou Selecionar Pessoa"
-          open={isNovaPessoaModalOpen}
-          onCancel={() => {
-            setIsNovaPessoaModalOpen(false);
-            novaPessoaForm.resetFields();
-            setFiltroPessoa('');
-            setSugestoes([]);
-          }}
-          footer={null}
-          maskClosable={false}
-        >
-          <h3>Selecionar Pessoa Existente</h3>
-          <AutoComplete
-            value={filtroPessoa}
-            options={sugestoes}
-            onSearch={filtrarPessoas}
-            onSelect={handleSelectPessoa}
-            placeholder="Digite o nome ou NIF da pessoa"
-            style={{ width: '100%', marginBottom: 16 }}
-            disabled={isSubmitting}
-          />
-          <h3>Cadastrar Nova Pessoa</h3>
-          <Form
-            form={novaPessoaForm}
-            onFinish={handleSubmitNovaPessoa}
-            onFinishFailed={() => toast.error('Por favor, corrija os erros no formulário de pessoa.')}
-            layout="vertical"
-          >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="nome"
-                  label="Nome"
-                  rules={[
-                    { required: true, message: 'O nome é obrigatório.' },
-                    { max: 100, message: 'O nome deve ter no máximo 100 caracteres.' },
-                    { pattern: /^[a-zA-Z\s]+$/, message: 'O nome deve conter apenas letras e espaços.' },
-                  ]}
-                >
-                  <Input maxLength={100} disabled={isSubmitting} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="nif"
-                  label="NIF"
-                  rules={[
-                    { required: true, message: 'O NIF é obrigatório.' },
-                    { pattern: /^\d{8,9}$/, message: 'O NIF deve conter 8 ou 9 dígitos numéricos.' },
-                  ]}
-                >
-                  <Input maxLength={9} disabled={isSubmitting} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="dataNascimento"
-                  label="Data de Nascimento"
-                  rules={[
-                    { required: true, message: 'A data de nascimento é obrigatória.' },
-                    {
-                      validator: (_, value) =>
-                        value && moment(value).isValid() && value.isBefore(moment())
-                          ? Promise.resolve()
-                          : Promise.reject(new Error('Selecione uma data válida no passado.')),
-                    },
-                  ]}
-                >
-                  <DatePicker
-                    format="YYYY-MM-DD"
-                    style={{ width: '100%' }}
-                    disabledDate={(current) => current && current > moment().endOf('day')}
-                    disabled={isSubmitting}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="telefone"
-                  label="Telefone"
-                  rules={[
-                    { required: true, message: 'O telefone é obrigatório.' },
-                    { pattern: /^\d{9,15}$/, message: 'O telefone deve conter 9 a 15 dígitos numéricos.' },
-                  ]}
-                >
-                  <Input maxLength={15} disabled={isSubmitting} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="email"
-                  label="Email"
-                  rules={[
-                    { required: true, message: 'O email é obrigatório.' },
-                    { type: 'email', message: 'Insira um email válido.' },
-                    { max: 100, message: 'O email deve ter no máximo 100 caracteres.' },
-                  ]}
-                >
-                  <Input maxLength={100} disabled={isSubmitting} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="endereco"
-                  label="Endereço"
-                  rules={[
-                    { required: true, message: 'O endereço é obrigatório.' },
-                    { max: 255, message: 'O endereço deve ter no máximo 255 caracteres.' },
-                  ]}
-                >
-                  <Input maxLength={255} disabled={isSubmitting} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="genero"
-                  label="Gênero"
-                  rules={[
-                    { required: true, message: 'O gênero é obrigatório.' },
-                    {
-                      validator: (_, value) =>
-                        generos.some((g) => g.value === value)
-                          ? Promise.resolve()
-                          : Promise.reject(new Error('Selecione um gênero válido: Masculino, Feminino ou Outro.')),
-                    },
-                  ]}
-                  initialValue="MASCULINO"
-                >
-                  <Select disabled={isSubmitting}>
-                    {generos.map((tipo) => (
-                      <Option key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={24}>
-                <Form.Item>
-                  <Space>
-                    <Button type="primary" htmlType="submit" loading={isSubmitting} disabled={isSubmitting}>
-                      Salvar
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setIsNovaPessoaModalOpen(false);
-                        novaPessoaForm.resetFields();
-                        setFiltroPessoa('');
-                        setSugestoes([]);
-                      }}
-                      disabled={isSubmitting}
-                    >
-                      Cancelar
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Col>
-            </Row>
-          </Form>
-        </Modal>
-
-        {/* Modal de Novo Funcionário */}
-        <Modal
-          title="Cadastrar Funcionário"
-          open={isNovoFuncionarioModalOpen}
-          onCancel={() => {
-            setIsNovoFuncionarioModalOpen(false);
-            setNovaPessoa(null);
-            novoFuncionarioForm.resetFields();
-            setSubsidioTemp({ id: null, descricao: '', valor: '' });
-          }}
-          footer={null}
-          maskClosable={false}
-          width={800}
-        >
-          {novaPessoa && (
-            <div className="pessoa-selecionada-container">
-              <h3>Pessoa Selecionada</h3>
-              <Form layout="vertical" disabled>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Nome">
-                      <Input value={novaPessoa.nome || '-'} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="NIF">
-                      <Input value={novaPessoa.nif || '-'} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Data de Nascimento">
-                      <Input
-                        value={novaPessoa.dataNascimento ? moment(novaPessoa.dataNascimento).format('YYYY-MM-DD') : '-'}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Telefone">
-                      <Input value={novaPessoa.telefone || '-'} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Email">
-                      <Input value={novaPessoa.email || '-'} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Endereço">
-                      <Input value={novaPessoa.endereco || '-'} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Gênero">
-                      <Input value={generos.find((g) => g.value === novaPessoa.genero)?.label || novaPessoa.genero || '-'} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Form>
-            </div>
-          )}
-          <div className="funcionario-form">
-            <h3>Dados do Funcionário</h3>
-            <Form
-              form={novoFuncionarioForm}
-              onFinish={handleSubmitFuncionario}
-              onFinishFailed={() => toast.error('Por favor, corrija os erros no formulário de funcionário.')}
-              layout="vertical"
-            >
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    name="tipoDeContrato"
-                    label="Tipo de Contrato"
-                    rules={[
-                      { required: true, message: 'Selecione o tipo de contrato.' },
-                      {
-                        validator: (_, value) =>
-                          tiposDeContrato.some((t) => t.value === value)
-                            ? Promise.resolve()
-                            : Promise.reject(new Error('Tipo de contrato inválido.')),
-                      },
-                    ]}
-                  >
-                    <Select disabled={isSubmitting}>
-                      {tiposDeContrato.map((tipo) => (
-                        <Option key={tipo.value} value={tipo.value}>
-                          {tipo.label}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="salario"
-                    label="Salário (Kz)"
-                    rules={[
-                      { required: true, message: 'O salário é obrigatório.' },
-                      {
-                        type: 'number',
-                        min: 0.01,
-                        max: 9999999999999.99,
-                        message: 'O salário deve ser um número positivo entre 0,01 e 9.999.999.999.999,99.',
-                        transform: Number,
-                      },
-                    ]}
-                  >
-                    <Input type="number" step="0.01" min="0.01" disabled={isSubmitting} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="dataAdmissao"
-                    label="Data de Admissão"
-                    rules={[
-                      { required: true, message: 'Selecione a data de admissão.' },
-                      {
-                        validator: (_, value) =>
-                          value && moment(value).isValid()
-                            ? Promise.resolve()
-                            : Promise.reject(new Error('Data de admissão inválida.')),
-                      },
-                    ]}
-                  >
-                    <DatePicker
-                      showTime
-                      format="YYYY-MM-DD HH:mm:ss"
-                      style={{ width: '100%' }}
-                      disabled={isSubmitting}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="descricao"
-                    label="Descrição"
-                    rules={[
-                      { required: true, message: 'A descrição é obrigatória.' },
-                      { max: 1000, message: 'A descrição deve ter no máximo 1000 caracteres.' },
-                    ]}
-                  >
-                    <Input.TextArea rows={4} maxLength={1000} disabled={isSubmitting} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="fechoDeContas"
-                    label="Fecho de Contas"
-                    rules={[
-                      { required: true, message: 'Selecione o fecho de contas.' },
-                      {
-                        validator: (_, value) =>
-                          fechoDeContasOpcoes.some((f) => f.value === value)
-                            ? Promise.resolve()
-                            : Promise.reject(new Error('Fecho de contas inválido.')),
-                      },
-                    ]}
-                  >
-                    <Select disabled={isSubmitting}>
-                      {fechoDeContasOpcoes.map((opcao) => (
-                        <Option key={opcao.value} value={opcao.value}>
-                          {opcao.label}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="estadoFuncionario"
-                    label="Estado"
-                    rules={[
-                      { required: true, message: 'Selecione o estado.' },
-                      {
-                        validator: (_, value) =>
-                          estadosFuncionario.some((e) => e.value === value)
-                            ? Promise.resolve()
-                            : Promise.reject(new Error('Estado inválido.')),
-                      },
-                    ]}
-                  >
-                    <Select disabled={isSubmitting}>
-                      {estadosFuncionario.map((estado) => (
-                        <Option key={estado.value} value={estado.value}>
-                          {estado.label}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item
-                    label="Subsídios"
-                    name="subsidios"
-                    rules={[
-                      {
-                        validator: (_, value) => {
-                          if (!value || value.length === 0) return Promise.resolve();
-                          const seen = new Set();
-                          for (const s of value) {
-                            if (!s.descricao || !s.valor) {
-                              return Promise.reject(new Error('Todos os subsídios devem ter tipo e valor válidos.'));
-                            }
-                            if (seen.has(s.descricao)) {
-                              return Promise.reject(new Error(`Subsídio "${tipoSubsidioMap[s.descricao] || s.descricao}" está duplicado.`));
-                            }
-                            seen.add(s.descricao);
-                            const valor = parseFloat(s.valor);
-                            if (isNaN(valor) || valor <= 0) {
-                              return Promise.reject(new Error(`Valor do subsídio "${tipoSubsidioMap[s.descricao] || s.descricao}" deve ser positivo.`));
-                            }
-                          }
-                          return Promise.resolve();
-                        },
-                      },
-                    ]}
-                  >
-                    <Space.Compact block>
-                      <Select
-                        value={subsidioTemp.descricao}
-                        onChange={(value) => {
-                          const subsidio = subsidios.find((sub) => sub.descricao === value);
-                          setSubsidioTemp({ id: subsidio?.id || null, descricao: value, valor: '' });
-                        }}
-                        style={{ width: '50%' }}
-                        placeholder={subsidios.length === 0 ? 'Nenhum subsídio disponível' : 'Selecione um subsídio'}
-                        disabled={subsidios.length === 0 || isSubmitting}
-                      >
-                        {subsidios.map((sub) => (
-                          <Option key={sub.id} value={sub.descricao}>
-                            {tipoSubsidioMap[sub.descricao] || sub.descricao}
-                          </Option>
-                        ))}
-                      </Select>
-                      <Input
-                        type="number"
-                        placeholder="Valor (Kz)"
-                        value={subsidioTemp.valor}
-                        onChange={(e) => setSubsidioTemp({ ...subsidioTemp, valor: e.target.value })}
-                        style={{ width: '30%' }}
-                        disabled={!subsidioTemp.descricao || subsidios.length === 0 || isSubmitting}
-                        min="0.01"
-                        step="0.01"
-                      />
-                      <Button
-                        type="primary"
-                        onClick={() => {
-                          const valor = parseFloat(subsidioTemp.valor);
-                          if (!subsidioTemp.id || !subsidioTemp.descricao) {
-                            toast.error('Selecione um tipo de subsídio válido.');
-                            return;
-                          }
-                          if (isNaN(valor) || valor <= 0) {
-                            toast.error('O valor do subsídio deve ser um número positivo maior que zero.');
-                            return;
-                          }
-                          const currentSubsidios = novoFuncionarioForm.getFieldValue('subsidios') || [];
-                          if (currentSubsidios.some((s) => s.descricao === subsidioTemp.descricao)) {
-                            toast.error(`O subsídio "${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao}" já foi adicionado.`);
-                            return;
-                          }
-                          novoFuncionarioForm.setFieldsValue({
-                            subsidios: [
-                              ...currentSubsidios,
-                              { subsidioId: subsidioTemp.id, descricao: subsidioTemp.descricao, valor },
-                            ],
-                          });
-                          setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                          toast.success('Subsídio adicionado à lista!');
-                        }}
-                        disabled={!subsidioTemp.descricao || !subsidioTemp.valor || isSubmitting || subsidios.length === 0}
-                      >
-                        Adicionar
-                      </Button>
-                    </Space.Compact>
-                    <Table
-                      dataSource={novoFuncionarioForm.getFieldValue('subsidios') || []}
-                      columns={subsidiosColumns}
-                      rowKey={(record, index) => `${record.descricao}-${index}`}
-                      pagination={false}
-                      style={{ marginTop: 16 }}
-                      size="small"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item>
-                    <Space>
-                      <Button type="primary" htmlType="submit" loading={isSubmitting} disabled={isSubmitting}>
-                        Salvar Funcionário
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setIsNovoFuncionarioModalOpen(false);
-                          setNovaPessoa(null);
-                          novoFuncionarioForm.resetFields();
-                          setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          novoFuncionarioForm.resetFields();
-                          setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        Limpar
-                      </Button>
-                    </Space>
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Form>
-          </div>
-        </Modal>
 
         {/* Modal de Edição */}
         {editandoFuncionarioId && (
@@ -1435,6 +1029,58 @@ const Listar = () => {
                           {tipo.label}
                         </Option>
                       ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+              <h3>Dados do Funcionário</h3>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="empresaId"
+                    label="Empresa"
+                    rules={[{ required: true, message: 'Selecione a empresa.' }]}
+                  >
+                    <Select
+                      placeholder={isEmpresasLoading ? 'Carregando...' : empresas.length === 0 ? 'Nenhuma empresa' : 'Selecione uma empresa'}
+                      loading={isEmpresasLoading}
+                      disabled={isSubmitting || isEmpresasLoading || empresas.length === 0}
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {empresas.map((e) => (
+                        <Option key={e.id} value={e.id}>{e.nome || e.descricao || `Empresa ${e.id}`}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="cargo"
+                    label="Cargo"
+                    rules={[{ required: true, message: 'Informe o cargo.' }]}
+                  >
+                    <Input maxLength={100} disabled={isSubmitting} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="departamentoId"
+                    label="Departamento (ID)"
+                    rules={[{ required: true, message: 'Informe o ID do departamento.' }]}
+                  >
+                    <Input type="number" min={1} disabled={isSubmitting} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="segurancaSocial"
+                    label="Segurança Social"
+                    rules={[{ required: true, message: 'Selecione a segurança social.' }]}
+                  >
+                    <Select disabled={isSubmitting}>
+                      <Option value="SIM">Sim</Option>
+                      <Option value="NAO">Não</Option>
                     </Select>
                   </Form.Item>
                 </Col>
@@ -1589,106 +1235,92 @@ const Listar = () => {
                       },
                     ]}
                   >
-                    <Space.Compact block>
-                      <Select
-                        value={subsidioTemp.descricao}
-                        onChange={(value) => {
-                          const subsidio = subsidios.find((sub) => sub.descricao === value);
-                          setSubsidioTemp({ id: subsidio?.id || null, descricao: value, valor: '' });
-                        }}
-                        style={{ width: '50%' }}
-                        placeholder={subsidios.length === 0 ? 'Nenhum subsídio disponível' : 'Selecione um subsídio'}
-                        disabled={subsidios.length === 0 || isSubmitting}
-                      >
-                        {subsidios.map((sub) => (
-                          <Option key={sub.id} value={sub.descricao}>
-                            {tipoSubsidioMap[sub.descricao] || sub.descricao}
-                          </Option>
-                        ))}
-                      </Select>
-                      <Input
-                        type="number"
-                        placeholder="Valor (Kz)"
-                        value={subsidioTemp.valor}
-                        onChange={(e) => setSubsidioTemp({ ...subsidioTemp, valor: e.target.value })}
-                        style={{ width: '30%' }}
-                        disabled={!subsidioTemp.descricao || subsidios.length === 0 || isSubmitting}
-                        min="0.01"
-                        step="0.01"
+                    <div>
+                      <Space.Compact block>
+                        <Select
+                          value={subsidioTemp.descricao}
+                          onChange={(value) => {
+                            const subsidio = subsidios.find((sub) => sub.descricao === value);
+                            setSubsidioTemp({ id: subsidio?.id || null, descricao: value, valor: '' });
+                          }}
+                          style={{ width: '50%' }}
+                          placeholder={subsidios.length === 0 ? 'Nenhum subsídio disponível' : 'Selecione um subsídio'}
+                          disabled={subsidios.length === 0 || isSubmitting}
+                        >
+                          {subsidios.map((sub) => (
+                            <Option key={sub.id} value={sub.descricao}>
+                              {tipoSubsidioMap[sub.descricao] || sub.descricao}
+                            </Option>
+                          ))}
+                        </Select>
+                        <Input
+                          type="number"
+                          placeholder="Valor (Kz)"
+                          value={subsidioTemp.valor}
+                          onChange={(e) => setSubsidioTemp({ ...subsidioTemp, valor: e.target.value })}
+                          style={{ width: '30%' }}
+                          disabled={!subsidioTemp.descricao || subsidios.length === 0 || isSubmitting}
+                          min="0.01"
+                          step="0.01"
+                        />
+                        <Button
+                          type="primary"
+                          onClick={() => {
+                            const valor = parseFloat(subsidioTemp.valor);
+                            if (!subsidioTemp.id || !subsidioTemp.descricao) {
+                              toast.error('Selecione um tipo de subsídio válido.');
+                              return;
+                            }
+                            if (isNaN(valor) || valor <= 0) {
+                              toast.error('O valor do subsídio deve ser um número positivo maior que zero.');
+                              return;
+                            }
+                            const raw = editFuncionarioForm.getFieldValue('subsidios');
+                            const currentSubsidios = Array.isArray(raw) ? raw : [];
+                            if (currentSubsidios.some((s) => s.descricao === subsidioTemp.descricao)) {
+                              toast.error(`O subsídio "${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao}" já foi adicionado.`);
+                              return;
+                            }
+                            editFuncionarioForm.setFieldsValue({
+                              subsidios: [
+                                ...currentSubsidios,
+                                { subsidioId: subsidioTemp.id, descricao: subsidioTemp.descricao, valor },
+                              ],
+                            });
+                            setSubsidioTemp({ id: null, descricao: '', valor: '' });
+                            toast.success('Subsídio adicionado à lista!');
+                          }}
+                          disabled={!subsidioTemp.descricao || !subsidioTemp.valor || isSubmitting || subsidios.length === 0}
+                        >
+                          Adicionar
+                        </Button>
+                      </Space.Compact>
+                      <Table
+                        dataSource={(() => {
+                          const d = editFuncionarioForm.getFieldValue('subsidios');
+                          return Array.isArray(d) ? d : [];
+                        })()}
+                        columns={subsidiosColumns}
+                        rowKey={(record) => `${record.descricao}-${record.subsidioId ?? ''}`}
+                        pagination={false}
+                        style={{ marginTop: 16 }}
+                        size="small"
                       />
-                      <Button
-                        type="primary"
-                        onClick={() => {
-                          const valor = parseFloat(subsidioTemp.valor);
-                          if (!subsidioTemp.id || !subsidioTemp.descricao) {
-                            toast.error('Selecione um tipo de subsídio válido.');
-                            return;
-                          }
-                          if (isNaN(valor) || valor <= 0) {
-                            toast.error('O valor do subsídio deve ser um número positivo maior que zero.');
-                            return;
-                          }
-                          const currentSubsidios = editFuncionarioForm.getFieldValue('subsidios') || [];
-                          if (currentSubsidios.some((s) => s.descricao === subsidioTemp.descricao)) {
-                            toast.error(`O subsídio "${tipoSubsidioMap[subsidioTemp.descricao] || subsidioTemp.descricao}" já foi adicionado.`);
-                            return;
-                          }
-                          editFuncionarioForm.setFieldsValue({
-                            subsidios: [
-                              ...currentSubsidios,
-                              { subsidioId: subsidioTemp.id, descricao: subsidioTemp.descricao, valor },
-                            ],
-                          });
-                          setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                          toast.success('Subsídio adicionado à lista!');
-                        }}
-                        disabled={!subsidioTemp.descricao || !subsidioTemp.valor || isSubmitting || subsidios.length === 0}
-                      >
-                        Adicionar
-                      </Button>
-                    </Space.Compact>
-                    <Table
-                      dataSource={editFuncionarioForm.getFieldValue('subsidios') || []}
-                      columns={subsidiosColumns}
-                      rowKey={(record, index) => `${record.descricao}-${index}`}
-                      pagination={false}
-                      style={{ marginTop: 16 }}
-                      size="small"
-                    />
+                    </div>
                   </Form.Item>
                 </Col>
-                <Col span={24}>
+                <Col span={25}>
                   <Form.Item>
-                    <Space>
-                      <Button type="primary" htmlType="submit" loading={isSubmitting} disabled={isSubmitting}>
-                        Salvar
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setEditandoFuncionarioId(null);
-                          editFuncionarioForm.resetFields();
-                          setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          editFuncionarioForm.resetFields();
-                          setSubsidioTemp({ id: null, descricao: '', valor: '' });
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        Limpar
-                      </Button>
-                    </Space>
+                    <Button type="primary" htmlType="submit" disabled={isSubmitting} loading={isSubmitting}>
+                      Confirmar Edição
+                    </Button>
                   </Form.Item>
                 </Col>
               </Row>
             </Form>
           </Modal>
         )}
+ 
       </Spin>
     </div>
   );

@@ -129,7 +129,7 @@ const CadastrarUsuario = ({ usuarioId, onClose }) => {
     if (!usuarioId) return;
     try {
       setIsLoading(true);
-      const response = await api.get(`/api/auth/usuario/cadastrar/${usuarioId}`);
+      const response = await api.get(`/api/auth/usuario/all/${usuarioId}`);
       logApiResponse(`usuario/${usuarioId}`, response.data);
       setForm({
         userName: response.data.userName || '',

@@ -7,13 +7,14 @@
     background-color: #48cae4;
     color: #a7a5a5;
     position: relative;
-    z-index: 5000;
+    z-index: 1000;
 }
 
 /* Logotipo */
 .navbar-logo img {
-    width: 60%;
-    height: 60%;
+    height: 40px;
+    width: auto;
+    display: block;
 }
 
 /* Links */

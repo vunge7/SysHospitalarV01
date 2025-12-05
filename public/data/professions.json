@@ -1,0 +1,22 @@
+[
+    { "id": 1, "value": "Médico" },
+    { "id": 2, "value": "Enfermeiro" },
+    { "id": 3, "value": "Professor" },
+    { "id": 4, "value": "Engenheiro" },
+    { "id": 5, "value": "Advogado" },
+    { "id": 6, "value": "Programador" },
+    { "id": 7, "value": "Contabilista" },
+    { "id": 8, "value": "Arquiteto" },
+    { "id": 9, "value": "Jornalista" },
+    { "id": 10, "value": "Psicólogo" },
+    { "id": 11, "value": "Farmacêutico" },
+    { "id": 12, "value": "Dentista" },
+    { "id": 13, "value": "Veterinário" },
+    { "id": 14, "value": "Polícia" },
+    { "id": 15, "value": "Bombeiro" },
+    { "id": 16, "value": "Agricultor" },
+    { "id": 17, "value": "Comerciante" },
+    { "id": 18, "value": "Estudante" },
+    { "id": 19, "value": "Desempregado" },
+    { "id": 20, "value": "Aposentado" }
+  ]

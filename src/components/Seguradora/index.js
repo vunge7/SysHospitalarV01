@@ -67,24 +67,47 @@ export default function Seguradora(props) {
     }
 
     async function salvarPacienteSeguradora(seguradoraId) {
-        let pacienteSeguradora = {
-            dataCricao: dateFormat(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            dataActualizacao: dateFormat(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            usuarioIdCricao: 1,
-            usuarioIdAtualizacao: 1,
-            seguradoraId: seguradoraId,
-            pacienteId: props.pacienteId,
-        };
+        const now = dateFormat(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        try {
+            const pacienteRes = await api.get('paciente/' + props.pacienteId);
+            const empresaIdNum = Number(pacienteRes?.data?.empresaId);
+            const pacienteIdNum = Number(props.pacienteId);
+            const seguradoraIdNum = Number(seguradoraId);
+            if (!pacienteIdNum) {
+                console.log('Paciente inválido.');
+                return;
+            }
+            if (!seguradoraIdNum) {
+                console.log('Selecione uma seguradora.');
+                return;
+            }
+            if (!empresaIdNum) {
+                console.log('Empresa não definida para o paciente.');
+                return;
+            }
 
-        await api
-            .post('pacienteSeguradora/add', pacienteSeguradora)
-            .then((r) => {
-                carregarPacienteSeguradoras();
-                console.log('dados salvos com sucesso');
-            })
-            .catch((e) => {
-                console.log('Erro a registrar a associação.');
-            });
+            let pacienteSeguradora = {
+                dataCricao: now,
+                dataActualizacao: now,
+                usuarioIdCricao: 1,
+                usuarioIdAtualizacao: 1,
+                seguradoraId: seguradoraIdNum,
+                pacienteId: pacienteIdNum,
+                empresaId: empresaIdNum,
+            };
+
+            await api
+                .post('pacienteSeguradora/add', pacienteSeguradora)
+                .then((r) => {
+                    carregarPacienteSeguradoras();
+                    console.log('dados salvos com sucesso');
+                })
+                .catch((e) => {
+                    console.log('Erro a registrar a associação.', e?.response?.data || e?.message);
+                });
+        } catch (err) {
+            console.log('Erro ao obter dados do paciente.', err?.response?.data || err?.message);
+        }
     }
 
     const onClickHandle = async (e) => {

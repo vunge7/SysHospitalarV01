@@ -7,34 +7,34 @@ export const ROTAS_CONFIG = {
     // 🏥 Processos Clínicos
     'admissao': {
         path: '/admissao/home',
-        painelId: 4, // Admissao
+        painelId: 1, // Admissao
         descricaoPainel: 'Admissao',
     },
     'enfermaria': {
         path: '/enf',
-        painelId: 5, // Enfermaria
+        painelId: 2, // Enfermaria
         descricaoPainel: 'Enfermaria',
     },
     'consultorio': {
         path: '/medico/consulta',
-        painelId: 6, // Consultorio
+        painelId: 3, // Consultorio
         descricaoPainel: 'Consultorio',
     },
     'agendamento': {
         path: '/agenda',
-        painelId: 13, // Agendamento
+        painelId: 10, // Agendamento
         descricaoPainel: 'Agendamento',
     },
     'laboratorio': {
         path: '/lab',
-        painelId: 7, // Laboratorio
+        painelId: 4, // Laboratorio
         descricaoPainel: 'Laboratorio',
     },
 
     // 🏢 Processos Administrativos
     'facturacao': {
         path: '/facturacao',
-        painelId: 8, // Facturacao
+        painelId: 5, // Facturacao
         descricaoPainel: 'Facturacao',
     },
     'servicos': {
@@ -44,23 +44,28 @@ export const ROTAS_CONFIG = {
     },
     'usuarios': {
         path: '/admin/usuario',
-        painelId: 11, // Usuarios
+        painelId: 8, // Usuarios
         descricaoPainel: 'Usuarios',
     },
     'stock': {
         path: '/stock',
-        painelId: 10, // Stock
+        painelId: 7, // Stock
         descricaoPainel: 'Stock',
     },
     'rh': {
         path: '/rh',
-        painelId: 12, // RH
+        painelId: 9, // RH
         descricaoPainel: 'RH',
     },
     'permissoes': {
         path: '/admin/permissoes',
-        painelId: 14, // Permissoes
+        painelId: 11, // Permissoes
         descricaoPainel: 'Permissoes',
+    },
+    'empresa': {
+        path: '/admin/empresa',
+        painelId: 12, // Empresa
+        descricaoPainel: 'Empresa',
     }
 };
 
@@ -71,17 +76,18 @@ export const getRotaConfig = (chave) => {
 
 // 📋 Lista de painéis disponíveis
 export const PAINEIS_DISPONIVEIS = {
-    4:  { id: 4,  descricao: 'Admissao' },
-    5:  { id: 5,  descricao: 'Enfermaria' },
-    6:  { id: 6,  descricao: 'Consultorio' },
-    7:  { id: 7,  descricao: 'Laboratorio' },
-    8:  { id: 8,  descricao: 'Facturacao' },
-    9:  { id: 9,  descricao: 'Servicos' },
-    10: { id: 10, descricao: 'Stock' },
-    11: { id: 11, descricao: 'Usuarios' },
-    12: { id: 12, descricao: 'RH' },
-    13: { id: 13, descricao: 'Agendamento' },
-    14: { id: 14, descricao: 'Permissoes' }
+    1:  { id: 1,  descricao: 'Admissao' },
+    2:  { id: 2,  descricao: 'Enfermaria' },
+    3:  { id: 3,  descricao: 'Consultorio' },
+    4:  { id: 4,  descricao: 'Laboratorio' },
+    5:  { id: 5,  descricao: 'Facturacao' },
+    6:  { id: 6,  descricao: 'Servicos' },
+    7: { id: 7, descricao: 'Stock' },
+    8: { id: 8, descricao: 'Usuarios' },
+    9: { id: 9, descricao: 'RH' },
+    10: { id: 10, descricao: 'Agendamento' },
+    11: { id: 11, descricao: 'Permissoes' },
+    12: { id: 12, descricao: 'Empresa' }
 };
 
 export const criarRotaProtegida = (chave, componente) => {

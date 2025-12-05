@@ -67,7 +67,7 @@
 .product-form-modal .ant-modal-body {
   padding: 10px;
   flex: 1;
-  overflow: hidden; /* Remove qualquer rolagem */
+  overflow: auto; /* Permite rolagem para ver todo o formulário e botões */
   display: flex;
   flex-direction: column;
 }

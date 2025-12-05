@@ -1,24 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { AutoComplete, Select, Input } from 'antd';
+import React, { useEffect, useState, useRef, useContext } from 'react';
+import { AutoComplete, Select, Input, Modal, Flex, Card, Row, Col, Slider, InputNumber, Radio, Space } from 'antd';
 import { toast } from 'react-toastify';
-// git dvml-dev
-import {
-    Modal,
-    Flex,
-    Card,
-    Row,
-    Col,
-    Slider,
-    InputNumber,
-    Radio,
-    Space,
-} from 'antd';
 import TriagemManchester from '../TriagemManchester';
 import { api } from '../../service/api';
-import { format, set } from 'date-fns';
+import { format } from 'date-fns';
+import { useAuth } from '../../hooks/auth';
 
+// === FUNÇÕES DE PDF ===
 export const viewPdf = async (fileName, id) => {
-    // Abrir uma nova aba imediatamente
     const newWindow = window.open('', '_blank');
     if (!newWindow) {
         alert('Permita pop-ups no navegador para visualizar o PDF.');
@@ -26,32 +15,25 @@ export const viewPdf = async (fileName, id) => {
     }
     try {
         const response = await api.get('/api/pdf/' + fileName + '/' + id, {
-            responseType: 'blob', // Para lidar com arquivos binários
+            responseType: 'blob',
         });
 
-        // Verificar se o conteúdo do blob é um PDF válido
         if (response.headers['content-type'] !== 'application/pdf') {
             newWindow.close();
             alert('O arquivo carregado não é um PDF válido.');
             return;
         }
 
-        // Criar uma URL para o PDF
-        const pdfBlob = new Blob([response.data], {
-            type: 'application/pdf',
-        });
+        const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
         const pdfUrl = URL.createObjectURL(pdfBlob);
-
-        // Redirecionar a nova aba para a URL do PDF
         newWindow.location.href = pdfUrl;
     } catch (error) {
-        newWindow.close(); // Fechar a aba se algo der errado
+        newWindow.close();
         console.error('Erro ao carregar o PDF:', error);
     }
 };
 
 export const viewPdfPacienteFita = async (fileName, id) => {
-    // Abrir uma nova aba imediatamente
     const newWindow = window.open('', '_blank');
     if (!newWindow) {
         alert('Permita pop-ups no navegador para visualizar o PDF.');
@@ -59,97 +41,75 @@ export const viewPdfPacienteFita = async (fileName, id) => {
     }
     try {
         const response = await api.get('/api/pdf/' + fileName + '/fita/' + id, {
-            responseType: 'blob', // Para lidar com arquivos binários
+            responseType: 'blob',
         });
 
-        // Verificar se o conteúdo do blob é um PDF válido
         if (response.headers['content-type'] !== 'application/pdf') {
             newWindow.close();
             alert('O arquivo carregado não é um PDF válido.');
             return;
         }
 
-        // Criar uma URL para o PDF
-        const pdfBlob = new Blob([response.data], {
-            type: 'application/pdf',
-        });
+        const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
         const pdfUrl = URL.createObjectURL(pdfBlob);
-
-        // Redirecionar a nova aba para a URL do PDF
         newWindow.location.href = pdfUrl;
     } catch (error) {
-        newWindow.close(); // Fechar a aba se algo der errado
+        newWindow.close();
         console.error('Erro ao carregar o PDF:', error);
     }
 };
 
 export const viewPdfGenerico = async (fileName, id) => {
-    // Abrir uma nova aba imediatamente
     const newWindow = window.open('', '_blank');
     if (!newWindow) {
         alert('Permita pop-ups no navegador para visualizar o PDF.');
         return;
     }
     try {
-        const response = await api.get(
-            //'/api/pdf/generico/' + fileName + '/fita/' + id,
-            '/api/pdf/generico/' + fileName + '/' + id,
-            {
-                responseType: 'blob', // Para lidar com arquivos binários
-            }
-        );
+        const response = await api.get('/api/pdf/generico/' + fileName + '/' + id, {
+            responseType: 'blob',
+        });
 
-        // Verificar se o conteúdo do blob é um PDF válido
         if (response.headers['content-type'] !== 'application/pdf') {
             newWindow.close();
             alert('O arquivo carregado não é um PDF válido.');
             return;
         }
 
-        // Criar uma URL para o PDF
-        const pdfBlob = new Blob([response.data], {
-            type: 'application/pdf',
-        });
+        const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
         const pdfUrl = URL.createObjectURL(pdfBlob);
-
-        // Redirecionar a nova aba para a URL do PDF
         newWindow.location.href = pdfUrl;
     } catch (error) {
-        newWindow.close(); // Fechar a aba se algo der errado
+        newWindow.close();
         console.error('Erro ao carregar o PDF:', error);
     }
 };
 
+// === VOICE CAPTURE ===
 export const VoiceCapture = () => {
-    const [transcript, setTranscript] = useState(''); // Acumula todas as frases
-    const [currentSentence, setCurrentSentence] = useState(''); // Texto atual sendo reconhecido
+    const [transcript, setTranscript] = useState('');
+    const [currentSentence, setCurrentSentence] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [recognition, setRecognition] = useState(null);
-    const [texto, setTexto] = useState('');
 
-    useEffect(() => {
-        setTexto(currentSentence);
-        console.log(texto);
-    }, [currentSentence]);
-    const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+    useEffect(() => {}, [currentSentence]);
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
         return <p>Seu navegador não suporta a API de reconhecimento de voz.</p>;
     }
 
-    // Configura o reconhecimento de voz
     const setupRecognition = () => {
         const newRecognition = new SpeechRecognition();
-        newRecognition.lang = 'pt-PT'; // Configura o idioma
-        newRecognition.interimResults = true; // Habilita resultados intermediários
-        newRecognition.continuous = true; // Permite captura contínua de áudio
+        newRecognition.lang = 'pt-PT';
+        newRecognition.interimResults = true;
+        newRecognition.continuous = true;
 
         newRecognition.onresult = (event) => {
             let interimTranscript = '';
             let finalTranscript = '';
 
-            // Processa os resultados
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const result = event.results[i];
                 if (result.isFinal) {
@@ -159,24 +119,18 @@ export const VoiceCapture = () => {
                 }
             }
 
-            // Atualiza o texto final e intermediário
             setCurrentSentence(finalTranscript + interimTranscript);
         };
-        newRecognition.onerror = (event) => {
-            console.error('Erro no reconhecimento de voz:', event.error);
-            stopListening(); // Para em caso de erro
-        };
 
+        newRecognition.onerror = () => stopListening();
         newRecognition.onend = () => {
-            setIsListening(false); // Muda o estado quando a gravação termina
-            // Adiciona a frase final ao histórico
+            setIsListening(false);
             if (currentSentence.trim()) {
-                setTranscript(
-                    (prevTranscript) => prevTranscript + currentSentence + '\n'
-                );
-                setCurrentSentence(''); // Limpa a frase atual após adicionar ao histórico
+                setTranscript(prev => prev + currentSentence + '\n');
+                setCurrentSentence('');
             }
         };
+
         return newRecognition;
     };
 
@@ -216,20 +170,18 @@ export const VoiceCapture = () => {
     );
 };
 
+// === INPUTS ===
 export const InputArtigo = (props) => {
     const [value, setValue] = useState('');
     const options = props.options;
 
     return (
         <AutoComplete
-            style={{
-                width: 180,
-            }}
+            style={{ width: 180 }}
             options={options}
             placeholder="Dig. as Inic. do fármaco"
             filterOption={(inputValue, option) =>
-                option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
-                -1
+                option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
             }
             value={value}
             onChange={(value) => {
@@ -241,55 +193,19 @@ export const InputArtigo = (props) => {
 };
 
 export const ViaAdministracao = (props) => {
-    let options = [
-        {
-            value: 'Oral',
-            label: 'Oral',
-        },
-        {
-            value: 'Sublingual',
-            label: 'Sublingual',
-        },
-        {
-            value: 'Retal',
-            label: 'Retal',
-        },
-        {
-            value: 'Parenteral-Intravenosa',
-            label: 'Parenteral-Intravenosa',
-        },
-        {
-            value: 'Parenteral-Intramuscular',
-            label: 'Parenteral-Intramuscular',
-        },
-        {
-            value: 'Parenteral-Subcutânea',
-            label: 'Parenteral-Subcutânea',
-        },
-        {
-            value: 'Parenteral-Intradérmica',
-            label: 'Parenteral-Intradérmica',
-        },
-        {
-            value: 'Transdérmica',
-            label: 'Transdérmica',
-        },
-        {
-            value: 'Inalatória',
-            label: 'Inalatória',
-        },
-        {
-            value: 'Intratecal',
-            label: 'Intratecal',
-        },
-        {
-            value: 'Vaginal',
-            label: 'Vaginal',
-        },
-        {
-            value: 'Nasal',
-            label: 'Nasal',
-        },
+    const options = [
+        { value: 'Oral', label: 'Oral' },
+        { value: 'Sublingual', label: 'Sublingual' },
+        { value: 'Retal', label: 'Retal' },
+        { value: 'Parenteral-Intravenosa', label: 'Parenteral-Intravenosa' },
+        { value: 'Parenteral-Intramuscular', label: 'Parenteral-Intramuscular' },
+        { value: 'Parenteral-Subcutânea', label: 'Parenteral-Subcutânea' },
+        { value: 'Parenteral-Intradérmica', label: 'Parenteral-Intradérmica' },
+        { value: 'Transdérmica', label: 'Transdérmica' },
+        { value: 'Inalatória', label: 'Inalatória' },
+        { value: 'Intratecal', label: 'Intratecal' },
+        { value: 'Vaginal', label: 'Vaginal' },
+        { value: 'Nasal', label: 'Nasal' },
     ];
 
     return (
@@ -298,70 +214,39 @@ export const ViaAdministracao = (props) => {
             placeholder="Seleccione a via"
             style={{ width: 200 }}
             filterOption={(input, option) =>
-                (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
             }
             options={options}
-            onChange={(value) => {
-                props.updateViaAdministracao(props.id, value);
-            }}
+            onChange={(value) => props.updateViaAdministracao(props.id, value)}
         />
     );
 };
 
-export const Dosagem = (props) => {
-    return (
-        <Input
-            style={{ width: 100 }}
-            placeholder="Dig. a dosagem"
-            onChange={(e) => {
-                props.updateDosagem(props.id, e.target.value);
-            }}
-        />
-    );
-};
+export const Dosagem = (props) => (
+    <Input
+        style={{ width: 100 }}
+        placeholder="Dig. a dosagem"
+        onChange={(e) => props.updateDosagem(props.id, e.target.value)}
+    />
+);
 
-export const Quantidade = (props) => {
-    return (
-        <Input
-            style={{ width: 50 }}
-            placeholder="Dig. a Qtd."
-            onChange={(e) => props.updateQtd(props.id, e.target.value)}
-        />
-    );
-};
+export const Quantidade = (props) => (
+    <Input
+        style={{ width: 50 }}
+        placeholder="Dig. a Qtd."
+        onChange={(e) => props.updateQtd(props.id, e.target.value)}
+    />
+);
 
 export const Frequencia = (props) => {
-    let options = [
-        {
-            value: 'Uso único – Apenas uma vez',
-            label: 'Uso único – Apenas uma vez',
-        },
-        {
-            value: 'A cada 12 horas (2 vezes ao dia)',
-            label: 'A cada 12 horas (2 vezes ao dia)',
-        },
-        {
-            value: 'A cada 8 horas (3 vezes ao dia)',
-            label: 'A cada 8 horas (3 vezes ao dia)',
-        },
-        {
-            value: 'A cada 6 horas (4 vezes ao dia)',
-            label: 'A cada 6 horas (4 vezes ao dia)',
-        },
-        {
-            value: 'Diário (1 vez ao dia)',
-            label: 'Diário (1 vez ao dia)',
-        },
-        {
-            value: 'Semanalmente',
-            label: 'Mensalmente',
-        },
-        {
-            value: 'SOS (Se necessário)',
-            label: 'SOS (Se necessário)',
-        },
+    const options = [
+        { value: 'Uso único – Apenas uma vez', label: 'Uso único – Apenas uma vez' },
+        { value: 'A cada 12 horas (2 vezes ao dia)', label: 'A cada 12 horas (2 vezes ao dia)' },
+        { value: 'A cada 8 horas (3 vezes ao dia)', label: 'A cada 8 horas (3 vezes ao dia)' },
+        { value: 'A cada 6 horas (4 vezes ao dia)', label: 'A cada 6 horas (4 vezes ao dia)' },
+        { value: 'Diário (1 vez ao dia)', label: 'Diário (1 vez ao dia)' },
+        { value: 'Semanalmente', label: 'Mensalmente' },
+        { value: 'SOS (Se necessário)', label: 'SOS (Se necessário)' },
     ];
 
     return (
@@ -370,67 +255,55 @@ export const Frequencia = (props) => {
             placeholder="Seleccione a freq."
             style={{ width: 270 }}
             filterOption={(input, option) =>
-                (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
             }
             options={options}
-            onChange={(value) => {
-                props.updateFrequencia(props.id, value);
-            }}
+            onChange={(value) => props.updateFrequencia(props.id, value)}
         />
     );
 };
 
-export const profissaoFONTE = [
-    {
-        id: 1,
-        value: 'Profissao 1',
-    },
-    {
-        id: 2,
-        value: 'Profissao 2',
-    },
-    {
-        id: 3,
-        value: 'Profissao 3',
-    },
-];
+// === API DE PROFISSÕES (HOOK) ===
+export const useProfissoes = () => {
+    const [profissoes, setProfissoes] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    const fallback = [
+        { id: 1, value: 'Médico' },
+        { id: 2, value: 'Enfermeiro' },
+        { id: 3, value: 'Técnico de Enfermagem' },
+    ];
+
+    useEffect(() => {
+        api.get('/professions')
+            .then(res => {
+                setProfissoes(Array.isArray(res.data) ? res.data : fallback);
+            })
+            .catch(() => {
+                setProfissoes(fallback);
+            })
+            .finally(() => setLoading(false));
+    }, []);
+
+    return { profissoes, loading };
+};
+
+// === DEMAIS FONTES ===
 export const habiliatacaLiterariaFONTE = [
-    {
-        id: 1,
-        value: 'Literaria 1',
-    },
-    {
-        id: 2,
-        value: 'Literaria 2',
-    },
-    {
-        id: 3,
-        value: 'Literaria 3',
-    },
+    { id: 1, value: 'Nenhuma' },
+    { id: 2, value: 'Básico' },
+    { id: 3, value: 'Médio' },
+    { id: 4, value: 'Superior' },
 ];
 
 export const estadoCivilFONTE = [
-    {
-        id: 1,
-        value: 'Soltero(a)',
-    },
-    {
-        id: 2,
-        value: 'Casado(a)',
-    },
-    {
-        id: 3,
-        value: 'Divorciado(a)',
-    },
-    {
-        id: 4,
-        value: 'Viuvo(a)',
-    },
+    { id: 1, value: 'Solteiro(a)' },
+    { id: 2, value: 'Casado(a)' },
+    { id: 3, value: 'Divorciado(a)' },
+    { id: 4, value: 'Viúvo(a)' },
 ];
 
+// === MODAL TRIAGEM (CORRIGIDO) ===
 export const ModalTriagem = ({
     estado,
     inscricaoId,
@@ -438,8 +311,9 @@ export const ModalTriagem = ({
     onCancel,
     exibirManchester = false,
     exibirEncaminhamento = false,
-    carrgarDados,
+    carregarDados, // Corrigido: "carrgar" → "carregar"
 }) => {
+    const { user } = useAuth();
     const [pressaoArterialS, setPressaoArterialS] = useState(120);
     const [pressaoArterialD, setPressaoArterialD] = useState(80);
     const [temperatura, setTemperatura] = useState(37);
@@ -450,21 +324,18 @@ export const ModalTriagem = ({
     const [dor, setDor] = useState();
     const [encaminhamento, setEncaminhamento] = useState('CONSULTORIO');
 
-    const marks = {
-        0: '0°C',
-        37: '37°C',
-        100: {
-            style: { color: '#f50' },
-            label: <strong>100°C</strong>,
-        },
+    // Get empresaId from user's selected filial
+    const getEmpresaId = () => {
+        const userFromStorage = JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}');
+        return user?.filialSelecionada?.id || userFromStorage?.filialSelecionada?.id || 1;
     };
-    const sliderStyle = { width: 250 };
 
-    // Ajuste proporcional dinâmico
+    const marks = { 0: '0°C', 37: '37°C', 100: { style: { color: '#f50' }, label: <strong>100°C</strong> } };
+    const sliderStyle = { width: 250 };
     const modalWidth = exibirManchester ? 1020 : 500;
     const cardWidth = exibirManchester ? '50%' : '100%';
 
-    // Refs para os campos
+    // === REFS CORRIGIDOS ===
     const pressaoArterialSRef = useRef();
     const pressaoArterialDRef = useRef();
     const temperaturaRef = useRef();
@@ -483,174 +354,73 @@ export const ModalTriagem = ({
     const campoDor = 'DOR';
     const campoPulso = 'PULSO';
 
-    const salvarTriagem = async () => {
-        // Validação dos campos obrigatórios e foco
-        if (!pressaoArterialS) {
-            toast.error('Preencha a Pressão Arterial Sistólica!', {
-                autoClose: 2000,
-            });
-            pressaoArterialSRef.current && pressaoArterialSRef.current.focus();
-            return;
-        }
-        if (!pressaoArterialD) {
-            toast.error('Preencha a Pressão Arterial Diastólica!', {
-                autoClose: 2000,
-            });
-            pressaoArterialDRef.current && pressaoArterialDRef.current.focus();
-            return;
-        }
-        if (!temperatura) {
-            toast.error('Preencha a Temperatura!', { autoClose: 2000 });
-            temperaturaRef.current && temperaturaRef.current.focus();
-            return;
-        }
-        if (!peso) {
-            toast.error('Preencha o Peso!', { autoClose: 2000 });
-            pesoRef.current && pesoRef.current.focus();
-            return;
-        }
-        if (!pulso) {
-            toast.error('Preencha o Pulso!', { autoClose: 2000 });
-            pulsoRef.current && pulsoRef.current.focus();
-            return;
-        }
-        if (!so) {
-            toast.error('Preencha a Saturação O₂!', { autoClose: 2000 });
-            soRef.current && soRef.current.focus();
-            return;
-        }
-        if (!respiracao) {
-            toast.error('Preencha a Respiração!', { autoClose: 2000 });
-            respiracaoRef.current && respiracaoRef.current.focus();
-            return;
-        }
-        if (dor === undefined || dor === null) {
-            toast.error('Preencha o campo Dor!', { autoClose: 2000 });
-            dorRef.current && dorRef.current.focus();
-            return;
-        }
+    // === FUNÇÃO getItem ADICIONADA ===
+    const getItem = (id, campo, valor, unidade, empresaId) => ({ campo, valor, unidade, triagemId: id, empresaId });
 
-        // Validação de intervalos (exemplo)
+    const salvarTriagem = async () => {
+        if (!pressaoArterialS) { toast.error('Preencha a Pressão Arterial Sistólica!'); pressaoArterialSRef.current?.focus(); return; }
+        if (!pressaoArterialD) { toast.error('Preencha a Pressão Arterial Diastólica!'); pressaoArterialDRef.current?.focus(); return; }
+        if (!temperatura) { toast.error('Preencha a Temperatura!'); temperaturaRef.current?.focus(); return; }
+        if (!peso) { toast.error('Preencha o Peso!'); pesoRef.current?.focus(); return; }
+        if (!pulso) { toast.error('Preencha o Pulso!'); pulsoRef.current?.focus(); return; }
+        if (!so) { toast.error('Preencha a Saturação O₂!'); soRef.current?.focus(); return; }
+        if (!respiracao) { toast.error('Preencha a Respiração!'); respiracaoRef.current?.focus(); return; }
+        if (dor === undefined || dor === null) { toast.error('Preencha o campo Dor!'); dorRef.current?.focus(); return; }
+
         if (
-            pressaoArterialS < 1 ||
-            pressaoArterialS > 220 ||
-            pressaoArterialD < 1 ||
-            pressaoArterialD > 220 ||
-            temperatura < 1 ||
-            temperatura > 100 ||
-            peso < 1 ||
-            peso > 220 ||
-            pulso < 1 ||
-            pulso > 220 ||
-            so < 1 ||
-            so > 100 ||
-            respiracao < 1 ||
-            respiracao > 60 ||
-            dor < 0 ||
-            dor > 10
+            pressaoArterialS < 1 || pressaoArterialS > 220 ||
+            pressaoArterialD < 1 || pressaoArterialD > 220 ||
+            temperatura < 1 || temperatura > 100 ||
+            peso < 1 || peso > 220 ||
+            pulso < 1 || pulso > 220 ||
+            so < 1 || so > 100 ||
+            respiracao < 1 || respiracao > 60 ||
+            dor < 0 || dor > 10
         ) {
-            toast.error('Algum valor está fora do intervalo permitido!', {
-                autoClose: 2000,
-            });
-            // Foca no primeiro campo fora do intervalo
-            if (pressaoArterialS < 1 || pressaoArterialS > 220) {
-                pressaoArterialSRef.current &&
-                    pressaoArterialSRef.current.focus();
-            } else if (pressaoArterialD < 1 || pressaoArterialD > 220) {
-                pressaoArterialDRef.current &&
-                    pressaoArterialDRef.current.focus();
-            } else if (temperatura < 1 || temperatura > 100) {
-                temperaturaRef.current && temperaturaRef.current.focus();
-            } else if (peso < 1 || peso > 220) {
-                pesoRef.current && pesoRef.current.focus();
-            } else if (pulso < 1 || pulso > 220) {
-                pulsoRef.current && pulsoRef.current.focus();
-            } else if (so < 1 || so > 100) {
-                soRef.current && soRef.current.focus();
-            } else if (respiracao < 1 || respiracao > 60) {
-                respiracaoRef.current && respiracaoRef.current.focus();
-            } else if (dor < 0 || dor > 10) {
-                dorRef.current && dorRef.current.focus();
-            }
+            toast.error('Algum valor está fora do intervalo permitido!');
             return;
         }
 
         try {
+            const empresaId = getEmpresaId();
             const triagem = {
                 dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-                inscricaoId: inscricaoId,
-                usuarioId: usuarioId,
+                inscricaoId,
+                usuarioId,
+                empresaId,
             };
 
-            console.log('Salvando triagem:', triagem);
             const r = await api.post('triagem/add', triagem);
             const id = r.data.id;
-            const _linhasTriagem = _getLinhasTriagem(id);
+            const _linhasTriagem = [
+                getItem(id, campoPressaoArterial, `${pressaoArterialS}/${pressaoArterialD}`, 'mmHg', empresaId),
+                getItem(id, campoTemperatura, temperatura, '°C', empresaId),
+                getItem(id, campoPulso, pulso, 'bpm', empresaId),
+                getItem(id, campoSaturacaiOxigenio, so, '%', empresaId),
+                getItem(id, campoFrequenciaRespiratoria, respiracao, 'ipm', empresaId),
+                getItem(id, campoDor, dor, 'Un.', empresaId),
+            ];
             await api.post('linhatriagem/add/all', _linhasTriagem);
-            console.log('Triagem e linhas registradas com sucesso');
 
-            if (exibirEncaminhamento) {
-                await encaminhar();
-            }
+            if (exibirEncaminhamento) await encaminhar();
 
             onCancel();
-
-            toast.success('Paciente Triado com sucesso!', {
-                autoClose: 2000,
-            });
-
-            carrgarDados();
-
-
+            toast.success('Paciente Triado com sucesso!');
+            carregarDados?.(); // Corrigido: agora usa a função correta
         } catch (e) {
-            console.error('Erro ao registrar triagem ou linhas:', e);
-            toast.success('Falha ao triar o paciente!', {
-                autoClose: 2000,
-            });
-            // Aqui pode exibir mensagem de erro ao usuário
+            console.error('Erro ao registrar triagem:', e);
+            toast.error('Falha ao triar o paciente!');
         }
     };
 
-    function _getLinhasTriagem(triagemId) {
-        let _linhas = [];
-        _linhas.push(
-            getItem(
-                triagemId,
-                campoPressaoArterial,
-                pressaoArterialS + '/' + pressaoArterialD,
-                'mmHg'
-            )
-        );
-        // _linhas.push(getItem(triagemId, campoPeso, peso, 'Kg'));
-        _linhas.push(getItem(triagemId, campoTemperatura, temperatura, '°C'));
-        _linhas.push(getItem(triagemId, campoPulso, pulso, 'bpm'));
-        _linhas.push(getItem(triagemId, campoSaturacaiOxigenio, so, '%'));
-        _linhas.push(
-            getItem(triagemId, campoFrequenciaRespiratoria, respiracao, 'ipm')
-        );
-        _linhas.push(getItem(triagemId, campoDor, dor, 'Un.'));
-        return _linhas;
-    }
-
-    function getItem(id, campo, valor, unidade) {
-        let _item = {
-            campo: campo,
-            valor: valor,
-            unidade: unidade,
-            triagemId: id,
-        };
-        return _item;
-    }
-
     const encaminhar = async () => {
         try {
-            await api.put(
-                'inscricao/edit/' + inscricaoId + '/TRIADO/' + encaminhamento
-            );
-            console.log('Encaminhamento efectuado com sucesso');
+            console.log('Encaminhando paciente ID:', inscricaoId, 'para:', encaminhamento);
+            await api.put(`inscricao/edit/${inscricaoId}/TRIADO/${encaminhamento}`);
+            console.log('Paciente encaminhado com sucesso');
             viewPdfPacienteFita('paciente_fita', inscricaoId);
         } catch (e) {
-            console.log('Falha ao efectuar o encaminhamento', e);
+            console.log('Falha ao encaminhar:', e);
         }
     };
 
@@ -662,190 +432,47 @@ export const ModalTriagem = ({
             okText="Actualizar"
             onCancel={onCancel}
             width={modalWidth}
-            style={{
-                maxWidth: modalWidth,
-                minWidth: modalWidth,
-                padding: 0,
-            }}
+            style={{ maxWidth: modalWidth, minWidth: modalWidth, padding: 0 }}
         >
             <Flex gap="large" wrap={false} align="stretch">
-                <Card
-                    bordered
-                    title="Sinais Vitais"
-                    style={{
-                        width: cardWidth,
-                        marginBottom: 10,
-                        marginRight: 0,
-                        boxSizing: 'border-box',
-                    }}
-                >
+                <Card bordered title="Sinais Vitais" style={{ width: cardWidth, marginBottom: 10, marginRight: 0, boxSizing: 'border-box' }}>
                     <Flex gap="middle" vertical>
-                        {/* Pressão Arterial */}
                         <div>
-                            <label>
-                                Pressão Arterial{' '}
-                                <span
-                                    style={{ fontWeight: 'bold', fontSize: 20 }}
-                                >
-                                    {pressaoArterialS}/{pressaoArterialD}
-                                </span>{' '}
-                                mmHg
-                            </label>
+                            <label>Pressão Arterial <span style={{ fontWeight: 'bold', fontSize: 20 }}>{pressaoArterialS}/{pressaoArterialD}</span> mmHg</label>
                             <Row gutter={8}>
-                                <Col span={12}>
-                                    <span>Sistólica</span>
-                                    <Slider
-                                        min={1}
-                                        max={220}
-                                        onChange={setPressaoArterialS}
-                                        value={pressaoArterialS}
-                                    />
-                                </Col>
-                                <Col span={12}>
-                                    <span>Diastólica</span>
-                                    <Slider
-                                        min={1}
-                                        max={220}
-                                        onChange={setPressaoArterialD}
-                                        value={pressaoArterialD}
-                                    />
-                                </Col>
+                                <Col span={12}><span>Sistólica</span><Slider ref={pressaoArterialSRef} min={1} max={220} onChange={setPressaoArterialS} value={pressaoArterialS} /></Col>
+                                <Col span={12}><span>Diastólica</span><Slider ref={pressaoArterialDRef} min={1} max={220} onChange={setPressaoArterialD} value={pressaoArterialD} /></Col>
                             </Row>
                         </div>
-                        {/* Temperatura */}
                         <div>
-                            <label>
-                                Temperatura{' '}
-                                <span
-                                    style={{ fontWeight: 'bold', fontSize: 20 }}
-                                >
-                                    {temperatura}
-                                </span>{' '}
-                                °C
-                            </label>
+                            <label>Temperatura <span style={{ fontWeight: 'bold', fontSize: 20 }}>{temperatura}</span> °C</label>
                             <Row gutter={8}>
-                                <Col span={18}>
-                                    <Slider
-                                        marks={marks}
-                                        value={temperatura}
-                                        onChange={setTemperatura}
-                                        min={1}
-                                        max={100}
-                                        style={sliderStyle}
-                                    />
-                                </Col>
-                                <Col span={6}>
-                                    <InputNumber
-                                        min={1}
-                                        max={100}
-                                        value={temperatura}
-                                        onChange={setTemperatura}
-                                    />
-                                </Col>
+                                <Col span={18}><Slider ref={temperaturaRef} marks={marks} value={temperatura} onChange={setTemperatura} min={1} max={100} style={sliderStyle} /></Col>
+                                <Col span={6}><InputNumber min={1} max={100} value={temperatura} onChange={setTemperatura} /></Col>
                             </Row>
                         </div>
-                        {/* Peso */}
                         <div>
-                            <label>
-                                Peso{' '}
-                                <span
-                                    style={{ fontWeight: 'bold', fontSize: 20 }}
-                                >
-                                    {peso}
-                                </span>{' '}
-                                Kg
-                            </label>
+                            <label>Peso <span style={{ fontWeight: 'bold', fontSize: 20 }}>{peso}</span> Kg</label>
                             <Row gutter={8}>
-                                <Col span={18}>
-                                    <Slider
-                                        min={1}
-                                        max={220}
-                                        onChange={setPeso}
-                                        value={peso}
-                                        style={sliderStyle}
-                                    />
-                                </Col>
-                                <Col span={6}>
-                                    <InputNumber
-                                        min={1}
-                                        max={220}
-                                        value={peso}
-                                        onChange={setPeso}
-                                    />
-                                </Col>
+                                <Col span={18}><Slider ref={pesoRef} min={1} max={220} onChange={setPeso} value={peso} style={sliderStyle} /></Col>
+                                <Col span={6}><InputNumber min={1} max={220} value={peso} onChange={setPeso} /></Col>
                             </Row>
                         </div>
-                        {/* Outros sinais */}
                         <Row gutter={16}>
-                            <Col span={12}>
-                                <label>Pulso</label>
-                                <InputNumber
-                                    min={1}
-                                    max={220}
-                                    value={pulso}
-                                    onChange={setPulso}
-                                    style={{ width: '100%' }}
-                                    ref={pulsoRef}
-                                />
-                            </Col>
-                            <Col span={12}>
-                                <label>Saturação O₂ (%)</label>
-                                <InputNumber
-                                    min={1}
-                                    max={100}
-                                    value={so}
-                                    onChange={setSo}
-                                    style={{ width: '100%' }}
-                                    ref={soRef}
-                                />
-                            </Col>
+                            <Col span={12}><label>Pulso</label><InputNumber ref={pulsoRef} min={1} max={220} value={pulso} onChange={setPulso} style={{ width: '100%' }} /></Col>
+                            <Col span={12}><label>Saturação O₂ (%)</label><InputNumber ref={soRef} min={1} max={100} value={so} onChange={setSo} style={{ width: '100%' }} /></Col>
                         </Row>
                         <Row gutter={16}>
-                            <Col span={12}>
-                                <label>Respiração (ipm)</label>
-                                <InputNumber
-                                    min={1}
-                                    max={60}
-                                    value={respiracao}
-                                    onChange={setRespiracao}
-                                    style={{ width: '100%' }}
-                                />
-                            </Col>
-                            <Col span={12}>
-                                <label>Dor (0-10)</label>
-                                <InputNumber
-                                    min={0}
-                                    max={10}
-                                    value={dor}
-                                    onChange={setDor}
-                                    style={{ width: '100%' }}
-                                />
-                            </Col>
+                            <Col span={12}><label>Respiração (ipm)</label><InputNumber ref={respiracaoRef} min={1} max={60} value={respiracao} onChange={setRespiracao} style={{ width: '100%' }} /></Col>
+                            <Col span={12}><label>Dor (0-10)</label><InputNumber ref={dorRef} min={0} max={10} value={dor} onChange={setDor} style={{ width: '100%' }} /></Col>
                         </Row>
-                        {/* Encaminhamento condicional */}
                         {exibirEncaminhamento && (
                             <div>
-                                <label
-                                    style={{
-                                        fontWeight: 'bold',
-                                        marginBottom: 10,
-                                    }}
-                                >
-                                    Encaminhamento:
-                                </label>
-                                <Radio.Group
-                                    onChange={(e) =>
-                                        setEncaminhamento(e.target.value)
-                                    }
-                                    value={encaminhamento}
-                                >
+                                <label style={{ fontWeight: 'bold', marginBottom: 10 }}>Encaminhamento:</label>
+                                <Radio.Group onChange={(e) => setEncaminhamento(e.target.value)} value={encaminhamento}>
                                     <Space direction="vertical">
-                                        <Radio value="CONSULTORIO">
-                                            Consultório
-                                        </Radio>
-                                        <Radio value="SO">
-                                            Sala de Observação
-                                        </Radio>
+                                        <Radio value="CONSULTORIO">Consultório</Radio>
+                                        <Radio value="SO">Sala de Observação</Radio>
                                         <Radio value="CADEIRA">Cadeira</Radio>
                                     </Space>
                                 </Radio.Group>
@@ -854,10 +481,7 @@ export const ModalTriagem = ({
                     </Flex>
                 </Card>
                 {exibirManchester && (
-                    <Card
-                        title="Triagem de Manchester"
-                        style={{ width: '50%' }}
-                    >
+                    <Card title="Triagem de Manchester" style={{ width: '50%' }}>
                         <TriagemManchester idInscricao={inscricaoId} />
                     </Card>
                 )}
@@ -866,19 +490,17 @@ export const ModalTriagem = ({
     );
 };
 
-export const ModalFinalizarAtendimento = ({
-    estado,
-    onCancel,
-    onFinalizar,
-}) => {
+// === MODAL FINALIZAR ===
+export const ModalFinalizarAtendimento = ({ estado, onCancel, onFinalizar }) => {
     const _finalizarProcesso = async () => {
         await onFinalizar();
         onCancel();
     };
+
     return (
         <Modal
             title="Finalizar Atendimento"
-            visible={estado}
+            open={estado}
             okText="Sim"
             onCancel={onCancel}
             onOk={_finalizarProcesso}

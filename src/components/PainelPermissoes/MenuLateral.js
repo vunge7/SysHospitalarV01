@@ -1,12 +1,13 @@
 // MenuLateral.js - CORRIGIDO
-import React, { useEffect, useState, useContext } from 'react';
-import { Menu, Alert } from 'antd';
+import React, { useEffect, useState, useContext, useMemo } from 'react';
+import { Menu, Alert, Button } from 'antd';
 import { fetchFiliaisByUsuarioId, fetchAllFiliais } from '../../service/api';
 import { AuthContext } from '../../contexts/auth';
 import { HomeOutlined, ShopOutlined } from '@ant-design/icons';
 
-const MenuLateral = ({ onSelectFilial }) => {
+const MenuLateral = ({ onSelectFilial, selectedFilial }) => {
     const { user } = useContext(AuthContext);
+    const isAdmin = String(user?.tipo).toUpperCase() === 'ADMINISTRATIVO';
     const usuarioId = user?.id;
     const [filiais, setFiliais] = useState([]);
     const [error, setError] = useState(null);
@@ -22,22 +23,27 @@ const MenuLateral = ({ onSelectFilial }) => {
                     console.log('Todas as filiais:', allFiliaisResponse.data);
                     console.log('IDs das filiais do usuário:', userFiliaisResponse.data);
 
-                    // Garante que allFiliaisResponse.data é um array de objetos { id, nome }
+                    // Garante que allFiliaisResponse.data é um array de objetos com id (nome pode faltar)
                     const allFiliais = Array.isArray(allFiliaisResponse.data)
-                        ? allFiliaisResponse.data.filter(filial => filial && filial.id && filial.nome)
+                        ? allFiliaisResponse.data.filter(filial => filial && filial.id)
                         : [];
 
-                    // Garante que userFiliaisResponse.data é um array de IDs
+                    // Normaliza userFiliaisResponse para array de IDs (pode vir como objetos ou números/strings)
                     const userFilialIds = Array.isArray(userFiliaisResponse.data)
                         ? userFiliaisResponse.data
+                            .map(item => (typeof item === 'object' ? (item.id ?? item.filialId ?? item.empresaId ?? item?.filial?.id) : item))
+                            .filter(id => id !== undefined && id !== null)
+                            .map(id => String(id))
                         : [];
 
-                    // Filtra apenas as filiais que o usuário tem acesso
+                    // Mapeia todas as filiais, marcando acesso do usuário
                     const filiaisFormatadas = allFiliais
-                        .filter(filial => userFilialIds.includes(filial.id))
                         .map(filial => ({
                             id: filial.id,
-                            nome: filial.nome || `Filial ${filial.id}`,
+                            nome: filial.nome || filial.descricao || `Filial ${filial.id}`,
+                            // empresaId nos endpoints é o id da própria filial
+                            empresaId: filial.id,
+                            hasAccess: isAdmin ? true : userFilialIds.includes(String(filial.id))
                         }));
 
                     setFiliais(filiaisFormatadas);
@@ -52,10 +58,20 @@ const MenuLateral = ({ onSelectFilial }) => {
         }
     }, [usuarioId]);
 
-    const menuItems = filiais.map(filial => ({
+    // Reordena para colocar a filial selecionada no topo
+    const orderedFiliais = useMemo(() => {
+        if (!selectedFilial) return filiais;
+        const sel = filiais.find(f => f.id === selectedFilial.id);
+        const rest = filiais.filter(f => f.id !== selectedFilial.id);
+        return sel ? [sel, ...rest] : filiais;
+    }, [filiais, selectedFilial]);
+
+    const menuItems = orderedFiliais.map(filial => ({
         key: filial.id.toString(),
-        label: filial.nome,
+        label: (isAdmin || filial.hasAccess) ? filial.nome : `${filial.nome} (sem acesso)`,
         icon: <ShopOutlined />,
+        disabled: isAdmin ? false : !filial.hasAccess,
+        filial: filial // Adiciona o objeto filial completo
     }));
 
     return (
@@ -67,9 +83,14 @@ const MenuLateral = ({ onSelectFilial }) => {
                     { key: 'home', label: 'Início', icon: <HomeOutlined /> },
                     ...menuItems,
                 ]}
+                selectedKeys={selectedFilial?.id ? [String(selectedFilial.id)] : []}
                 onClick={(e) => {
-                    const filialId = e.key === 'home' ? null : parseInt(e.key);
-                    onSelectFilial(filialId);
+                    if (e.key === 'home') {
+                        onSelectFilial(null);
+                    } else {
+                        const filialSelecionada = filiais.find(f => f.id.toString() === e.key);
+                        onSelectFilial(filialSelecionada);
+                    }
                 }}
                 style={{ height: '100%', borderRight: 0 }}
             />

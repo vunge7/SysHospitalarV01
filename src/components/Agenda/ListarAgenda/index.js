@@ -1,9 +1,69 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Button, Input, Select, Spin, Alert, message, Modal, DatePicker } from 'antd';
+import { Table, Button, Input, Select, Spin, Alert, message, Modal } from 'antd';
 import { EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined, SaveOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
 import './style.css';
 import {viewPdfGenerico} from '../../util/utilitarios';
+
+// Importar funções de email do NovaAgenda
+const prepareEmailData = (linha, pacientes, pessoas, funcionarios, consultas) => {
+  const paciente = pacientes.find(p => p.id === Number(linha.pacienteId));
+  const funcionario = funcionarios.find(f => f.id === Number(linha.funcionarioId));
+  const pessoaMedico = pessoas.find(p => p.id === funcionario?.pessoaId);
+  const pessoaPaciente = pessoas.find(p => p.id === paciente?.pessoaId);
+  const consulta = consultas.find(c => c.id === Number(linha.produtoId));
+
+  const dataRealizacao = new Date(linha.dataRealizacao.replace('T', ' '));
+  const data = `${dataRealizacao.getDate().toString().padStart(2, '0')}/${(dataRealizacao.getMonth() + 1).toString().padStart(2, '0')}/${dataRealizacao.getFullYear()}`;
+  const hora = `${dataRealizacao.getHours().toString().padStart(2, '0')}:${dataRealizacao.getMinutes().toString().padStart(2, '0')}`;
+
+  return {
+    pacienteEmail: pessoaPaciente?.email || '',
+    dotorEmail: pessoaMedico?.email || '',
+    pacienteNome: pessoaPaciente?.nome || 'Paciente Desconhecido',
+    dotorNome: pessoaMedico?.nome || 'Médico Desconhecido',
+    data,
+    hora,
+    consulta: consulta?.productDescription || 'Consulta Desconhecida',
+    funcionarioId: funcionario?.id || ''
+  };
+};
+
+const sendEmailInBackground = async (linha, pacientes, pessoas, funcionarios, consultas) => {
+  try {
+    const emailData = prepareEmailData(linha, pacientes, pessoas, funcionarios, consultas);
+    console.log('Enviando e-mail de atualização em segundo plano:', emailData);
+    
+    // Verifica se tem pelo menos um email disponível
+    if (!emailData.pacienteEmail && !emailData.dotorEmail) {
+      console.warn('Nenhum e-mail disponível (paciente ou médico), e-mail não enviado:', emailData);
+      return;
+    }
+    
+    message.loading({
+      content: 'Enviando e-mail de atualização de data...',
+      key: 'emailSending',
+      className: 'custom-message',
+      style: { top: '20px', right: '20px' }
+    });
+    
+    await api.post('enviar-email', { ...emailData, isUpdate: true });
+    message.success({
+      content: 'E-mail de atualização enviado com sucesso!',
+      key: 'emailSending',
+      className: 'custom-message',
+      style: { top: '20px', right: '20px' }
+    });
+  } catch (error) {
+    console.error('Erro ao enviar e-mail de atualização:', error);
+    message.error({
+      content: 'Erro ao enviar e-mail de atualização.',
+      key: 'emailSending',
+      className: 'custom-message',
+      style: { top: '20px', right: '20px' }
+    });
+  }
+};
 
 const { confirm } = Modal;
 
@@ -354,7 +414,7 @@ const ListarAgenda = React.memo(({
     const funcionario = localData.funcionarios.find(f => f.id === Number(linha.funcionarioId));
     const pessoa = localData.pessoas.find(p => p.id === funcionario?.pessoaId);
     const paciente = localData.pacientes.find(p => p.id === Number(linha.pacienteId));
-    const consulta = consultasCarregadas.find(c => c.id === Number(linha.consultaId));
+    const consulta = consultasCarregadas.find(c => c.id === Number(linha.produtoId));
     const data = new Date(linha.dataRealizacao);
     setDia(data.getDate().toString().padStart(2, '0'));
     setMes((data.getMonth() + 1).toString().padStart(2, '0'));
@@ -364,7 +424,7 @@ const ListarAgenda = React.memo(({
     setEditandoLinhaId(linha.id);
     setLinhaEditada({
       id: linha.id,
-      consultaId: linha.consultaId,
+      produtoId: linha.produtoId,
       funcionarioId: linha.funcionarioId,
       pacienteId: linha.pacienteId,
       dataRealizacao: linha.dataRealizacao,
@@ -432,18 +492,9 @@ const ListarAgenda = React.memo(({
   };
 
   const validateLinhaEditada = (linha) => {
-    const requiredFields = {
-      consultaId: 'Consulta',
-      funcionarioId: 'Médico',
-      pacienteId: 'Paciente',
-      dataRealizacao: 'Data de Realização',
-    };
-    const missingFields = Object.entries(requiredFields)
-      .filter(([field]) => !linha[field] || linha[field].toString().trim() === '' || Number(linha[field]) === 0)
-      .map(([, label]) => label);
-    if (missingFields.length > 0) {
+    if (!linha.dataRealizacao || linha.dataRealizacao.toString().trim() === '') {
       message.error({
-        content: `Preencha: ${missingFields.join(', ')}.`,
+        content: 'Data de realização é obrigatória.',
         className: 'custom-message',
         style: { top: '20px', right: '20px' }
       });
@@ -501,37 +552,55 @@ const ListarAgenda = React.memo(({
         });
         return;
       }
+      
+      // Obter empresaId do localStorage
+      const user = JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}');
+      const empresaId = user?.filialSelecionada?.id;
+      
       const linhaParaEnviar = {
         id: Number(linhaEditada.id),
-        consultaId: Number(linhaEditada.consultaId),
+        produtoId: Number(linhaEditada.produtoId),
         funcionarioId: Number(linhaEditada.funcionarioId),
         pacienteId: Number(linhaEditada.pacienteId),
         dataRealizacao: dataFormatada,
         agendaId: linhaEditada.agendaId || null,
         status: linhaEditada.status,
         confirmacao: linhaEditada.confirmacao || false,
+        empresaId: Number(empresaId) || null,
       };
+      
+      console.log('Enviando para PUT linhaagenda/edit:', linhaParaEnviar);
+      
       await api.put('linhaagenda/edit', linhaParaEnviar);
+      
+      // Atualizar estado local
+      const linhaAtualizada = { ...linhaEditada, ...linhaParaEnviar };
       setLocalData(prev => ({
         ...prev,
         linhasAgenda: prev.linhasAgenda.map(linha =>
-          linha.id === linhaId ? { ...linha, ...linhaParaEnviar } : linha
+          linha.id === linhaId ? linhaAtualizada : linha
         ),
       }));
       setLinhasAgenda(prev =>
         prev.map(linha =>
-          linha.id === linhaId ? { ...linha, ...linhaParaEnviar } : linha
+          linha.id === linhaId ? linhaAtualizada : linha
         )
       );
       setEditandoLinhaId(null);
       setFiltros({ usuario: '', medico: '', paciente: '', consulta: '' });
       setMostrarSugestoes({ usuario: false, medico: false, paciente: false, consulta: false });
+      
       message.success({
         content: 'Linha atualizada com sucesso!',
         className: 'custom-message',
         style: { top: '20px', right: '20px' }
       });
+
+      // Enviar e-mail de atualização em segundo plano
+      sendEmailInBackground(linhaAtualizada, localData.pacientes, localData.pessoas, localData.funcionarios, consultasCarregadas);
+      
     } catch (error) {
+      console.error('Erro ao salvar linha:', error.response?.data || error);
       let errorMessage = 'Erro ao salvar a linha.';
       if (error.response?.status === 400) {
         errorMessage = error.response.data.message || 'Dados inválidos.';
@@ -610,7 +679,7 @@ const ListarAgenda = React.memo(({
 
   const linhasFiltradas = (localData.linhasAgenda || []).filter(linha => {
     const estado = getEstadoLinha(linha);
-    const consulta = consultasCarregadas.find(c => c.id === Number(linha.consultaId));
+    const consulta = consultasCarregadas.find(c => c.id === Number(linha.produtoId));
     const consultaDescricao = consulta?.productDescription?.toLowerCase() || '';
     const matchesStatus = filtroAtivo === 'todos' || estado === filtroAtivo;
     const matchesConsulta = !filtroConsulta || consultaDescricao.includes(filtroConsulta.toLowerCase());
@@ -633,30 +702,6 @@ const ListarAgenda = React.memo(({
       dataIndex: 'pacienteId',
       key: 'paciente',
       render: (pacienteId, linha) => {
-        if (editandoLinhaId === linha.id) {
-          return (
-            <Select
-              showSearch
-              value={linhaEditada.pacienteId || undefined}
-              placeholder="Buscar paciente"
-              onSearch={value => setFiltros(prev => ({ ...prev, paciente: value }))}
-              onChange={(value, option) => {
-                setLinhaEditada(prev => ({ ...prev, pacienteId: value }));
-                setFiltros(prev => ({ ...prev, paciente: option.children }));
-              }}
-              filterOption={false}
-              style={{ width: 180 }}
-            >
-              {filteredPacientes.length > 0 ? (
-                filteredPacientes.map(pac => (
-                  <Select.Option key={pac.id} value={pac.id}>{pac.nome}</Select.Option>
-                ))
-              ) : (
-                <Select.Option disabled>Nenhum paciente encontrado</Select.Option>
-              )}
-            </Select>
-          );
-        }
         const paciente = localData.pacientes.find(p => p.id === Number(pacienteId));
         const pessoa = paciente ? localData.pessoas.find(p => p.id === paciente.pessoaId) : null;
         return pessoa?.nome || 'Paciente não encontrado';
@@ -664,10 +709,10 @@ const ListarAgenda = React.memo(({
     },
     {
       title: 'Consulta',
-      dataIndex: 'consultaId',
+      dataIndex: 'produtoId',
       key: 'consulta',
-      render: (consultaId, linha) => {
-        const consulta = consultasCarregadas.find(c => c.id === Number(consultaId));
+      render: (produtoId, linha) => {
+        const consulta = consultasCarregadas.find(c => c.id === Number(produtoId));
         return consulta?.productDescription || '';
       },
     },
@@ -676,7 +721,24 @@ const ListarAgenda = React.memo(({
       dataIndex: 'dataRealizacao',
       key: 'data',
       render: (data, linha) => {
-        return new Date(data).toLocaleString();
+        const isEditing = editandoLinhaId === linha.id;
+        return (
+          <div key={`data-${linha.id}-${isEditing ? 'editing' : 'view'}`}>
+            {isEditing ? (
+              <input
+                type="datetime-local"
+                value={linhaEditada.dataRealizacao ? linhaEditada.dataRealizacao.slice(0, 16) : ''}
+                onChange={(e) => {
+                  const dataFormatada = e.target.value ? e.target.value + ':00' : '';
+                  setLinhaEditada(prev => ({ ...prev, dataRealizacao: dataFormatada }));
+                }}
+                style={{ width: 180, padding: '4px' }}
+              />
+            ) : (
+              <span>{new Date(data).toLocaleString()}</span>
+            )}
+          </div>
+        );
       },
     },
     {

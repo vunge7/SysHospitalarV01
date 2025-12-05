@@ -48,7 +48,7 @@ function PainelPrincipal() {
                 { key: 'contabilidade', label: 'Contabilidade', icon: 'fas fa-calculator', allowed: [] },
                 { key: 'clientes', label: 'Clientes', icon: 'fas fa-user-tie', allowed: [] },
                 { key: 'seguradoras', label: 'Seguradoras', icon: 'fas fa-shield-alt', allowed: [] },
-                { key: 'empresas', label: 'Empresas', icon: 'fas fa-building', allowed: [] },
+                { key: 'empresa', label: 'Empresas', icon: 'fas fa-building', to: '/admin/empresa', allowed: [] },
                 { key: 'relatorios', label: 'Relatórios', icon: 'fas fa-chart-line', allowed: [] },
                 { key: 'permissoes', label: 'Permissões', icon: 'fas fa-user-shield', to: '/admin/permissoes',  allowed: [] },
             ],

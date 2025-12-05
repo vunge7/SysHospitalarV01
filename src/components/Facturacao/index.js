@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import Modal from 'react-modal';
 import { format, unformat } from '@react-input/number-format';
 import FacturacaoHeader from '../FacturacaoHeader';
@@ -12,10 +12,12 @@ import { format as dateFormat, formatDate } from 'date-fns';
 import { viewPdf } from '../util/utilitarios';
 import { Table, Pagination } from 'antd';
 import { SearchOutlined, PlusOutlined, DollarOutlined, XOutlined, CheckOutlined } from '@ant-design/icons';
+import { AuthContext } from '../../contexts/auth';
 
 Modal.setAppElement('#root');
 
 function Facturacao() {
+    const { user } = useContext(AuthContext);
     const [linhasFactura, setlinhasFactura] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isOpenGasto, setIsOpenGasto] = useState(false);
@@ -245,6 +247,15 @@ function Facturacao() {
         setTotalItens(total);
     }
 
+    function limparTela() {
+        setlinhasFactura([]);
+        setTotalLiquido(0);
+        setTotalIva(0);
+        setTotalDesconto(0);
+        setTotalIliquido(0);
+        setTotalItens(0);
+    }
+
     async function salvarLinha(line) {
         await api
             .post('line/add', line)
@@ -256,7 +267,7 @@ function Facturacao() {
             });
     }
 
-    const parseLine = (linha, number, sourceDocumentId, reference) => {
+    const parseLine = (linha, number, sourceDocumentId, reference, empresaId) => {
         let line = {
             lineNumber: number,
             productCode: linha.id,
@@ -280,6 +291,7 @@ function Facturacao() {
             sourceDocumentId: sourceDocumentId,
             lineDiscount: linha.desconto,
             lineTotal: getValorUnFormat(linha.subTotal),
+            empresaId: Number(empresaId),
         };
         return line;
     };
@@ -303,7 +315,16 @@ function Facturacao() {
         let grossTotal = Number(taxPayable) + Number(netTotal);
         let discountTotal = getValorUnFormat(totalDesconto);
         let customerId = 1;
-        let documentType = 'FT';
+        
+        // Get empresaId from user's selected filial
+        const userFromStorage = JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}');
+        const empresaId = user?.filialSelecionada?.id || userFromStorage?.filialSelecionada?.id;
+
+        if (!empresaId) {
+            alert('Erro: Nenhuma empresa/filial selecionada. Por favor, selecione uma empresa.');
+            return;
+        }
+
         let document = {
             invoiceNo: invoiceNo,
             invoiceStatus: invoiceStatus,
@@ -323,6 +344,7 @@ function Facturacao() {
             grossTotal: grossTotal,
             discountTotal: discountTotal,
             customerId: customerId,
+            empresaId: Number(empresaId),
         };
 
         await api
@@ -331,10 +353,11 @@ function Facturacao() {
                 var number = 0;
                 var lastId = r.data.id;
                 linhasFactura.map(async (linha) => {
-                    let linhaConvertida = parseLine(linha, ++number, lastId, document.invoiceNo);
+                    let linhaConvertida = parseLine(linha, ++number, lastId, document.invoiceNo, empresaId);
                     await salvarLinha(linhaConvertida);
                 });
                 viewPdf('invoice_A4', lastId);
+                limparTela();
             })
             .catch((error) => {
                 console.log(error);
@@ -345,8 +368,6 @@ function Facturacao() {
         <div id="container-facturacao" className="container-facturacao">
             <div className="container-item"><FacturacaoHeader /></div>
             <div className="container-item"><FacturacaoConfig /></div>
-
-            {/* BARRA DE AÇÕES */}
             <div className="container-item action-bar">
                 <div className="numero-linhas">
                     Nº de Linhas: <strong>{linhasFactura.length}</strong>
