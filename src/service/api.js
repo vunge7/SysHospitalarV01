@@ -89,7 +89,7 @@ export const fetchUsersByFilialId = async (filialId) => {
                     usersInFilial.push(user);
                 }
             } catch (error) {
-                console.error(`Erro ao verificar permissões do usuário ${user.id}:`, error);
+                console.error(`Erro ao verificar permissões do usuário  ${user.id}:`, error);
             }
         }
         
