@@ -151,7 +151,7 @@ const dataAtual = formatDate();
             usuarioId: parseInt(usuarioId),
             painelId: 1,
             empresaId: parseInt(empresaId), // Campo obrigatório
-            dataCriacao: dataAtual, // Já está como string formatada
+            dataCriacao: dataAtual, 
             usuarioIdCriacao: parseInt(usuarioLogadoId) || 1,
             dataActualizacao: dataAtual, // Mesma data de criação
             usuarioIdActualizacao: parseInt(usuarioLogadoId) || 1
