@@ -1,10 +1,13 @@
 import React, { useContext, useState, useEffect } from 'react';
+import Modal from 'react-modal';
 import { StockContext } from '../../../contexts/StockContext';
-import { Table, Button, Modal, Form, Input, Select, Spin, Popconfirm, Space, Tooltip, Alert } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Form, Input, Select, Spin, Popconfirm, Space, Tooltip, Alert } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, XOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import './Fornecedores.css';
 import { toast } from 'react-toastify';
+
+Modal.setAppElement('#root');
 
 const API_BASE_URL = 'http://localhost:8081';
 
@@ -256,17 +259,26 @@ const Fornecedores = () => {
         className="custom-table"
       />
       <Modal
-        title={editingFornecedor ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}
-        open={isModalOpen}
-        onCancel={() => {
+        isOpen={isModalOpen}
+        onRequestClose={() => {
           setIsModalOpen(false);
           setEditingFornecedor(null);
           form.resetFields();
         }}
-        footer={null}
-        destroyOnClose
+        onAfterClose={() => {
+          setIsModalOpen(false);
+          setEditingFornecedor(null);
+          form.resetFields();
+        }}
+        className="modal-content"
+        overlayClassName="modal-overlay"
+        closeTimeoutMS={481}
       >
-        <Form form={form} onFinish={handleAddFornecedor} layout="vertical">
+        <div className="modal-header">
+          <h3 className="modal-title">{editingFornecedor ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}</h3>
+        </div>
+
+        <Form form={form} onFinish={handleAddFornecedor} layout="vertical" className="modal-body">
           <Form.Item
             name="nome"
             label="Nome"
@@ -364,6 +376,15 @@ const Fornecedores = () => {
             </Space>
           </Form.Item>
         </Form>
+
+        <button onClick={() => {
+          setIsModalOpen(false);
+          setEditingFornecedor(null);
+          form.resetFields();
+        }} className="modal-close-btn">
+          <XOutlined /> Fechar
+        </button>
+
       </Modal>
     </div>
   );

@@ -275,25 +275,28 @@ const initialArmazens = [
 ];
 
 function Laboratorio() {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [exames, setExames] = useState(() => {
-        const saved = localStorage.getItem('exames');
-        return saved ? JSON.parse(saved) : initialExames;
-    });
+    const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
+    const [exames, setExames] = useState(initialExames);
     const [pacientes, setPacientes] = useState(initialPacientes);
     const [tiposExame, setTiposExame] = useState(initialTiposExame);
     const [medicos, setMedicos] = useState(initialMedicos);
     const [artigos, setArtigos] = useState(initialArtigos);
     const [armazens, setArmazens] = useState(initialArmazens);
-    const [examesRequisitados, setExamesRequisitados] = useState([]);
-    const [collapsed, setCollapsed] = useState(false);
-    const navigate = useNavigate();
-    const [examesProdutos, setExamesProdutos] = useState([]);
-    const [resultadosExames, setResultadosExames] = useState([]);
-    const [resultadoExames, setResultadoExames] = useState([]);
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [requisicoesExame, setRequisicoesExame] = useState([]);
     const [linhasRequisicaoExame, setLinhasRequisicaoExame] = useState([]);
+    const [examesProdutos, setExamesProdutos] = useState([]);
+    const [examesRequisitados, setExamesRequisitados] = useState([]);
+    const [resultadosExames, setResultadosExames] = useState([]);
+    const [resultadoExames, setResultadoExames] = useState([]);
+
+    // Função para obter empresaId
+    const getEmpresaId = () => {
+        const user = JSON.parse(localStorage.getItem('@sysHospitalarPRO') || '{}');
+        return user?.filialSelecionada?.id || 1;
+    };
 
     // Consolidar todas as chamadas de API em um único useEffect
     useEffect(() => {
@@ -372,33 +375,77 @@ function Laboratorio() {
     };
 
     const createExame = async (exame) => {
-        console.log('Criando exame:', exame);
-        const newExame = { ...exame, id: exames.length + 1 };
-        setExames([...exames, newExame]);
-        return { data: newExame };
+        console.log('Criando exame via API:', exame);
+        try {
+            // Converter para o formato esperado pelo backend
+            const produtoData = {
+                productType: exame.tipoExameId || 'EXAME',
+                productCode: `EXAME-${Date.now()}`,
+                productGroup: 'Exames',
+                productDescription: exame.designacao,
+                unidadeMedida: exame.unidade || 'UNIDADE',
+                preco: exame.preco || 0,
+                taxIva: 0,
+                finalPrice: exame.preco || 0,
+                status: true,
+                productTypeId: exame.tipoExameId || 1,
+                productGroupId: 1,
+                unidadeMedidaId: 1,
+                empresaId: getEmpresaId(),
+                intervaloReferencia: exame.referencias ? Object.values(exame.referencias)[0]?.valor : null,
+                produtoPaiId: exame.produtoPaiId || null
+            };
+
+            const response = await api.post('/produto/add', produtoData);
+            console.log('Exame criado com sucesso:', response.data);
+            return { data: response.data };
+        } catch (error) {
+            console.error('Erro ao criar exame:', error);
+            throw error;
+        }
     };
 
     const updateExame = async (id, updatedExame) => {
-        console.log('Atualizando exame ID:', id, updatedExame);
-        const index = exames.findIndex((exame) => exame.id === id);
-        if (index !== -1) {
-            const newExames = [...exames];
-            newExames[index] = { ...newExames[index], ...updatedExame };
-            setExames(newExames);
-            return { data: newExames[index] };
+        console.log('Atualizando exame via API ID:', id, updatedExame);
+        try {
+            // Converter para o formato esperado pelo backend
+            const produtoData = {
+                productType: updatedExame.tipoExameId || 'EXAME',
+                productCode: `EXAME-${id}`,
+                productGroup: 'Exames',
+                productDescription: updatedExame.designacao,
+                unidadeMedida: updatedExame.unidade || 'UNIDADE',
+                preco: updatedExame.preco || 0,
+                taxIva: 0,
+                finalPrice: updatedExame.preco || 0,
+                status: updatedExame.status !== false,
+                productTypeId: updatedExame.tipoExameId || 1,
+                productGroupId: 1,
+                unidadeMedidaId: 1,
+                empresaId: getEmpresaId(),
+                intervaloReferencia: updatedExame.referencias ? Object.values(updatedExame.referencias)[0]?.valor : null,
+                produtoPaiId: updatedExame.produtoPaiId || null
+            };
+
+            const response = await api.put(`/produto/${id}`, produtoData);
+            console.log('Exame atualizado com sucesso:', response.data);
+            return { data: response.data };
+        } catch (error) {
+            console.error('Erro ao atualizar exame:', error);
+            throw error;
         }
-        throw new Error('Exame não encontrado');
     };
 
     const deleteExame = async (id) => {
-        console.log('Excluindo exame ID:', id);
-        const index = exames.findIndex((exame) => exame.id === id);
-        if (index !== -1) {
-            const newExames = exames.filter((exame) => exame.id !== id);
-            setExames(newExames);
-            return { data: exames[index] };
+        console.log('Excluindo exame via API ID:', id);
+        try {
+            const response = await api.delete(`/produto/${id}`);
+            console.log('Exame excluído com sucesso:', response.data);
+            return { data: response.data };
+        } catch (error) {
+            console.error('Erro ao excluir exame:', error);
+            throw error;
         }
-        throw new Error('Exame não encontrado');
     };
 
     const fetchAllData = async () => {
@@ -479,7 +526,7 @@ function Laboratorio() {
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100vh' }}>
             <Cabecario />
             <div style={{ width: 'auto', display: 'flex', flexDirection: 'row', flex: 1 }}>
-                <SideMenu menu={menuItems} onClick={handleTabClick} />
+                <SideMenu menu={menuItems} onClick={handleTabClick} collapsed={collapsed} setCollapsed={setCollapsed} />
                 <MainContent>
                     {activeTab === 'dashboard' && (
                         <Dashboard
@@ -537,16 +584,14 @@ function Laboratorio() {
     );
 }
 
-function SideMenu({ menu, onClick }) {
-    const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
-
+function SideMenu({ menu, onClick, collapsed, setCollapsed }) {
     useEffect(() => {
         const handleResize = () => {
             setCollapsed(window.innerWidth <= 768);
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    }, [setCollapsed]);
 
     const toggleCollapsed = () => {
         setCollapsed(!collapsed);

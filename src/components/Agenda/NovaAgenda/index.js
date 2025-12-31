@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Button, Modal, Form, Select, Spin, message, DatePicker } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { api } from '../../../service/api';
@@ -6,6 +6,7 @@ import './style.css';
 import {viewPdfGenerico} from "../../util/utilitarios";
 import dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
+import { AuthContext } from '../../../contexts/auth';
 
 const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, agendas, linhasAgenda = [], handleInputChange }) => {
   const [funcionarioFilter, setFuncionarioFilter] = useState(form.funcionarioFilter || '');
@@ -158,6 +159,7 @@ const FormRow = ({ form, index, funcionarios, pessoas, pacientes, consultas, age
 };
 
 const NovaAgenda = () => {
+  const { user } = useContext(AuthContext);
   const [form] = Form.useForm();
   const [formularios, setFormularios] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
@@ -282,22 +284,26 @@ const NovaAgenda = () => {
     try {
       const emailData = prepareEmailData(formulario, pacientes, pessoas, funcionarios, consultas);
       console.log('Enviando e-mail em segundo plano:', emailData);
-      message.loading({
-        content: 'Enviando e-mail de confirmação...',
-        key: 'emailSending',
-        className: 'custom-message',
-        style: { top: '20px', right: '20px' }
-      });
-      if (!emailData.pacienteEmail || !emailData.dotorEmail) {
-        console.warn('E-mails do paciente ou médico não disponíveis, e-mail não enviado:', emailData);
+      
+      // Verifica se tem pelo menos um email disponível
+      if (!emailData.pacienteEmail && !emailData.dotorEmail) {
+        console.warn('Nenhum e-mail disponível (paciente ou médico), e-mail não enviado:', emailData);
         message.warning({
-          content: 'E-mails do paciente ou médico não disponíveis.',
+          content: 'Nenhum e-mail disponível para envio.',
           key: 'emailSending',
           className: 'custom-message',
           style: { top: '20px', right: '20px' }
         });
         return;
       }
+      
+      message.loading({
+        content: 'Enviando e-mail de confirmação...',
+        key: 'emailSending',
+        className: 'custom-message',
+        style: { top: '20px', right: '20px' }
+      });
+      
       await api.post('enviar-email', emailData);
       message.success({
         content: 'E-mail de confirmação enviado com sucesso!',
@@ -319,17 +325,33 @@ const NovaAgenda = () => {
   const handleOk = async () => {
     try {
       await form.validateFields();
+      
+      // Obter empresaId da filial selecionada
+      const storageUser = localStorage.getItem('@sysHospitalarPRO');
+      const userFromStorage = storageUser ? JSON.parse(storageUser) : null;
+      const empresaId = user?.filialSelecionada?.id || userFromStorage?.filialSelecionada?.id || null;
+      
+      if (!empresaId) {
+        message.error({
+          content: 'Nenhuma filial selecionada. Por favor, selecione uma filial antes de continuar.',
+          className: 'custom-message',
+          style: { top: '20px', right: '20px' }
+        });
+        return;
+      }
+      
       setIsSaving(true);
       const createdForms = [];
       for (const formulario of formularios) {
         const dataFormatada = formatDateForBackend(formulario.dataRealizacao);
         const linhaData = {
-          consultaId: Number(formulario.consultaId),
+          produtoId: Number(formulario.consultaId),
           funcionarioId: Number(formulario.funcionarioId),
           pacienteId: Number(formulario.pacienteId),
           dataRealizacao: dataFormatada,
           agendaId: Number(formulario.agendaId),
-          status: true
+          status: true,
+          empresaId: Number(empresaId)
         };
         console.log('Enviando para POST linhaagenda/add:', linhaData);
 

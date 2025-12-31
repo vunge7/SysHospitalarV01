@@ -12,7 +12,7 @@ import {
     fetchAllFiliais
 } from '../../service/api';
 
-const { Content } = Layout;
+const { Content, Sider } = Layout;
 
 const PainelPermissoes = () => {
     const { user } = useContext(AuthContext);
@@ -46,7 +46,8 @@ const PainelPermissoes = () => {
                             if (filialCompleta) {
                                 setSelectedFilial({
                                     ...filialCompleta,
-                                    empresaId: filialCompleta.empresaId || filialCompleta.empresa?.id
+                                    // Padroniza: empresaId usado nos endpoints é o id da própria filial
+                                    empresaId: filialCompleta.id
                                 });
                             }
                             return filiais;
@@ -67,7 +68,19 @@ const PainelPermissoes = () => {
         <Layout style={{ minHeight: '100vh' }}>
             <Cabecario />
             <Layout>
-                <MenuLateral onSelectFilial={setSelectedFilial} />
+                <Sider
+                    width={260}
+                    style={{
+                        background: '#fff',
+                        borderRight: '1px solid #f0f0f0',
+                        height: '100vh', 
+                        position: 'sticky',
+                        top: 0,
+                        overflow: 'auto'
+                    }}
+                >
+                    <MenuLateral onSelectFilial={setSelectedFilial} selectedFilial={selectedFilial} />
+                </Sider>
                 <Content style={{ padding: '20px', margin: '0 16px' }}>
                     <Spin spinning={loading} tip="Carregando...">
                         {error && <Alert message={error} type="error" showIcon style={{ marginBottom: '20px' }} />}
@@ -89,7 +102,7 @@ const PainelPermissoes = () => {
                                     
                                         filialId={selectedFilial?.id}
                                         filialNome={selectedFilial?.nome}
-                                        empresaId={user?.empresaId || selectedFilial?.empresaId}
+                                        empresaId={selectedFilial?.id}
                                         onSelectUser={(user) => {
                                             setSelectedUser(user);
                                             setSelectedUserName(`${user.nome} (${user.userName})`);

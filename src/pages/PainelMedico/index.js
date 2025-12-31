@@ -7,6 +7,7 @@ import Rodape from '../../components/Rodape';
 import { HomeFilled, PoweroffOutlined } from '@ant-design/icons';
 import Internamento from '../../components/Medico/Internamento';
 import BancoUrgencia from '../../components/Medico/BancoUrgencia';
+import Consulta from '../../components/Medico/Consulta';
 import { Button } from 'antd';
 import { MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
 
@@ -31,6 +32,7 @@ function PainelMedico({ children }) {
                 <SideMenu menu={menu} />
                 <Content>
                   <Routes>
+                    <Route path="/medico/consulta" element={<Consulta />} />
                     <Route path="/medico/internamento" element={<Internamento />} />
                     <Route path="/medico/bancourgencia" element={<BancoUrgencia />} />
                     {/* Outras rotas podem ser adicionadas aqui */}

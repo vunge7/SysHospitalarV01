@@ -1,6 +1,7 @@
 // ListaUsuariosComAcoes.js - ATUALIZADO
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { List, Button, Spin, Alert, Modal, message } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { 
     fetchUsersByFilialId,
     fetchUsersNotInFilial,
@@ -8,7 +9,10 @@ import {
     removeUserFromBranch,
     fetchPessoaById,
     fetchFuncionarioById,
+    fetchAllFiliais,
+    fetchUserPermissions,
 } from '../../service/api';
+import { AuthContext } from '../../contexts/auth';
 
 const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, loading }) => {
     const [users, setUsers] = useState([]); // Usuários afiliados (enriquecidos)
@@ -16,6 +20,29 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [error, setError] = useState(null);
     const [addModalVisible, setAddModalVisible] = useState(false);
+    const { user: loggedUser } = useContext(AuthContext);
+    const loggedUserId = loggedUser?.id;
+
+    const resolveEmpresaId = async () => {
+        let empresaIdToUse = empresaId;
+        if (!empresaIdToUse) {
+            try {
+                const allFiliaisResponse = await fetchAllFiliais();
+                const allFiliais = Array.isArray(allFiliaisResponse.data) ? allFiliaisResponse.data : [];
+                console.log('ResolveEmpresaId - allFiliais length:', allFiliais.length, 'filialId alvo:', filialId);
+                const filial = allFiliais.find(f => {
+                    if (!f) return false;
+                    const fid = f.id ?? f.filialId ?? f?.filial?.id;
+                    return String(fid) === String(filialId);
+                });
+                empresaIdToUse = filial?.empresaId || filial?.empresa?.id || filial?.empresaID || filial?.empresaMatrizId;
+                console.log('ResolveEmpresaId - empresaId:', empresaIdToUse, 'filial encontrada:', filial);
+            } catch (e) {
+                console.warn('ResolveEmpresaId - falha ao buscar filiais:', e);
+            }
+        }
+        return empresaIdToUse;
+    };
 
     const loadUsers = async () => {
         if (!filialId) {
@@ -30,8 +57,12 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
         setError(null);
         
         try {
+            const empresaIdResolved = await resolveEmpresaId();
+            if (!empresaIdResolved) {
+                throw new Error('Não foi possível determinar o ID da empresa para a filial selecionada');
+            }
             console.log('Buscando usuários da filial...');
-            const usersResponse = await fetchUsersByFilialId(filialId);
+            const usersResponse = await fetchUsersByFilialId(empresaIdResolved);
             console.log('Resposta fetchUsersByFilialId:', usersResponse.data);
             const filialUsersRaw = Array.isArray(usersResponse.data) ? usersResponse.data : [];
             console.log(`Total de usuários brutos da filial: ${filialUsersRaw.length}`);
@@ -42,7 +73,7 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
             setUsers(enrichedFilialUsers);
 
             console.log('Buscando todos os usuários...');
-            const allUsersResponse = await fetchUsersNotInFilial(filialId);
+            const allUsersResponse = await fetchUsersNotInFilial(empresaIdResolved);
             console.log('Resposta fetchUsersNotInFilial:', allUsersResponse.data);
             const allUsersRaw = Array.isArray(allUsersResponse.data) ? allUsersResponse.data : [];
             console.log(`Total de usuários brutos (não afiliados): ${allUsersRaw.length}`);
@@ -130,11 +161,29 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
 
     const handleAddUser = async (userId) => {
         try {
-            const empresaIdToUse = empresaId || 1; // Valor padrão 1 para desenvolvimento
+            let empresaIdToUse = await resolveEmpresaId();
             console.log(`Tentando adicionar usuário ${userId} à filial ${filialId} na empresa ${empresaIdToUse}`);
             
             if (!empresaIdToUse) {
-                throw new Error('ID da empresa não fornecido');
+                // Fallback: tentar resolver empresaId a partir do filialId
+                try {
+                    const allFiliaisResponse = await fetchAllFiliais();
+                    const allFiliais = Array.isArray(allFiliaisResponse.data) ? allFiliaisResponse.data : [];
+                    console.log('Fallback allFiliais length:', allFiliais.length, 'filialId alvo:', filialId);
+                    const filial = allFiliais.find(f => {
+                        if (!f) return false;
+                        const fid = f.id ?? f.filialId ?? f?.filial?.id;
+                        return String(fid) === String(filialId);
+                    });
+                    empresaIdToUse = filial?.empresaId || filial?.empresa?.id || filial?.empresaID || filial?.empresaMatrizId;
+                    console.log('empresaId resolvido via fallback:', empresaIdToUse, 'filial encontrada:', filial);
+                } catch (e) {
+                    console.warn('Falha ao buscar filiais para resolver empresaId:', e);
+                }
+
+                if (!empresaIdToUse) {
+                    throw new Error('ID da empresa não fornecido');
+                }
             }
             
             await addUserToBranch(filialId, userId, empresaIdToUse);
@@ -148,28 +197,64 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
         }
     };
 
-    const handleRemoveUser = async (userId, userName) => {
-        if (!window.confirm(`Tem certeza que deseja remover o usuário ${userName} desta filial?`)) {
+    const handleRemoveUser = (userId, userName) => {
+        if (String(userId) === String(loggedUserId)) {
+            message.warning('Você não pode remover a si mesmo desta filial.');
             return;
         }
-        
-        try {
-            console.log(`Removendo usuário ${userId} (${userName}) da filial ${filialId}`);
-            // Aqui precisamos do painelPermissoesId, não do userId
-            // Vamos encontrar o painelPermissoesId correspondente
-            const user = users.find(u => u.id === userId);
-            if (!user || !user.painelPermissoesId) {
-                throw new Error('ID de permissão não encontrado para este usuário');
+
+        Modal.confirm({
+            title: 'Remover usuário da filial',
+            icon: <ExclamationCircleOutlined />,
+            content: (
+                <div>
+                    Tem certeza que deseja remover <strong>{userName}</strong> desta filial?
+                </div>
+            ),
+            okText: 'Remover',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            centered: true,
+            onOk: async () => {
+                try {
+                    const empresaIdResolved = await resolveEmpresaId();
+                    if (!empresaIdResolved) {
+                        throw new Error('Não foi possível determinar o ID da empresa para remoção');
+                    }
+                    console.log(`Removendo usuário ${userId} (${userName}) da filial ${filialId} (empresa ${empresaIdResolved})`);
+
+                    // Buscar todas as permissões do usuário nesta empresa (filial)
+                    const permsResp = await fetchUserPermissions(userId, empresaIdResolved);
+                    const perms = Array.isArray(permsResp.data) ? permsResp.data : [];
+                    if (!perms.length) {
+                        throw new Error('Nenhuma permissão encontrada para este usuário nesta filial');
+                    }
+
+                    // Remover TODAS as permissões encontradas
+                    const results = await Promise.allSettled(
+                        perms
+                            .map(p => p?.id)
+                            .filter(id => !!id)
+                            .map(id => removeUserFromBranch(id))
+                    );
+
+                    const successCount = results.filter(r => r.status === 'fulfilled').length;
+                    const failCount = results.length - successCount;
+                    if (successCount > 0 && failCount === 0) {
+                        message.success(`Removido com sucesso (${successCount}) permissão(ões).`);
+                    } else if (successCount > 0 && failCount > 0) {
+                        message.warning(`Removidas ${successCount} permissão(ões), ${failCount} falha(s).`);
+                    } else {
+                        throw new Error('Falha ao remover permissões do usuário');
+                    }
+                    await loadUsers();
+                } catch (error) {
+                    console.error('Erro ao remover usuário:', error);
+                    const errorMessage = error.response?.data?.message || error.message || 'Erro ao remover usuário da filial';
+                    message.error(errorMessage);
+                }
             }
-            
-            await removeUserFromBranch(user.painelPermissoesId);
-            message.success('Usuário removido da filial com sucesso!');
-            await loadUsers();
-        } catch (error) {
-            console.error('Erro ao remover usuário:', error);
-            const errorMessage = error.response?.data?.message || 'Erro ao remover usuário da filial';
-            message.error(errorMessage);
-        }
+        });
     };
 
     return (
@@ -193,11 +278,13 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
                 <List
                     bordered
                     dataSource={users}
+                    rowKey={(user) => String(user.id)}
                     locale={{ emptyText: 'Nenhum usuário afiliado' }}
                     renderItem={(user) => (
                         <List.Item
                             actions={[
                                 <Button 
+                                    key={`manage-${user.id}`}
                                     type="primary" 
                                     onClick={() => {
                                         console.log(`Selecionando usuário ${user.id} para gerenciar permissões`, user);
@@ -208,9 +295,10 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
                                     Gerenciar Permissões
                                 </Button>,
                                 <Button 
+                                    key={`remove-${user.id}`}
                                     type="danger" 
                                     onClick={() => handleRemoveUser(user.id, user.userName)}
-                                    disabled={loading || !user.painelPermissoesId}
+                                    disabled={loading}
                                 >
                                     Remover da Filial
                                 </Button>,
@@ -232,11 +320,13 @@ const ListaUsuariosComAcoes = ({ filialId, filialNome, empresaId, onSelectUser, 
                 <List
                     bordered
                     dataSource={allUsers}
+                    rowKey={(user) => String(user.id)}
                     locale={{ emptyText: 'Todos os usuários já estão nesta filial' }}
                     renderItem={(user) => (
                         <List.Item
                             actions={[
                                 <Button
+                                    key={`add-${user.id}`}
                                     type="primary"
                                     onClick={() => handleAddUser(user.id)}
                                 >

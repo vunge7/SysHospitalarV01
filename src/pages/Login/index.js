@@ -48,10 +48,17 @@ const Login = () => {
                 password: values.password,
             });
             localStorage.setItem('token', response.data.token);
+            const funcionarioId = (
+                response.data?.funcionarioId ??
+                response.data?.funcionario_id ??
+                response.data?.funcionario?.id ??
+                null
+            );
             const user = {
                 id: response.data.id,
                 username: response.data.username,
                 tipo: response.data.tipo,
+                funcionarioId,
             };
             signIn(user);
         } catch (err) {

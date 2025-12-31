@@ -32,6 +32,7 @@ function TriagemManchester(props) {
     const [itensAmarelo, setItensAmarelo] = useState([]);
     const [itensVerde, setItensVerde] = useState([]);
     const [minuto, setMunito] = useState(0);
+    const [triagemConcluida, setTriagemConcluida] = useState(false);
 
     useEffect(() => {
         updateListOrange();
@@ -56,6 +57,10 @@ function TriagemManchester(props) {
                 )
                 .then((r) => {
                     console.log('actualizado com sucesso');
+                    setTriagemConcluida(true);
+                    if (props.onTriagemComplete) {
+                        props.onTriagemComplete();
+                    }
                 })
                 .catch((e) => {
                     console.log('Error', e);

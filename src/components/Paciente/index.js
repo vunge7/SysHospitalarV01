@@ -337,25 +337,61 @@ function Paciente() {
     };
 
     const novaInscrica = async () => {
-        let inscricao = {
-            dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            dataActualizacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            estadoInscricao: 'NAO_TRIADO',
-            pacienteId: id,
-        };
+        try {
+            console.log('=== INÍCIO DA FUNÇÃO novaInscrica ===');
+            console.log('ID do paciente:', id);
+            
+            const response = await api.get(`paciente/${id}`);
+            const paciente = response.data;
+            console.log('Dados do paciente recebidos:', paciente);
+            
+            if (!paciente.empresaId) {
+                console.error('ERRO: Paciente não tem empresaId');
+                throw new Error('Paciente não tem empresa cadastrada');
+            }
 
-        await api
-            .post('inscricao/add', inscricao)
-            .then((r) => {
-                console.log('Inscricao criada com sucesso!..');
-                success('Inscricao criada com sucesso!..');
-            })
-            .catch((e) => {
-                console.log(e);
-                error('Falha ao inscrever o paciente');
+            const now = new Date();
+            const formattedDate = now.toISOString().slice(0, 19).replace('T', ' ');
+            
+            const inscricao = {
+                dataCriacao: formattedDate,
+                dataActualizacao: formattedDate,
+                estadoInscricao: 'NAO_TRIADO',
+                condicaoInscricao: 'ABERTO',
+                pacienteId: Number(id),
+                empresaId: Number(paciente.empresaId),
+                encaminhamento: 'CONSULTORIO',
+                corTriagemManchester: null,
+                minutoEsperaTriagemManchester: null,
+                obsTriagemManchester: null
+            };
+
+            console.log('Dados da inscrição a serem enviados:', JSON.stringify(inscricao, null, 2));
+            console.log('=== FAZENDO REQUISIÇÃO POST /inscricao/add ===');
+
+            const r = await api.post('inscricao/add', inscricao);
+            
+            console.log('=== SUCESSO ===');
+            console.log('Resposta da API:', r.data);
+            success('Inscrição criada com sucesso!');
+            buscar();
+            
+        } catch (error) {
+            console.error('=== ERRO NA FUNÇÃO novaInscrica ===');
+            console.error('Tipo do erro:', error.constructor.name);
+            console.error('Mensagem:', error.message);
+            console.error('Status:', error.response?.status);
+            console.error('Status Text:', error.response?.statusText);
+            console.error('Dados do erro:', error.response?.data);
+            console.error('Config da requisição:', {
+                url: error.config?.url,
+                method: error.config?.method,
+                data: error.config?.data
             });
+            
+            error(error.response?.data?.message || 'Falha ao criar a inscrição. Verifique o console para mais detalhes.');
+        }
     };
-
     const limpar = () => {
         setId('');
         setNome('');
@@ -554,13 +590,14 @@ function Paciente() {
                     {id > 0 && (
                         <Button
                             type="primary"
-                            onClick={(e) => {
-                                novaInscrica();
-                            }}
+                            onClick={novaInscrica}
                         >
                             {' '}
                             Nova Inscrição
                         </Button>
+                    )}
+                    {!id && (
+                        <span style={{color: 'red'}}>Busque um paciente primeiro (id está vazio)</span>
                     )}
 
                     <Form.Item>

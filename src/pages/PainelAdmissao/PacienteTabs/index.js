@@ -29,21 +29,26 @@ const PacienteTabs = (props) => {
     const [conveniosPaciente, setConveniosPaciente] = useState([]);
     const [loadingConvenios, setLoadingConvenios] = useState(false);
 
+    // Combina convênios já salvos com os pendentes (ainda não enviados ao backend)
+    const conveniosCombinados = [
+        ...conveniosPaciente,
+        ...(props.conveniosPendentes || []).map((c, index) => ({
+            ...c,
+            id: `pendente-${index}`,
+            _pendente: true,
+        })),
+    ];
+
     const [mostrarFormNovaSeguradora, setMostrarFormNovaSeguradora] = useState(false);
     const [editandoSeguradora, setEditandoSeguradora] = useState(null);
     const [loadingSeguradora, setLoadingSeguradora] = useState(false);
     const [novaSeguradora, setNovaSeguradora] = useState({ nome: '', nif: '', telefone: '', email: '', endereco: '', empresaId: null, status: true });
 
-    const [mostrarFormNovaEmpresa, setMostrarFormNovaEmpresa] = useState(false);
-    const [editandoEmpresa, setEditandoEmpresa] = useState(null);
-    const [loadingEmpresa, setLoadingEmpresa] = useState(false);
-    const [novaEmpresa, setNovaEmpresa] = useState({ nome: '', tipo: 'MATRIZ', nif: '', telefone: '', endereco: '', email: '', status: true });
-
     const tabConfig = [
         { key: 'endereco', label: 'Endereço', icon: <HomeOutlined /> },
         { key: 'fiscal', label: 'Fiscal', icon: <FileTextOutlined /> },
         { key: 'nascimento', label: 'Nascimento', icon: <HeartOutlined /> },
-        { key: 'seguradora', label: 'Convênio', icon: <InsuranceOutlined />, badge: conveniosPaciente.length },
+        { key: 'seguradora', label: 'Convênio', icon: <InsuranceOutlined />, badge: conveniosCombinados.length },
         { key: 'empresa', label: 'Empresa', icon: <BankOutlined /> },
     ];
 
@@ -64,6 +69,13 @@ const PacienteTabs = (props) => {
     }, []);
 
     useEffect(() => {
+        // Mantém empresaSelecionada sincronizada com a prop
+        if (props.empresaId && props.empresaId !== empresaSelecionada) {
+            setEmpresaSelecionada(props.empresaId);
+        }
+    }, [props.empresaId]);
+
+    useEffect(() => {
         const fetchConvenios = async () => {
             if (!pacienteId) return;
             setLoadingConvenios(true);
@@ -79,6 +91,26 @@ const PacienteTabs = (props) => {
         fetchConvenios();
     }, [pacienteId]);
 
+    // Ao obter um pacienteId válido, envia quaisquer convênios pendentes
+    useEffect(() => {
+        const flushPendentes = async () => {
+            if (!pacienteId || (props.conveniosPendentes || []).length === 0) return;
+            for (const pend of props.conveniosPendentes) {
+                try {
+                    await api.post('/pacienteSeguradora/add', { ...pend, pacienteId: Number(pacienteId) });
+                } catch (e) {
+                    // feedback mínimo; deixa para o usuário tentar novamente manualmente
+                }
+            }
+            try {
+                const res = await api.get(`/pacienteSeguradora/all/${pacienteId}`);
+                setConveniosPaciente(res.data || []);
+            } catch {}
+            props.setConveniosPendentes && props.setConveniosPendentes([]);
+        };
+        flushPendentes();
+    }, [pacienteId, props.conveniosPendentes ? props.conveniosPendentes.length : 0]);
+
     useEffect(() => {
         const updateIndicator = () => {
             const currentTab = tabsRef.current[activeTab];
@@ -90,22 +122,33 @@ const PacienteTabs = (props) => {
         updateIndicator();
         window.addEventListener('resize', updateIndicator);
         return () => window.removeEventListener('resize', updateIndicator);
-    }, [activeTab, conveniosPaciente.length]);
+    }, [activeTab, conveniosCombinados.length]);
 
     const adicionarConvenio = async () => {
         if (!novoConvenio.seguradoraId) return toast.warn('Selecione uma seguradora.');
         const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const empresaIdNum = Number(empresaSelecionada || props.empresaId);
+        const empresaIdFinal = Number.isNaN(empresaIdNum) ? null : empresaIdNum;
+        if (!empresaIdFinal) return toast.warn('Selecione a empresa na aba Empresa.');
         const payload = {
-            seguradoraId: novoConvenio.seguradoraId,
-            pacienteId,
+            seguradoraId: Number(novoConvenio.seguradoraId),
+            pacienteId: Number(pacienteId),
             numeroCartao: novoConvenio.numeroCartao || null,
             dataValidade: novoConvenio.validade ? `${novoConvenio.validade}-01` : null,
             dataCricao: now,
             dataActualizacao: now,
             usuarioIdCricao: 1,
             usuarioIdAtualizacao: 1,
-            empresaId: novoConvenio.empresaId || null
+            empresaId: empresaIdFinal
         };
+
+        // Se ainda não existe paciente, guarda como pendente e envia após criar ficha
+        if (!pacienteId) {
+            props.setConveniosPendentes && props.setConveniosPendentes(prev => ([...(prev || []), payload]));
+            toast.info('Convênio será salvo após criar a ficha do paciente.');
+            setNovoConvenio({ seguradoraId: null, numeroCartao: '', validade: '', empresaId: null });
+            return;
+        }
 
         try {
             await api.post('/pacienteSeguradora/add', payload);
@@ -114,14 +157,26 @@ const PacienteTabs = (props) => {
             toast.success('Convênio adicionado!');
             setNovoConvenio({ seguradoraId: null, numeroCartao: '', validade: '', empresaId: null });
         } catch (error) {
-            toast.error('Erro ao adicionar convênio.');
+            const msg = error?.response?.data || error?.message || 'Erro ao adicionar convênio.';
+            toast.error(typeof msg === 'string' ? msg : 'Erro ao adicionar convênio.');
         }
     };
 
-    const excluirConvenio = async (id) => {
+    const excluirConvenio = async (registro) => {
+        // Se for um convênio pendente (ainda não salvo no backend), remove apenas da lista local
+        if (registro._pendente) {
+            if (props.setConveniosPendentes) {
+                props.setConveniosPendentes((prev = []) =>
+                    prev.filter((c, idx) => `pendente-${idx}` !== registro.id)
+                );
+            }
+            toast.info('Convênio pendente removido.');
+            return;
+        }
+
         try {
-            await api.delete(`/pacienteSeguradora/${id}`);
-            setConveniosPaciente(prev => prev.filter(c => c.id !== id));
+            await api.delete(`/pacienteSeguradora/${registro.id}`);
+            setConveniosPaciente(prev => prev.filter(c => c.id !== registro.id));
             toast.success('Convênio removido.');
         } catch (error) {
             toast.error('Erro ao remover convênio.');
@@ -152,43 +207,41 @@ const PacienteTabs = (props) => {
         }
     };
 
-    const handleCadastrarEmpresa = async () => {
-        if (!novaEmpresa.nome.trim()) return toast.warn('Nome é obrigatório!');
-        setLoadingEmpresa(true);
-        try {
-            const payload = { ...novaEmpresa };
-            let res;
-            if (editandoEmpresa) {
-                res = await api.put(`/empresa/${editandoEmpresa.id}`, payload);
-                toast.success('Empresa atualizada!');
-            } else {
-                res = await api.post('/empresa/add', payload);
-                toast.success('Empresa cadastrada!');
-            }
-            setEmpresas(prev => editandoEmpresa ? prev.map(e => e.id === editandoEmpresa.id ? res.data : e) : [...prev, res.data]);
-            if (!editandoEmpresa) {
-                setEmpresaSelecionada(res.data.id);
-                handleChange('empresaId', res.data.id);
-            }
-            setMostrarFormNovaEmpresa(false);
-            setEditandoEmpresa(null);
-            setNovaEmpresa({ nome: '', tipo: 'MATRIZ', nif: '', telefone: '', endereco: '', email: '', status: true });
-        } catch (error) {
-            toast.error('Erro ao salvar empresa.');
-        } finally {
-            setLoadingEmpresa(false);
-        }
-    };
-
     const columns = [
-        { title: 'Seguradora', render: (_, r) => seguradoras.find(s => s.id === r.seguradoraId)?.nome || '—' },
+        {
+            title: 'Seguradora',
+            render: (_, r) => {
+                const nome = seguradoras.find(s => s.id === r.seguradoraId)?.nome || '—';
+                return (
+                    <span>
+                        {nome}{' '}
+                        {r._pendente && (
+                            <Tag color="orange" style={{ marginLeft: 4 }}>
+                                PENDENTE
+                            </Tag>
+                        )}
+                    </span>
+                );
+            }
+        },
         { title: 'Nº Cartão', dataIndex: 'numeroCartao', render: t => t || '—' },
         { title: 'Validade', dataIndex: 'dataValidade', render: d => d ? format(new Date(d), 'MM/yyyy') : '—' },
-        { title: 'Ações', render: (_, r) => (
-            <Popconfirm title="Excluir?" onConfirm={() => excluirConvenio(r.id)}>
-                <DeleteOutlined style={{ color: '#ff4d4f', cursor: 'pointer' }} />
-            </Popconfirm>
-        )}
+        {
+            title: 'Ações',
+            render: (_, r) => (
+                <Popconfirm
+                    title={r._pendente ? 'Remover convênio pendente?' : 'Excluir convênio?'}
+                    onConfirm={() => excluirConvenio(r)}
+                >
+                    <DeleteOutlined
+                        style={{
+                            color: r._pendente ? '#fa8c16' : '#ff4d4f',
+                            cursor: 'pointer'
+                        }}
+                    />
+                </Popconfirm>
+            )
+        }
     ];
 
     const renderContent = () => {
@@ -475,7 +528,7 @@ const PacienteTabs = (props) => {
                                 <LoadingOutlined style={{ fontSize: 24 }} spin />
                             </div>
                         ) : (
-                            <Table dataSource={conveniosPaciente} columns={columns} rowKey="id" pagination={false} />
+                            <Table dataSource={conveniosCombinados} columns={columns} rowKey="id" pagination={false} />
                         )}
 
                         {mostrarFormNovaSeguradora && (
@@ -521,45 +574,11 @@ const PacienteTabs = (props) => {
                                 handleChange('empresaId', v);
                             }}
                             placeholder="Selecione empresa"
-                            dropdownRender={menu => (
-                                <>
-                                    {menu}
-                                    <Divider style={{ margin: '4px 0' }} />
-                                    <Button type="text" icon={<PlusOutlined />} onClick={() => setMostrarFormNovaEmpresa(true)}>
-                                        Nova
-                                    </Button>
-                                </>
-                            )}
                         >
                             {empresas.map(e => (
                                 <Option key={e.id} value={e.id}>{e.nome}</Option>
                             ))}
                         </Select>
-
-                        {mostrarFormNovaEmpresa && (
-                            <Card size="small" style={{ marginTop: 16 }}>
-                                <h5>Nova Empresa</h5>
-                                <Row gutter={16}>
-                                    <Col span={12}>
-                                        <Input placeholder="Nome *" value={novaEmpresa.nome} onChange={e => setNovaEmpresa(p => ({ ...p, nome: e.target.value }))} />
-                                    </Col>
-                                    <Col span={12}>
-                                        <Select value={novaEmpresa.tipo} onChange={v => setNovaEmpresa(p => ({ ...p, tipo: v }))} style={{ width: '100%' }}>
-                                            <Option value="MATRIZ">Matriz</Option>
-                                            <Option value="FILIAL">Filial</Option>
-                                        </Select>
-                                    </Col>
-                                </Row>
-                                <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                                    <Button type="primary" onClick={handleCadastrarEmpresa} loading={loadingEmpresa}>
-                                        Cadastrar
-                                    </Button>
-                                    <Button danger onClick={() => setMostrarFormNovaEmpresa(false)}>
-                                        Cancelar
-                                    </Button>
-                                </div>
-                            </Card>
-                        )}
                     </div>
                 );
 
