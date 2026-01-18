@@ -160,13 +160,8 @@ const dataAtual = formatDate();
         const painelPermissaoDTO = {
             usuarioId: parseInt(usuarioId),
             painelId: 1,
-<<<<<<< HEAD
-            empresaId: parseInt(empresaId), // Campo obrigatório
-            dataCriacao: dataAtual, 
-=======
             empresaId: parseInt(empresaId), // Campo obrigatório (corrigido)
-            dataCriacao: dataAtual, // Já está como string formatada
->>>>>>> 46890d69b8e397a6f7e11cd1a5da65ca14fb45e8
+            dataCriacao: dataAtual,
             usuarioIdCriacao: parseInt(usuarioLogadoId) || 1,
             dataActualizacao: dataAtual, // Mesma data de criação
             usuarioIdActualizacao: parseInt(usuarioLogadoId) || 1
