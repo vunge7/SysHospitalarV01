@@ -312,6 +312,43 @@ const PacienteForm = () => {
         }
     };
 
+    const handleKeyDownNIF = async (e) => {
+        if (e.key === 'Enter' && nifPesquisa) {
+            await buscarPorNIF();
+        }
+    };
+
+    const buscarPorNIF = async () => {
+        if (!nifPesquisa) return;
+        
+        try {
+            const r = await api.get(`pessoa/nif/${nifPesquisa}`);
+            toast.dismiss();
+            
+            if (r.data && r.data.id) {
+                // Buscar paciente pelo pessoaId
+                const pacienteResponse = await api.get(`paciente/pessoa/${r.data.id}`);
+                if (pacienteResponse.data && pacienteResponse.data.id) {
+                    setPaciente(pacienteResponse.data);
+                    setIdPaciente(pacienteResponse.data.id);
+                    preencherFormulario(r.data);
+                    await carregarFoto(r.data.nomePhoto);
+                    toast.success('Paciente encontrado!');
+                } else {
+                    limparFormulario();
+                    toast.info('Pessoa encontrada mas não possui cadastro de paciente.');
+                }
+            } else {
+                limparFormulario();
+                toast.info('Paciente não encontrado.');
+            }
+        } catch (err) {
+            limparFormulario();
+            toast.info('Paciente não encontrado.');
+        }
+        setNifPesquisa('');
+    };
+
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
     return (
@@ -334,6 +371,8 @@ const PacienteForm = () => {
                                 placeholder="Pesquisa pelo NIF"
                                 value={nifPesquisa}
                                 onChange={(e) => setNifPesquisa(e.target.value)}
+                                onKeyDown={handleKeyDownNIF}
+                                addonAfter={<Button type="link" size="small" onClick={() => buscarPorNIF()}>Buscar</Button>}
                             />
                         </Col>
                     </Row>
@@ -342,7 +381,12 @@ const PacienteForm = () => {
                 <form onSubmit={handleSubmit}>
                     <div className="top-buttons">
                         <Button type="primary" htmlType="submit">Criar Ficha</Button>
-                        <Button onClick={actualizarPaciente}>Atualizar</Button>
+                        <Button 
+                            onClick={actualizarPaciente}
+                            disabled={!paciente.id}
+                        >
+                            Atualizar
+                        </Button>
                         <Button onClick={novaInscricao}>Nova Inscrição</Button>
                         <Button danger onClick={limparFormulario}>Limpar</Button>
                     </div>
