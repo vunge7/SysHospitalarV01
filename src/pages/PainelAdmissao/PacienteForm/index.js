@@ -1,4 +1,3 @@
-// src/pages/PacienteForm.jsx
 import React, { useState, useEffect } from 'react';
 import './style.css';
 import PacienteTabs from '../PacienteTabs';
@@ -29,26 +28,27 @@ const PacienteForm = () => {
     const [conveniosPendentes, setConveniosPendentes] = useState([]);
 
     useEffect(() => {
-        const fetchLastQr = async () => {
-            try {
-                const response = await api.get('/api/qr-data');
-                if (response.data?.pacienteId) {
-                    const id = response.data.pacienteId;
-                    const r = await api.get(`paciente/${id}`);
-                    toast.dismiss();
-                    setPaciente(r.data);
-                    preencherFormulario(r.data);
-                    await carregarFoto(r.data.nomePhoto);
-                    await api.delete('/api/qr-data').catch(() => {});
-                }
-            } catch (error) {
-                if (error.response?.status !== 404) console.warn('Erro QR:', error);
-            }
-        };
+        // QR functionality removida para evitar erros 404
+        // const fetchLastQr = async () => {
+        //     try {
+        //         const response = await api.get('/api/qr-data');
+        //         if (response.data?.pacienteId) {
+        //             const id = response.data.pacienteId;
+        //             const r = await api.get(`paciente/${id}`);
+        //             toast.dismiss();
+        //             setPaciente(r.data);
+        //             preencherFormulario(r.data);
+        //             await carregarFoto(r.data.nomePhoto);
+        //             await api.delete('/api/qr-data').catch(() => {});
+        //         }
+        //     } catch (error) {
+        //         if (error.response?.status !== 404) console.warn('Erro QR:', error);
+        //     }
+        // };
 
-        fetchLastQr();
-        const interval = setInterval(fetchLastQr, 3000);
-        return () => clearInterval(interval);
+        // fetchLastQr();
+        // const interval = setInterval(fetchLastQr, 3000);
+        // return () => clearInterval(interval);
     }, []);
 
     const preencherFormulario = (data) => {
@@ -212,9 +212,38 @@ const PacienteForm = () => {
     };
 
     const actualizarPessoa = async (pessoaId) => {
-        const formComId = { ...form, id: pessoaId };
         try {
-            await api.put(`pessoa/edit/${pessoaId}`, formComId);
+            const dadosActualizacao = {
+                nome: form.nome,
+                apelido: form.apelido,
+                nif: form.nif,
+                empresaId: form.empresaId ? parseInt(form.empresaId) : 1,
+            };
+            
+            if (form.dataNascimento) {
+                const dataFormatada = new Date(form.dataNascimento).toISOString().slice(0, 19).replace('T', ' ');
+                dadosActualizacao.dataNascimento = dataFormatada;
+            }
+            
+            if (form.genero) dadosActualizacao.genero = form.genero;
+            if (form.endereco) dadosActualizacao.endereco = form.endereco;
+            if (form.paisEndereco) dadosActualizacao.paisEndereco = form.paisEndereco;
+            if (form.provinciaEndereco) dadosActualizacao.provinciaEndereco = form.provinciaEndereco;
+            if (form.municipioEndereco) dadosActualizacao.municipioEndereco = form.municipioEndereco;
+            if (form.profissao) dadosActualizacao.profissao = form.profissao;
+            if (form.habilitacao) dadosActualizacao.habilitacao = form.habilitacao;
+            if (form.estadoCivil) dadosActualizacao.estadoCivil = form.estadoCivil;
+            if (form.paisNascimento) dadosActualizacao.paisNascimento = form.paisNascimento;
+            if (form.provinciaNascimento) dadosActualizacao.provinciaNascimento = form.provinciaNascimento;
+            if (form.municipioNascimento) dadosActualizacao.municipioNascimento = form.municipioNascimento;
+            if (form.localNascimento) dadosActualizacao.localNascimento = form.localNascimento;
+            if (form.nacionalidade) dadosActualizacao.nacionalidade = form.nacionalidade;
+            if (form.raca) dadosActualizacao.raca = form.raca;
+            if (form.pai) dadosActualizacao.pai = form.pai;
+            if (form.mae) dadosActualizacao.mae = form.mae;
+            
+            await api.put(`pessoa/edit/${pessoaId}`, dadosActualizacao);
+            
         } catch (err) {
             console.error('Erro ao atualizar pessoa:', err);
             throw err;
@@ -237,16 +266,11 @@ const PacienteForm = () => {
     };
 
     const novaInscricao = async () => {
-        console.log('=== INÍCIO DA FUNÇÃO novaInscricao ===');
-        console.log('ID do paciente:', paciente.id);
-        
         if (!paciente.id) {
-            console.error('ERRO: Paciente não tem ID');
             return toast.warn('Cadastre o paciente primeiro!');
         }
         
         if (!paciente.empresaId) {
-            console.error('ERRO: Paciente não tem empresaId');
             return toast.warn('Paciente não tem empresa cadastrada!');
         }
         
@@ -263,18 +287,12 @@ const PacienteForm = () => {
             minutoEsperaTriagemManchester: null,
         };
         
-        console.log('Dados da inscrição a serem enviados:', JSON.stringify(inscricao, null, 2));
-        
         try {
-            console.log('=== FAZENDO REQUISIÇÃO POST /inscricao/add ===');
             await api.post('inscricao/add', inscricao);
-            console.log('=== SUCESSO ===');
             toast.success('Inscrição criada!');
+            // Limpar formulário após criar inscrição com sucesso
+            limparFormulario();
         } catch (err) {
-            console.error('=== ERRO ===');
-            console.error('Erro:', err);
-            console.error('Response:', err.response?.data);
-            console.error('Status:', err.response?.status);
             toast.error('Falha ao criar inscrição: ' + (err.response?.data?.message || err.message));
         }
     };
@@ -322,17 +340,19 @@ const PacienteForm = () => {
         if (!nifPesquisa) return;
         
         try {
-            const r = await api.get(`pessoa/nif/${nifPesquisa}`);
-            toast.dismiss();
+            // Buscar pessoa pelo NIF
+            const pessoaResponse = await api.get(`pessoa/nif/${nifPesquisa}`);
             
-            if (r.data && r.data.id) {
-                // Buscar paciente pelo pessoaId
-                const pacienteResponse = await api.get(`paciente/pessoa/${r.data.id}`);
-                if (pacienteResponse.data && pacienteResponse.data.id) {
-                    setPaciente(pacienteResponse.data);
-                    setIdPaciente(pacienteResponse.data.id);
-                    preencherFormulario(r.data);
-                    await carregarFoto(r.data.nomePhoto);
+            if (pessoaResponse.data && pessoaResponse.data.id) {
+                // Buscar todos pacientes e filtrar por pessoaId
+                const todosPacientesResponse = await api.get('paciente/all');
+                const pacienteEncontrado = todosPacientesResponse.data.find(p => p.pessoaId === pessoaResponse.data.id);
+                
+                if (pacienteEncontrado) {
+                    setPaciente(pacienteEncontrado);
+                    setIdPaciente(pacienteEncontrado.id);
+                    preencherFormulario(pessoaResponse.data);
+                    await carregarFoto(pessoaResponse.data.nomePhoto);
                     toast.success('Paciente encontrado!');
                 } else {
                     limparFormulario();
@@ -355,7 +375,7 @@ const PacienteForm = () => {
         <div className="patient-form">
             <Spin spinning={false}>
                 <Card className="search-card">
-                    <Row gutter={16}>
+                    <Row gutter={8}>
                         <Col xs={24} md={12}>
                             <Input
                                 prefix={<SearchOutlined />}
@@ -364,6 +384,7 @@ const PacienteForm = () => {
                                 onChange={(e) => setIdPesquisa(e.target.value)}
                                 onKeyDown={handleKeyDownID}
                                 addonAfter={<Button type="link" size="small">Buscar</Button>}
+                                size="small"
                             />
                         </Col>
                         <Col xs={24} md={12}>
@@ -373,6 +394,7 @@ const PacienteForm = () => {
                                 onChange={(e) => setNifPesquisa(e.target.value)}
                                 onKeyDown={handleKeyDownNIF}
                                 addonAfter={<Button type="link" size="small" onClick={() => buscarPorNIF()}>Buscar</Button>}
+                                size="small"
                             />
                         </Col>
                     </Row>
@@ -380,53 +402,67 @@ const PacienteForm = () => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="top-buttons">
-                        <Button type="primary" htmlType="submit">Criar Ficha</Button>
+                        <Button 
+                            type="primary" 
+                            htmlType="submit"
+                            disabled={paciente.id}
+                            size="small"
+                        >
+                            Criar Ficha
+                        </Button>
                         <Button 
                             onClick={actualizarPaciente}
                             disabled={!paciente.id}
+                            size="small"
                         >
                             Atualizar
                         </Button>
-                        <Button onClick={novaInscricao}>Nova Inscrição</Button>
-                        <Button danger onClick={limparFormulario}>Limpar</Button>
+                        <Button 
+                            onClick={novaInscricao}
+                            disabled={!paciente.id}
+                            size="small"
+                        >
+                            Nova Inscrição
+                        </Button>
+                        <Button danger onClick={limparFormulario} size="small">Limpar</Button>
                     </div>
 
                     <h3>Ficha do Paciente</h3>
 
-                    <Row gutter={24} className="form-main">
-                        <Col xs={24} lg={16} className="form-left">
-                            <Row gutter={16}>
-                                <Col xs={24} sm={12}>
+                    <Row gutter={8} className="form-main">
+                        <Col xs={24} xl={18} className="form-left">
+                            <Row gutter={8}>
+                                <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Nome:</label>
-                                        <Input name="nome" value={form.nome} onChange={handleInputChange} />
+                                        <Input name="nome" value={form.nome} onChange={handleInputChange} size="small" />
                                         {errors.nome && <span className="error">{errors.nome}</span>}
                                     </div>
                                 </Col>
-                                <Col xs={24} sm={12}>
+                                <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Sexo:</label>
-                                        <Select value={form.genero} onChange={v => handleChange('genero', v)} style={{ width: '100%' }}>
+                                        <Select value={form.genero} onChange={v => handleChange('genero', v)} style={{ width: '100%' }} size="small">
                                             <Option value="">---</Option>
                                             <Option value="MASCULINO">Masculino</Option>
                                             <Option value="FEMININO">Feminino</Option>
                                         </Select>
                                     </div>
                                 </Col>
-                            </Row>
-
-                            <Row gutter={16}>
-                                <Col xs={24} sm={12}>
+                                <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Apelido:</label>
-                                        <Input name="apelido" value={form.apelido} onChange={handleInputChange} />
+                                        <Input name="apelido" value={form.apelido} onChange={handleInputChange} size="small" />
                                         {errors.apelido && <span className="error">{errors.apelido}</span>}
                                     </div>
                                 </Col>
-                                <Col xs={24} sm={12}>
+                            </Row>
+
+                            <Row gutter={8}>
+                                <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>Raça</label>
-                                        <Select value={form.raca} onChange={v => handleChange('raca', v)} style={{ width: '100%' }}>
+                                        <Select value={form.raca} onChange={v => handleChange('raca', v)} style={{ width: '100%' }} size="small">
                                             <Option value="">---</Option>
                                             <Option value="Negra">Negra</Option>
                                             <Option value="Branca">Branca</Option>
@@ -436,30 +472,27 @@ const PacienteForm = () => {
                                         </Select>
                                     </div>
                                 </Col>
-                            </Row>
-
-                            <Row gutter={16}>
-                                <Col xs={24} sm={12}>
+                                <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* NIF:</label>
-                                        <Input name="nif" value={form.nif} onChange={handleInputChange} />
+                                        <Input name="nif" value={form.nif} onChange={handleInputChange} size="small" />
                                         {errors.nif && <span className="error">{errors.nif}</span>}
                                     </div>
                                 </Col>
                             </Row>
                         </Col>
 
-                        <Col xs={24} lg={8} className="form-right">
-                            <Card title="Foto do Paciente" style={{ textAlign: 'center' }}>
+                        <Col xs={24} xl={6} className="form-right">
+                            <Card title="Foto" style={{ textAlign: 'center' }}>
                                 <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
                                     {photoPreview ? (
-                                        <Avatar size={140} src={photoPreview} />
+                                        <Avatar size={80} src={photoPreview} />
                                     ) : (
-                                        <Avatar size={140} icon={<UserOutlined />} />
+                                        <Avatar size={80} icon={<UserOutlined />} />
                                     )}
                                 </Upload>
                                 <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
-                                    <Button icon={<UploadOutlined />} block style={{ marginTop: 16 }}>
+                                    <Button icon={<UploadOutlined />} block size="small" style={{ marginTop: 8 }}>
                                         Selecionar Foto
                                     </Button>
                                 </Upload>

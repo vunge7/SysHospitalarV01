@@ -1,113 +1,150 @@
-/* ======================================== CORES HOSPITALAR ======================================== */
+/* ======================================== CORES MODERNAS 2025 ======================================== */
 :root {
-  --primary: #1890ff;
-  --success: #52c41a;
-  --warning: #faad14;
-  --error: #ff4d4f;
-  --bg: #f5f7fa;
+  --primary: #0ea5e9;       /* cyan-500 */
+  --primary-dark: #0284c7;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --bg: #f8fafc;            /* slate-50 */
   --card-bg: #ffffff;
-  --text: #262626;
-  --border: #d9d9d9;
+  --text: #0f172a;          /* slate-900 */
+  --text-secondary: #475569; /* slate-600 */
+  --border: #e2e8f0;
   --radius: 8px;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
 }
 
-/* ======================================== LAYOUT ======================================== */
+/* ======================================== BASE ======================================== */
 .patient-form {
-  max-width: 1200px;
-  margin: 24px auto;
-  padding: 24px;
-  background: var(--bg);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.search-card {
-  margin-bottom: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
   padding: 16px;
-  background: var(--card-bg);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--bg);
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  min-height: calc(100vh - 140px); /* considerando header + footer */
 }
 
-/* ======================================== BOTÕES ======================================== */
+h3 {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ======================================== SEARCH BAR ======================================== */
+.search-card {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+.search-card .ant-input {
+  height: 36px;
+  font-size: 13px;
+}
+
+/* ======================================== BOTÕES TOPO ======================================== */
 .top-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 20px;
+  justify-content: flex-start;
 }
 
 .top-buttons .ant-btn {
-  min-width: 140px;
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
   font-weight: 500;
+  border-radius: var(--radius);
 }
 
-.top-buttons .ant-btn-primary { background: var(--primary); border-color: var(--primary); }
-.top-buttons .ant-btn-default { border-color: #40a9ff; color: #40a9ff; }
-.top-buttons .ant-btn-success { background: var(--success); border-color: var(--success); }
-.top-buttons .ant-btn-danger { background: var(--error); border-color: var(--error); }
+.top-buttons .ant-btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+}
 
-/* ======================================== FORMULÁRIO ======================================== */
+.top-buttons .ant-btn-danger {
+  background: var(--error);
+  border-color: var(--error);
+}
+
+/* ======================================== FORM MAIN ======================================== */
 .form-main {
-  background: var(--card-bg);
-  padding: 24px;
+  background: white;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  padding: 20px;
+  border: 1px solid var(--border);
 }
 
-.form-left .form-group,
-.form-right .form-group {
+.form-group {
   margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
   margin-bottom: 6px;
-  font-weight: 600;
-  color: #595959;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .form-group .ant-input,
-.form-group .ant-select {
+.form-group .ant-select-selector {
+  height: 36px !important;
+  font-size: 13px;
   border-radius: var(--radius);
+  border-color: #cbd5e1;
 }
 
-.form-group .ant-select-selection-item,
-.form-group .ant-select-selection-placeholder {
-  line-height: 28px;
-  font-size: 13px;
+.form-group .ant-select-selection-item {
+  line-height: 34px;
 }
 
 .error {
   color: var(--error);
-  font-size: 12px;
+  font-size: 11px;
   margin-top: 4px;
   display: block;
 }
 
 /* ======================================== FOTO ======================================== */
-.form-right .ant-card {
+.patient-photo-card {
   text-align: center;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  padding: 16px;
+  background: white;
+  box-shadow: var(--shadow-sm);
 }
 
-.form-right .ant-upload {
-  display: block;
-  margin: 16px auto 0;
+.patient-photo-card .ant-avatar {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 12px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-.form-right .ant-avatar {
-  border: 3px solid #e8e8e8;
-  box-shadow: var(--shadow);
+.patient-photo-card .ant-btn {
+  margin-top: 8px;
 }
 
-/* ======================================== RESPONSIVO ======================================== */
+/* ======================================== RESPONSIVE ======================================== */
+@media (max-width: 992px) {
+  .form-main { padding: 16px; }
+  .top-buttons { justify-content: center; }
+}
+
 @media (max-width: 768px) {
-  .form-main {
-    padding: 16px;
-  }
-  .top-buttons .ant-btn {
-    width: 100%;
-  }
+  .patient-form { padding: 12px; }
+  .top-buttons .ant-btn { flex: 1; min-width: 120px; }
+  .form-group { margin-bottom: 20px; }
 }
