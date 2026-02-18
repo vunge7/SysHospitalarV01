@@ -5,18 +5,48 @@ import PacienteTabs from '../PacienteTabs';
 import { api } from '../../../service/api';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
-import { Card, Row, Col, Input, Select, Button, Upload, Avatar, Spin } from 'antd';
-import { UploadOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import {
+    Card,
+    Row,
+    Col,
+    Input,
+    Select,
+    Button,
+    Upload,
+    Avatar,
+    Spin,
+} from 'antd';
+import {
+    UploadOutlined,
+    SearchOutlined,
+    UserOutlined,
+} from '@ant-design/icons';
 
 const { Option } = Select;
 
 const PacienteForm = () => {
     const [form, setForm] = useState({
-        nif: '', nome: '', apelido: '', paisEndereco: '', provinciaEndereco: '',
-        municipioEndereco: '', endereco: '', profissao: '', habilitacao: '',
-        estadoCivil: '', paisNascimento: '', provinciaNascimento: '',
-        municipioNascimento: '', dataNascimento: '', localNascimento: '',
-        nacionalidade: '', genero: '', raca: '', pai: '', mae: '', empresaId: '',
+        nif: '',
+        nome: '',
+        apelido: '',
+        paisEndereco: '',
+        provinciaEndereco: '',
+        municipioEndereco: '',
+        endereco: '',
+        profissao: '',
+        habilitacao: '',
+        estadoCivil: '',
+        paisNascimento: '',
+        provinciaNascimento: '',
+        municipioNascimento: '',
+        dataNascimento: '',
+        localNascimento: '',
+        nacionalidade: '',
+        genero: '',
+        raca: '',
+        pai: '',
+        mae: '',
+        empresaId: '',
     });
 
     const [photo, setPhoto] = useState(null);
@@ -29,6 +59,7 @@ const PacienteForm = () => {
     const [conveniosPendentes, setConveniosPendentes] = useState([]);
 
     useEffect(() => {
+        /*
         const fetchLastQr = async () => {
             try {
                 const response = await api.get('/api/qr-data');
@@ -45,14 +76,16 @@ const PacienteForm = () => {
                 if (error.response?.status !== 404) console.warn('Erro QR:', error);
             }
         };
-
-        fetchLastQr();
+        */
+        //fetchLastQr();
+        /*
         const interval = setInterval(fetchLastQr, 3000);
         return () => clearInterval(interval);
+        */
     }, []);
 
     const preencherFormulario = (data) => {
-        setForm(prev => ({
+        setForm((prev) => ({
             ...prev,
             nome: data.nome || '',
             nif: data.nif || '',
@@ -67,7 +100,9 @@ const PacienteForm = () => {
             paisNascimento: data.paisNascimento || '',
             provinciaNascimento: data.provinciaNascimento || '',
             municipioNascimento: data.municipioNascimento || '',
-            dataNascimento: data.dataNascimento ? data.dataNascimento.split('T')[0] : '',
+            dataNascimento: data.dataNascimento
+                ? data.dataNascimento.split('T')[0]
+                : '',
             localNascimento: data.localNascimento || '',
             nacionalidade: data.nacionalidade || '',
             genero: data.genero || '',
@@ -82,7 +117,9 @@ const PacienteForm = () => {
         if (nomePhoto) {
             const imageUrl = `/images/${nomePhoto}`;
             try {
-                const blobRes = await api.get(imageUrl, { responseType: 'blob' });
+                const blobRes = await api.get(imageUrl, {
+                    responseType: 'blob',
+                });
                 setPhotoPreview(URL.createObjectURL(blobRes.data));
             } catch (err) {
                 console.warn('Foto não encontrada:', err);
@@ -92,8 +129,8 @@ const PacienteForm = () => {
     };
 
     const handleChange = (name, value) => {
-        setForm(prev => ({ ...prev, [name]: value }));
-        setErrors(prev => ({ ...prev, [name]: '' }));
+        setForm((prev) => ({ ...prev, [name]: value }));
+        setErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
     const handleInputChange = (e) => {
@@ -122,7 +159,7 @@ const PacienteForm = () => {
         if (Object.keys(newErrors).length > 0) return;
 
         api.get(`pessoa/nif/${form.nif}`)
-            .then(r => {
+            .then((r) => {
                 if (isEmpty(r.data)) {
                     registrarPessoa();
                 } else {
@@ -135,41 +172,60 @@ const PacienteForm = () => {
     const registrarPessoa = async () => {
         try {
             const formData = new FormData();
-            
+
             formData.append('nome', form.nome);
             formData.append('apelido', form.apelido);
             formData.append('nif', form.nif);
-            formData.append('empresaId', form.empresaId || '1'); 
-            
+            formData.append('empresaId', form.empresaId || '1');
+
             if (form.dataNascimento) {
-                const dataFormatada = new Date(form.dataNascimento).toISOString().slice(0, 19).replace('T', ' ');
+                const dataFormatada = new Date(form.dataNascimento)
+                    .toISOString()
+                    .slice(0, 19)
+                    .replace('T', ' ');
                 formData.append('dataNascimento', dataFormatada);
             }
-            
+
             const camposOpcionais = [
-                'paisEndereco', 'provinciaEndereco', 'municipioEndereco', 'endereco',
-                'profissao', 'habilitacao', 'estadoCivil', 'paisNascimento', 
-                'provinciaNascimento', 'municipioNascimento', 'localNascimento',
-                'nacionalidade', 'genero', 'raca', 'pai', 'mae', 'telefone', 'email'
+                'paisEndereco',
+                'provinciaEndereco',
+                'municipioEndereco',
+                'endereco',
+                'profissao',
+                'habilitacao',
+                'estadoCivil',
+                'paisNascimento',
+                'provinciaNascimento',
+                'municipioNascimento',
+                'localNascimento',
+                'nacionalidade',
+                'genero',
+                'raca',
+                'pai',
+                'mae',
+                'telefone',
+                'email',
             ];
-            
-            camposOpcionais.forEach(campo => {
+
+            camposOpcionais.forEach((campo) => {
                 if (form[campo]) {
                     formData.append(campo, form[campo]);
                 }
             });
-            
+
             const r = await api.post('pessoa/add', formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             const pessoaId = r.data.id;
             await criarPaciente(pessoaId);
         } catch (err) {
             console.error('Erro ao criar pessoa:', err);
             console.error('Response data:', err.response?.data);
-            toast.error(err.response?.data?.message || 'Falha ao criar pessoa.');
+            toast.error(
+                err.response?.data?.message || 'Falha ao criar pessoa.'
+            );
         }
     };
 
@@ -187,9 +243,13 @@ const PacienteForm = () => {
             setIdPaciente(novoPaciente.id);
             setPaciente(novoPaciente);
             await savePhotoUpload(pessoaId);
-            toast.success('Paciente cadastrado com sucesso!', { autoClose: 2000 });
+            toast.success('Paciente cadastrado com sucesso!', {
+                autoClose: 2000,
+            });
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Falha ao cadastrar paciente.');
+            toast.error(
+                err.response?.data?.message || 'Falha ao cadastrar paciente.'
+            );
         }
     };
 
@@ -207,7 +267,9 @@ const PacienteForm = () => {
             await actualizarPessoa(paciente.pessoaId);
             toast.success('Paciente atualizado com sucesso!');
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Falha ao atualizar paciente.');
+            toast.error(
+                err.response?.data?.message || 'Falha ao atualizar paciente.'
+            );
         }
     };
 
@@ -228,7 +290,7 @@ const PacienteForm = () => {
         formData.append('pessoaId', pessoaId);
         try {
             await api.post('api/images/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
             toast.success('Foto salva!');
         } catch (err) {
@@ -239,17 +301,17 @@ const PacienteForm = () => {
     const novaInscricao = async () => {
         console.log('=== INÍCIO DA FUNÇÃO novaInscricao ===');
         console.log('ID do paciente:', paciente.id);
-        
+
         if (!paciente.id) {
             console.error('ERRO: Paciente não tem ID');
             return toast.warn('Cadastre o paciente primeiro!');
         }
-        
+
         if (!paciente.empresaId) {
             console.error('ERRO: Paciente não tem empresaId');
             return toast.warn('Paciente não tem empresa cadastrada!');
         }
-        
+
         const inscricao = {
             dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
             dataActualizacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
@@ -262,9 +324,12 @@ const PacienteForm = () => {
             corTriagemManchester: null,
             minutoEsperaTriagemManchester: null,
         };
-        
-        console.log('Dados da inscrição a serem enviados:', JSON.stringify(inscricao, null, 2));
-        
+
+        console.log(
+            'Dados da inscrição a serem enviados:',
+            JSON.stringify(inscricao, null, 2)
+        );
+
         try {
             console.log('=== FAZENDO REQUISIÇÃO POST /inscricao/add ===');
             await api.post('inscricao/add', inscricao);
@@ -275,17 +340,36 @@ const PacienteForm = () => {
             console.error('Erro:', err);
             console.error('Response:', err.response?.data);
             console.error('Status:', err.response?.status);
-            toast.error('Falha ao criar inscrição: ' + (err.response?.data?.message || err.message));
+            toast.error(
+                'Falha ao criar inscrição: ' +
+                    (err.response?.data?.message || err.message)
+            );
         }
     };
 
     const limparFormulario = () => {
         setForm({
-            nif: '', nome: '', apelido: '', paisEndereco: '', provinciaEndereco: '',
-            municipioEndereco: '', endereco: '', profissao: '', habilitacao: '',
-            estadoCivil: '', paisNascimento: '', provinciaNascimento: '',
-            municipioNascimento: '', dataNascimento: '', localNascimento: '',
-            nacionalidade: '', genero: '', raca: '', pai: '', mae: '', empresaId: ''
+            nif: '',
+            nome: '',
+            apelido: '',
+            paisEndereco: '',
+            provinciaEndereco: '',
+            municipioEndereco: '',
+            endereco: '',
+            profissao: '',
+            habilitacao: '',
+            estadoCivil: '',
+            paisNascimento: '',
+            provinciaNascimento: '',
+            municipioNascimento: '',
+            dataNascimento: '',
+            localNascimento: '',
+            nacionalidade: '',
+            genero: '',
+            raca: '',
+            pai: '',
+            mae: '',
+            empresaId: '',
         });
         setPhoto(null);
         setPhotoPreview(null);
@@ -326,7 +410,11 @@ const PacienteForm = () => {
                                 value={idPesquisa}
                                 onChange={(e) => setIdPesquisa(e.target.value)}
                                 onKeyDown={handleKeyDownID}
-                                addonAfter={<Button type="link" size="small">Buscar</Button>}
+                                addonAfter={
+                                    <Button type="link" size="small">
+                                        Buscar
+                                    </Button>
+                                }
                             />
                         </Col>
                         <Col xs={24} md={12}>
@@ -341,10 +429,14 @@ const PacienteForm = () => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="top-buttons">
-                        <Button type="primary" htmlType="submit">Criar Ficha</Button>
+                        <Button type="primary" htmlType="submit">
+                            Criar Ficha
+                        </Button>
                         <Button onClick={actualizarPaciente}>Atualizar</Button>
                         <Button onClick={novaInscricao}>Nova Inscrição</Button>
-                        <Button danger onClick={limparFormulario}>Limpar</Button>
+                        <Button danger onClick={limparFormulario}>
+                            Limpar
+                        </Button>
                     </div>
 
                     <h3>Ficha do Paciente</h3>
@@ -355,17 +447,35 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={12}>
                                     <div className="form-group">
                                         <label>* Nome:</label>
-                                        <Input name="nome" value={form.nome} onChange={handleInputChange} />
-                                        {errors.nome && <span className="error">{errors.nome}</span>}
+                                        <Input
+                                            name="nome"
+                                            value={form.nome}
+                                            onChange={handleInputChange}
+                                        />
+                                        {errors.nome && (
+                                            <span className="error">
+                                                {errors.nome}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                                 <Col xs={24} sm={12}>
                                     <div className="form-group">
                                         <label>* Sexo:</label>
-                                        <Select value={form.genero} onChange={v => handleChange('genero', v)} style={{ width: '100%' }}>
+                                        <Select
+                                            value={form.genero}
+                                            onChange={(v) =>
+                                                handleChange('genero', v)
+                                            }
+                                            style={{ width: '100%' }}
+                                        >
                                             <Option value="">---</Option>
-                                            <Option value="MASCULINO">Masculino</Option>
-                                            <Option value="FEMININO">Feminino</Option>
+                                            <Option value="MASCULINO">
+                                                Masculino
+                                            </Option>
+                                            <Option value="FEMININO">
+                                                Feminino
+                                            </Option>
                                         </Select>
                                     </div>
                                 </Col>
@@ -375,20 +485,40 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={12}>
                                     <div className="form-group">
                                         <label>* Apelido:</label>
-                                        <Input name="apelido" value={form.apelido} onChange={handleInputChange} />
-                                        {errors.apelido && <span className="error">{errors.apelido}</span>}
+                                        <Input
+                                            name="apelido"
+                                            value={form.apelido}
+                                            onChange={handleInputChange}
+                                        />
+                                        {errors.apelido && (
+                                            <span className="error">
+                                                {errors.apelido}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                                 <Col xs={24} sm={12}>
                                     <div className="form-group">
                                         <label>Raça</label>
-                                        <Select value={form.raca} onChange={v => handleChange('raca', v)} style={{ width: '100%' }}>
+                                        <Select
+                                            value={form.raca}
+                                            onChange={(v) =>
+                                                handleChange('raca', v)
+                                            }
+                                            style={{ width: '100%' }}
+                                        >
                                             <Option value="">---</Option>
                                             <Option value="Negra">Negra</Option>
-                                            <Option value="Branca">Branca</Option>
-                                            <Option value="Amarela">Amarela</Option>
+                                            <Option value="Branca">
+                                                Branca
+                                            </Option>
+                                            <Option value="Amarela">
+                                                Amarela
+                                            </Option>
                                             <Option value="Parda">Parda</Option>
-                                            <Option value="Indígena">Indígena</Option>
+                                            <Option value="Indígena">
+                                                Indígena
+                                            </Option>
                                         </Select>
                                     </div>
                                 </Col>
@@ -398,24 +528,52 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={12}>
                                     <div className="form-group">
                                         <label>* NIF:</label>
-                                        <Input name="nif" value={form.nif} onChange={handleInputChange} />
-                                        {errors.nif && <span className="error">{errors.nif}</span>}
+                                        <Input
+                                            name="nif"
+                                            value={form.nif}
+                                            onChange={handleInputChange}
+                                        />
+                                        {errors.nif && (
+                                            <span className="error">
+                                                {errors.nif}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                             </Row>
                         </Col>
 
                         <Col xs={24} lg={8} className="form-right">
-                            <Card title="Foto do Paciente" style={{ textAlign: 'center' }}>
-                                <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
+                            <Card
+                                title="Foto do Paciente"
+                                style={{ textAlign: 'center' }}
+                            >
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
                                     {photoPreview ? (
                                         <Avatar size={140} src={photoPreview} />
                                     ) : (
-                                        <Avatar size={140} icon={<UserOutlined />} />
+                                        <Avatar
+                                            size={140}
+                                            icon={<UserOutlined />}
+                                        />
                                     )}
                                 </Upload>
-                                <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
-                                    <Button icon={<UploadOutlined />} block style={{ marginTop: 16 }}>
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
+                                    <Button
+                                        icon={<UploadOutlined />}
+                                        block
+                                        style={{ marginTop: 16 }}
+                                    >
                                         Selecionar Foto
                                     </Button>
                                 </Upload>
