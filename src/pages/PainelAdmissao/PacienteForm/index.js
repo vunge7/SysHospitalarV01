@@ -280,31 +280,45 @@ const PacienteForm = () => {
                 nif: form.nif,
                 empresaId: form.empresaId ? parseInt(form.empresaId) : 1,
             };
-            
+
             if (form.dataNascimento) {
-                const dataFormatada = new Date(form.dataNascimento).toISOString().slice(0, 19).replace('T', ' ');
+                const dataFormatada = new Date(form.dataNascimento)
+                    .toISOString()
+                    .slice(0, 19)
+                    .replace('T', ' ');
                 dadosActualizacao.dataNascimento = dataFormatada;
             }
-            
+
             if (form.genero) dadosActualizacao.genero = form.genero;
             if (form.endereco) dadosActualizacao.endereco = form.endereco;
-            if (form.paisEndereco) dadosActualizacao.paisEndereco = form.paisEndereco;
-            if (form.provinciaEndereco) dadosActualizacao.provinciaEndereco = form.provinciaEndereco;
-            if (form.municipioEndereco) dadosActualizacao.municipioEndereco = form.municipioEndereco;
+            if (form.paisEndereco)
+                dadosActualizacao.paisEndereco = form.paisEndereco;
+            if (form.provinciaEndereco)
+                dadosActualizacao.provinciaEndereco = form.provinciaEndereco;
+            if (form.municipioEndereco)
+                dadosActualizacao.municipioEndereco = form.municipioEndereco;
             if (form.profissao) dadosActualizacao.profissao = form.profissao;
-            if (form.habilitacao) dadosActualizacao.habilitacao = form.habilitacao;
-            if (form.estadoCivil) dadosActualizacao.estadoCivil = form.estadoCivil;
-            if (form.paisNascimento) dadosActualizacao.paisNascimento = form.paisNascimento;
-            if (form.provinciaNascimento) dadosActualizacao.provinciaNascimento = form.provinciaNascimento;
-            if (form.municipioNascimento) dadosActualizacao.municipioNascimento = form.municipioNascimento;
-            if (form.localNascimento) dadosActualizacao.localNascimento = form.localNascimento;
-            if (form.nacionalidade) dadosActualizacao.nacionalidade = form.nacionalidade;
+            if (form.habilitacao)
+                dadosActualizacao.habilitacao = form.habilitacao;
+            if (form.estadoCivil)
+                dadosActualizacao.estadoCivil = form.estadoCivil;
+            if (form.paisNascimento)
+                dadosActualizacao.paisNascimento = form.paisNascimento;
+            if (form.provinciaNascimento)
+                dadosActualizacao.provinciaNascimento =
+                    form.provinciaNascimento;
+            if (form.municipioNascimento)
+                dadosActualizacao.municipioNascimento =
+                    form.municipioNascimento;
+            if (form.localNascimento)
+                dadosActualizacao.localNascimento = form.localNascimento;
+            if (form.nacionalidade)
+                dadosActualizacao.nacionalidade = form.nacionalidade;
             if (form.raca) dadosActualizacao.raca = form.raca;
             if (form.pai) dadosActualizacao.pai = form.pai;
             if (form.mae) dadosActualizacao.mae = form.mae;
-            
+
             await api.put(`pessoa/edit/${pessoaId}`, dadosActualizacao);
-            
         } catch (err) {
             console.error('Erro ao atualizar pessoa:', err);
             throw err;
@@ -347,14 +361,17 @@ const PacienteForm = () => {
             corTriagemManchester: null,
             minutoEsperaTriagemManchester: null,
         };
-        
+
         try {
             await api.post('inscricao/add', inscricao);
             toast.success('Inscrição criada!');
             // Limpar formulário após criar inscrição com sucesso
             limparFormulario();
         } catch (err) {
-            toast.error('Falha ao criar inscrição: ' + (err.response?.data?.message || err.message));
+            toast.error(
+                'Falha ao criar inscrição: ' +
+                    (err.response?.data?.message || err.message)
+            );
         }
     };
 
@@ -415,16 +432,18 @@ const PacienteForm = () => {
 
     const buscarPorNIF = async () => {
         if (!nifPesquisa) return;
-        
+
         try {
             // Buscar pessoa pelo NIF
             const pessoaResponse = await api.get(`pessoa/nif/${nifPesquisa}`);
-            
+
             if (pessoaResponse.data && pessoaResponse.data.id) {
                 // Buscar todos pacientes e filtrar por pessoaId
                 const todosPacientesResponse = await api.get('paciente/all');
-                const pacienteEncontrado = todosPacientesResponse.data.find(p => p.pessoaId === pessoaResponse.data.id);
-                
+                const pacienteEncontrado = todosPacientesResponse.data.find(
+                    (p) => p.pessoaId === pessoaResponse.data.id
+                );
+
                 if (pacienteEncontrado) {
                     setPaciente(pacienteEncontrado);
                     setIdPaciente(pacienteEncontrado.id);
@@ -433,7 +452,9 @@ const PacienteForm = () => {
                     toast.success('Paciente encontrado!');
                 } else {
                     limparFormulario();
-                    toast.info('Pessoa encontrada mas não possui cadastro de paciente.');
+                    toast.info(
+                        'Pessoa encontrada mas não possui cadastro de paciente.'
+                    );
                 }
             } else {
                 limparFormulario();
@@ -460,7 +481,11 @@ const PacienteForm = () => {
                                 value={idPesquisa}
                                 onChange={(e) => setIdPesquisa(e.target.value)}
                                 onKeyDown={handleKeyDownID}
-                                addonAfter={<Button type="link" size="small">Buscar</Button>}
+                                addonAfter={
+                                    <Button type="link" size="small">
+                                        Buscar
+                                    </Button>
+                                }
                                 size="small"
                             />
                         </Col>
@@ -470,7 +495,15 @@ const PacienteForm = () => {
                                 value={nifPesquisa}
                                 onChange={(e) => setNifPesquisa(e.target.value)}
                                 onKeyDown={handleKeyDownNIF}
-                                addonAfter={<Button type="link" size="small" onClick={() => buscarPorNIF()}>Buscar</Button>}
+                                addonAfter={
+                                    <Button
+                                        type="link"
+                                        size="small"
+                                        onClick={() => buscarPorNIF()}
+                                    >
+                                        Buscar
+                                    </Button>
+                                }
                                 size="small"
                             />
                         </Col>
@@ -479,29 +512,31 @@ const PacienteForm = () => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="top-buttons">
-                        <Button 
-                            type="primary" 
+                        <Button
+                            type="primary"
                             htmlType="submit"
                             disabled={paciente.id}
                             size="small"
                         >
                             Criar Ficha
                         </Button>
-                        <Button 
+                        <Button
                             onClick={actualizarPaciente}
                             disabled={!paciente.id}
                             size="small"
                         >
                             Atualizar
                         </Button>
-                        <Button 
+                        <Button
                             onClick={novaInscricao}
                             disabled={!paciente.id}
                             size="small"
                         >
                             Nova Inscrição
                         </Button>
-                        <Button danger onClick={limparFormulario} size="small">Limpar</Button>
+                        <Button danger onClick={limparFormulario} size="small">
+                            Limpar
+                        </Button>
                     </div>
 
                     <h3>Ficha do Paciente</h3>
@@ -512,14 +547,30 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Nome:</label>
-                                        <Input name="nome" value={form.nome} onChange={handleInputChange} size="small" />
-                                        {errors.nome && <span className="error">{errors.nome}</span>}
+                                        <Input
+                                            name="nome"
+                                            value={form.nome}
+                                            onChange={handleInputChange}
+                                            size="small"
+                                        />
+                                        {errors.nome && (
+                                            <span className="error">
+                                                {errors.nome}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Sexo:</label>
-                                        <Select value={form.genero} onChange={v => handleChange('genero', v)} style={{ width: '100%' }} size="small">
+                                        <Select
+                                            value={form.genero}
+                                            onChange={(v) =>
+                                                handleChange('genero', v)
+                                            }
+                                            style={{ width: '100%' }}
+                                            size="small"
+                                        >
                                             <Option value="">---</Option>
                                             <Option value="MASCULINO">
                                                 Masculino
@@ -533,8 +584,17 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Apelido:</label>
-                                        <Input name="apelido" value={form.apelido} onChange={handleInputChange} size="small" />
-                                        {errors.apelido && <span className="error">{errors.apelido}</span>}
+                                        <Input
+                                            name="apelido"
+                                            value={form.apelido}
+                                            onChange={handleInputChange}
+                                            size="small"
+                                        />
+                                        {errors.apelido && (
+                                            <span className="error">
+                                                {errors.apelido}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                             </Row>
@@ -543,7 +603,14 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>Raça</label>
-                                        <Select value={form.raca} onChange={v => handleChange('raca', v)} style={{ width: '100%' }} size="small">
+                                        <Select
+                                            value={form.raca}
+                                            onChange={(v) =>
+                                                handleChange('raca', v)
+                                            }
+                                            style={{ width: '100%' }}
+                                            size="small"
+                                        >
                                             <Option value="">---</Option>
                                             <Option value="Negra">Negra</Option>
                                             <Option value="Branca">
@@ -562,8 +629,17 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* NIF:</label>
-                                        <Input name="nif" value={form.nif} onChange={handleInputChange} size="small" />
-                                        {errors.nif && <span className="error">{errors.nif}</span>}
+                                        <Input
+                                            name="nif"
+                                            value={form.nif}
+                                            onChange={handleInputChange}
+                                            size="small"
+                                        />
+                                        {errors.nif && (
+                                            <span className="error">
+                                                {errors.nif}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                             </Row>
@@ -571,15 +647,33 @@ const PacienteForm = () => {
 
                         <Col xs={24} xl={6} className="form-right">
                             <Card title="Foto" style={{ textAlign: 'center' }}>
-                                <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
                                     {photoPreview ? (
                                         <Avatar size={80} src={photoPreview} />
                                     ) : (
-                                        <Avatar size={80} icon={<UserOutlined />} />
+                                        <Avatar
+                                            size={80}
+                                            icon={<UserOutlined />}
+                                        />
                                     )}
                                 </Upload>
-                                <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
-                                    <Button icon={<UploadOutlined />} block size="small" style={{ marginTop: 8 }}>
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
+                                    <Button
+                                        icon={<UploadOutlined />}
+                                        block
+                                        size="small"
+                                        style={{ marginTop: 8 }}
+                                    >
                                         Selecionar Foto
                                     </Button>
                                 </Upload>
