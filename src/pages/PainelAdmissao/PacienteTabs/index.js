@@ -249,7 +249,7 @@ const PacienteTabs = (props) => {
             case 'endereco':
                 return (
                     <div className="tab-content">
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col xs={24} md={12}>
                                 <div className="form-group">
                                     <label>País:</label>
@@ -296,7 +296,7 @@ const PacienteTabs = (props) => {
                                 </div>
                             </Col>
                         </Row>
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col xs={24} md={12}>
                                 <div className="form-group">
                                     <label>Município:</label>
@@ -329,7 +329,7 @@ const PacienteTabs = (props) => {
             case 'fiscal':
                 return (
                     <div className="tab-content">
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col xs={24} md={12}>
                                 <div className="form-group">
                                     <label>Profissão:</label>
@@ -383,12 +383,12 @@ const PacienteTabs = (props) => {
             case 'nascimento':
                 return (
                     <div className="tab-content">
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col xs={24} md={8}><div className="form-group"><label>Pai:</label><Input value={props.pai} onChange={e => handleChange('pai', e.target.value)} /></div></Col>
                             <Col xs={24} md={8}><div className="form-group"><label>Mãe:</label><Input value={props.mae} onChange={e => handleChange('mae', e.target.value)} /></div></Col>
                             <Col xs={24} md={8}><div className="form-group"><label>Data de Nascimento:</label><Input type="date" value={props.dataNascimento} onChange={e => handleChange('dataNascimento', e.target.value)} /></div></Col>
                         </Row>
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col xs={24} md={8}>
                                 <div className="form-group">
                                     <label>País:</label>
@@ -450,7 +450,7 @@ const PacienteTabs = (props) => {
                                 </div>
                             </Col>
                         </Row>
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col xs={24} md={12}>
                                 <div className="form-group">
                                     <label>Local de Nascimento:</label>
@@ -485,7 +485,7 @@ const PacienteTabs = (props) => {
                 return (
                     <div className="tab-content">
                         <h4>Adicionar Convênio</h4>
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col xs={24} md={8}>
                                 <Select
                                     showSearch
@@ -534,7 +534,7 @@ const PacienteTabs = (props) => {
                         {mostrarFormNovaSeguradora && (
                             <Card size="small" style={{ marginTop: 16 }}>
                                 <h5>Nova Seguradora</h5>
-                                <Row gutter={16}>
+                                <Row gutter={8}>
                                     <Col span={12}>
                                         <Input placeholder="Nome *" value={novaSeguradora.nome} onChange={e => setNovaSeguradora(p => ({ ...p, nome: e.target.value }))} />
                                     </Col>

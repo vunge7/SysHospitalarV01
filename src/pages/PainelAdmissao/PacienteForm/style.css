@@ -10,33 +10,35 @@
   --text: #0f172a;          /* slate-900 */
   --text-secondary: #475569; /* slate-600 */
   --border: #e2e8f0;
-  --radius: 8px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --radius: 6px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 2px 4px -1px rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.04);
 }
 
 /* ======================================== BASE ======================================== */
 .patient-form {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 8px;
   background: var(--bg);
   font-family: system-ui, -apple-system, sans-serif;
   color: var(--text);
-  min-height: calc(100vh - 140px); /* considerando header + footer */
+  min-height: calc(100vh - 120px); /* considerando header + footer */
+  height: 100%;
+  overflow: hidden;
 }
 
 h3 {
-  margin: 0 0 16px;
-  font-size: 1.25rem;
+  margin: 0 0 8px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text);
 }
 
 /* ======================================== SEARCH BAR ======================================== */
 .search-card {
-  margin-bottom: 16px;
-  padding: 12px 16px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
   background: white;
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
@@ -44,23 +46,23 @@ h3 {
 }
 
 .search-card .ant-input {
-  height: 36px;
-  font-size: 13px;
+  height: 28px;
+  font-size: 12px;
 }
 
 /* ======================================== BOTÕES TOPO ======================================== */
 .top-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 4px;
+  margin-bottom: 8px;
   justify-content: flex-start;
 }
 
 .top-buttons .ant-btn {
-  height: 36px;
-  padding: 0 16px;
-  font-size: 13px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 11px;
   font-weight: 500;
   border-radius: var(--radius);
 }
@@ -80,38 +82,38 @@ h3 {
   background: white;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 12px;
   border: 1px solid var(--border);
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 6px;
-  font-size: 12.5px;
+  margin-bottom: 2px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .form-group .ant-input,
 .form-group .ant-select-selector {
-  height: 36px !important;
-  font-size: 13px;
+  height: 28px !important;
+  font-size: 12px;
   border-radius: var(--radius);
   border-color: #cbd5e1;
 }
 
 .form-group .ant-select-selection-item {
-  line-height: 34px;
+  line-height: 26px;
 }
 
 .error {
   color: var(--error);
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: 10px;
+  margin-top: 2px;
   display: block;
 }
 
@@ -120,31 +122,46 @@ h3 {
   text-align: center;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 8px;
   background: white;
   box-shadow: var(--shadow-sm);
 }
 
 .patient-photo-card .ant-avatar {
-  width: 96px;
-  height: 96px;
-  margin-bottom: 12px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 6px;
   border: 2px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .patient-photo-card .ant-btn {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
-/* ======================================== RESPONSIVE ======================================== */
+/* ======================================== CONTROLE DE ALTURA E LAYOUT ======================================== */
+.patient-form .ant-spin-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.patient-form .ant-card {
+  margin-bottom: 4px;
+}
+
+.patient-form .ant-card-body {
+  padding: 8px !important;
+}
+
+/* ======================================== RESPONSIVO ======================================== */
 @media (max-width: 992px) {
-  .form-main { padding: 16px; }
+  .form-main { padding: 8px; }
   .top-buttons { justify-content: center; }
 }
 
 @media (max-width: 768px) {
-  .patient-form { padding: 12px; }
-  .top-buttons .ant-btn { flex: 1; min-width: 120px; }
-  .form-group { margin-bottom: 20px; }
+  .patient-form { padding: 4px; }
+  .top-buttons .ant-btn { flex: 1; min-width: 100px; }
+  .form-group { margin-bottom: 12px; }
+  .form-main { padding: 6px; }
 }

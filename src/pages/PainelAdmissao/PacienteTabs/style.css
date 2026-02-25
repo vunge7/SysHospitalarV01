@@ -1,6 +1,6 @@
-/* ======================================== ABAS HORIZONTAIS + EFEITO HOVER PERFEITO ======================================== */
+/* ======================================== ABAS HORIZONTAIS OTIMIZADAS ======================================== */
 .patient-tabs {
-  margin-top: 0.5rem;
+  margin-top: 2px;
   width: 100% !important;
 }
 
@@ -10,7 +10,7 @@
   white-space: nowrap !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
-  padding: 0 8px !important;
+  padding: 0 4px !important;
 }
 
 .tabs-container::-webkit-scrollbar {
@@ -22,8 +22,8 @@
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
-  gap: 4px !important;
-  padding: 8px 0 !important;
+  gap: 2px !important;
+  padding: 4px 0 !important;
   position: relative !important;
   min-width: max-content !important;
   justify-content: flex-start !important;
@@ -34,19 +34,19 @@
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 8px 12px !important;
+  gap: 4px !important;
+  padding: 6px 8px !important;
   cursor: pointer !important;
   font-weight: 600 !important;
   color: #595959 !important;
   background: #f8f9fa !important;
-  border-radius: 8px 8px 0 0 !important;
+  border-radius: 6px 6px 0 0 !important;
   border: 1px solid #e0e0e0 !important;
   border-bottom: none !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  min-width: 100px !important;
+  min-width: 80px !important;
   justify-content: center !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
   user-select: none !important;
   flex-shrink: 0 !important;
 }
@@ -75,7 +75,7 @@
 
 /* ÍCONE */
 .tab-icon {
-  font-size: 14px !important;
+  font-size: 12px !important;
   color: #8c8c8c !important;
   transition: color 0.3s !important;
 }
@@ -90,9 +90,9 @@
 
 /* TEXTO */
 .tab-label {
-  font-size: 11px !important;
+  font-size: 10px !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.3px !important;
+  letter-spacing: 0.2px !important;
   transition: color 0.3s !important;
 }
 
@@ -100,44 +100,61 @@
 .tab-badge {
   background: #ff4d4f !important;
   color: white !important;
-  font-size: 9px !important;
+  font-size: 8px !important;
   font-weight: 700 !important;
-  padding: 1px 4px !important;
-  border-radius: 8px !important;
-  min-width: 14px !important;
-  height: 14px !important;
+  padding: 1px 3px !important;
+  border-radius: 6px !important;
+  min-width: 12px !important;
+  height: 12px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  margin-left: 4px !important;
+  margin-left: 2px !important;
 }
 
-/* INDICADOR DESATIVADO (SEM TRAÇO) */
+/* ======================================== CONTEÚDO DAS ABAS OTIMIZADO ======================================== */
+.tab-content {
+  padding: 8px 0 !important;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.tab-content-wrapper {
+  max-height: 280px;
+  overflow: hidden;
+}
+
 .tab-indicator {
   display: none !important;
 }
 
-/* RESPONSIVO */
+/* RESPONSIVO OTIMIZADO */
 @media (max-width: 992px) {
   .tab {
-    min-width: 80px !important;
-    padding: 6px 10px !important;
+    min-width: 70px !important;
+    padding: 5px 8px !important;
   }
   .tab-label {
-    font-size: 10px !important;
+    font-size: 9px !important;
+  }
+  .tab-content {
+    max-height: 220px;
   }
 }
 
 @media (max-width: 768px) {
   .tab {
-    min-width: 60px !important;
-    padding: 4px 8px !important;
+    min-width: 50px !important;
+    padding: 4px 6px !important;
   }
   .tab-label {
     display: none !important;
   }
   .tab {
     justify-content: center !important;
+  }
+  .tab-content {
+    max-height: 200px;
   }
 }
 

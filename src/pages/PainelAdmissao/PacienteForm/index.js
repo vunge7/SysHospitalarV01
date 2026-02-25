@@ -429,10 +429,10 @@ const PacienteForm = () => {
 
                     <h3>Ficha do Paciente</h3>
 
-                    <Row gutter={8} className="form-main">
-                        <Col xs={24} xl={18} className="form-left">
-                            <Row gutter={8}>
-                                <Col xs={24} sm={8}>
+                    <Row gutter={4} className="form-main">
+                        <Col xs={24} xl={19} className="form-left">
+                            <Row gutter={4}>
+                        <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Nome:</label>
                                         <Input name="nome" value={form.nome} onChange={handleInputChange} size="small" />
@@ -458,7 +458,7 @@ const PacienteForm = () => {
                                 </Col>
                             </Row>
 
-                            <Row gutter={8}>
+                            <Row gutter={4}>
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>Raça</label>
@@ -482,13 +482,13 @@ const PacienteForm = () => {
                             </Row>
                         </Col>
 
-                        <Col xs={24} xl={6} className="form-right">
+                        <Col xs={24} xl={5} className="form-right">
                             <Card title="Foto" style={{ textAlign: 'center' }}>
                                 <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
                                     {photoPreview ? (
-                                        <Avatar size={80} src={photoPreview} />
+                                        <Avatar size={60} src={photoPreview} />
                                     ) : (
-                                        <Avatar size={80} icon={<UserOutlined />} />
+                                        <Avatar size={60} icon={<UserOutlined />} />
                                     )}
                                 </Upload>
                                 <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">

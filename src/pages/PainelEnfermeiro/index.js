@@ -2,16 +2,9 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Menu } from 'antd';
 import { AuthContext } from '../../contexts/auth';
-
 import Cabecario from '../../components/Cabecario';
 import Rodape from '../../components/Rodape';
-
-import {
-    MenuFoldOutlined,
-    MenuUnfoldOutlined,
-    HomeFilled,
-    PoweroffOutlined,
-} from '@ant-design/icons';
+import { MenuFoldOutlined, MenuUnfoldOutlined, HomeFilled, PoweroffOutlined } from '@ant-design/icons';
 
 function PainelEnfermeiro({ children }) {
     const [menu, setmenu] = useState([]);
