@@ -656,7 +656,7 @@ const PacienteForm = () => {
                                     {photoPreview ? (
                                         <Avatar size={60} src={photoPreview} />
                                     ) : (
-                                        <Avatar size={60} icon={<UserOutlined />} />
+
                                         <Avatar
                                             size={80}
                                             icon={<UserOutlined />}
