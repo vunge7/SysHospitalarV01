@@ -1,7 +1,7 @@
 // api.js - ATUALIZADO
 import axios from 'axios';
 
-const ip = 'localhost';
+const ip = '192.168.1.103';
 var nome = "dvml";
 
 export const api = axios.create({

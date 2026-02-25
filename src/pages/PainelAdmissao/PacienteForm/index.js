@@ -4,18 +4,48 @@ import PacienteTabs from '../PacienteTabs';
 import { api } from '../../../service/api';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
-import { Card, Row, Col, Input, Select, Button, Upload, Avatar, Spin } from 'antd';
-import { UploadOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import {
+    Card,
+    Row,
+    Col,
+    Input,
+    Select,
+    Button,
+    Upload,
+    Avatar,
+    Spin,
+} from 'antd';
+import {
+    UploadOutlined,
+    SearchOutlined,
+    UserOutlined,
+} from '@ant-design/icons';
 
 const { Option } = Select;
 
 const PacienteForm = () => {
     const [form, setForm] = useState({
-        nif: '', nome: '', apelido: '', paisEndereco: '', provinciaEndereco: '',
-        municipioEndereco: '', endereco: '', profissao: '', habilitacao: '',
-        estadoCivil: '', paisNascimento: '', provinciaNascimento: '',
-        municipioNascimento: '', dataNascimento: '', localNascimento: '',
-        nacionalidade: '', genero: '', raca: '', pai: '', mae: '', empresaId: '',
+        nif: '',
+        nome: '',
+        apelido: '',
+        paisEndereco: '',
+        provinciaEndereco: '',
+        municipioEndereco: '',
+        endereco: '',
+        profissao: '',
+        habilitacao: '',
+        estadoCivil: '',
+        paisNascimento: '',
+        provinciaNascimento: '',
+        municipioNascimento: '',
+        dataNascimento: '',
+        localNascimento: '',
+        nacionalidade: '',
+        genero: '',
+        raca: '',
+        pai: '',
+        mae: '',
+        empresaId: '',
     });
 
     const [photo, setPhoto] = useState(null);
@@ -28,31 +58,33 @@ const PacienteForm = () => {
     const [conveniosPendentes, setConveniosPendentes] = useState([]);
 
     useEffect(() => {
-        // QR functionality removida para evitar erros 404
-        // const fetchLastQr = async () => {
-        //     try {
-        //         const response = await api.get('/api/qr-data');
-        //         if (response.data?.pacienteId) {
-        //             const id = response.data.pacienteId;
-        //             const r = await api.get(`paciente/${id}`);
-        //             toast.dismiss();
-        //             setPaciente(r.data);
-        //             preencherFormulario(r.data);
-        //             await carregarFoto(r.data.nomePhoto);
-        //             await api.delete('/api/qr-data').catch(() => {});
-        //         }
-        //     } catch (error) {
-        //         if (error.response?.status !== 404) console.warn('Erro QR:', error);
-        //     }
-        // };
-
-        // fetchLastQr();
-        // const interval = setInterval(fetchLastQr, 3000);
-        // return () => clearInterval(interval);
+        /*
+        const fetchLastQr = async () => {
+            try {
+                const response = await api.get('/api/qr-data');
+                if (response.data?.pacienteId) {
+                    const id = response.data.pacienteId;
+                    const r = await api.get(`paciente/${id}`);
+                    toast.dismiss();
+                    setPaciente(r.data);
+                    preencherFormulario(r.data);
+                    await carregarFoto(r.data.nomePhoto);
+                    await api.delete('/api/qr-data').catch(() => {});
+                }
+            } catch (error) {
+                if (error.response?.status !== 404) console.warn('Erro QR:', error);
+            }
+        };
+        */
+        //fetchLastQr();
+        /*
+        const interval = setInterval(fetchLastQr, 3000);
+        return () => clearInterval(interval);
+        */
     }, []);
 
     const preencherFormulario = (data) => {
-        setForm(prev => ({
+        setForm((prev) => ({
             ...prev,
             nome: data.nome || '',
             nif: data.nif || '',
@@ -67,7 +99,9 @@ const PacienteForm = () => {
             paisNascimento: data.paisNascimento || '',
             provinciaNascimento: data.provinciaNascimento || '',
             municipioNascimento: data.municipioNascimento || '',
-            dataNascimento: data.dataNascimento ? data.dataNascimento.split('T')[0] : '',
+            dataNascimento: data.dataNascimento
+                ? data.dataNascimento.split('T')[0]
+                : '',
             localNascimento: data.localNascimento || '',
             nacionalidade: data.nacionalidade || '',
             genero: data.genero || '',
@@ -82,7 +116,9 @@ const PacienteForm = () => {
         if (nomePhoto) {
             const imageUrl = `/images/${nomePhoto}`;
             try {
-                const blobRes = await api.get(imageUrl, { responseType: 'blob' });
+                const blobRes = await api.get(imageUrl, {
+                    responseType: 'blob',
+                });
                 setPhotoPreview(URL.createObjectURL(blobRes.data));
             } catch (err) {
                 console.warn('Foto não encontrada:', err);
@@ -92,8 +128,8 @@ const PacienteForm = () => {
     };
 
     const handleChange = (name, value) => {
-        setForm(prev => ({ ...prev, [name]: value }));
-        setErrors(prev => ({ ...prev, [name]: '' }));
+        setForm((prev) => ({ ...prev, [name]: value }));
+        setErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
     const handleInputChange = (e) => {
@@ -122,7 +158,7 @@ const PacienteForm = () => {
         if (Object.keys(newErrors).length > 0) return;
 
         api.get(`pessoa/nif/${form.nif}`)
-            .then(r => {
+            .then((r) => {
                 if (isEmpty(r.data)) {
                     registrarPessoa();
                 } else {
@@ -135,41 +171,60 @@ const PacienteForm = () => {
     const registrarPessoa = async () => {
         try {
             const formData = new FormData();
-            
+
             formData.append('nome', form.nome);
             formData.append('apelido', form.apelido);
             formData.append('nif', form.nif);
-            formData.append('empresaId', form.empresaId || '1'); 
-            
+            formData.append('empresaId', form.empresaId || '1');
+
             if (form.dataNascimento) {
-                const dataFormatada = new Date(form.dataNascimento).toISOString().slice(0, 19).replace('T', ' ');
+                const dataFormatada = new Date(form.dataNascimento)
+                    .toISOString()
+                    .slice(0, 19)
+                    .replace('T', ' ');
                 formData.append('dataNascimento', dataFormatada);
             }
-            
+
             const camposOpcionais = [
-                'paisEndereco', 'provinciaEndereco', 'municipioEndereco', 'endereco',
-                'profissao', 'habilitacao', 'estadoCivil', 'paisNascimento', 
-                'provinciaNascimento', 'municipioNascimento', 'localNascimento',
-                'nacionalidade', 'genero', 'raca', 'pai', 'mae', 'telefone', 'email'
+                'paisEndereco',
+                'provinciaEndereco',
+                'municipioEndereco',
+                'endereco',
+                'profissao',
+                'habilitacao',
+                'estadoCivil',
+                'paisNascimento',
+                'provinciaNascimento',
+                'municipioNascimento',
+                'localNascimento',
+                'nacionalidade',
+                'genero',
+                'raca',
+                'pai',
+                'mae',
+                'telefone',
+                'email',
             ];
-            
-            camposOpcionais.forEach(campo => {
+
+            camposOpcionais.forEach((campo) => {
                 if (form[campo]) {
                     formData.append(campo, form[campo]);
                 }
             });
-            
+
             const r = await api.post('pessoa/add', formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             const pessoaId = r.data.id;
             await criarPaciente(pessoaId);
         } catch (err) {
             console.error('Erro ao criar pessoa:', err);
             console.error('Response data:', err.response?.data);
-            toast.error(err.response?.data?.message || 'Falha ao criar pessoa.');
+            toast.error(
+                err.response?.data?.message || 'Falha ao criar pessoa.'
+            );
         }
     };
 
@@ -187,9 +242,13 @@ const PacienteForm = () => {
             setIdPaciente(novoPaciente.id);
             setPaciente(novoPaciente);
             await savePhotoUpload(pessoaId);
-            toast.success('Paciente cadastrado com sucesso!', { autoClose: 2000 });
+            toast.success('Paciente cadastrado com sucesso!', {
+                autoClose: 2000,
+            });
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Falha ao cadastrar paciente.');
+            toast.error(
+                err.response?.data?.message || 'Falha ao cadastrar paciente.'
+            );
         }
     };
 
@@ -207,7 +266,9 @@ const PacienteForm = () => {
             await actualizarPessoa(paciente.pessoaId);
             toast.success('Paciente atualizado com sucesso!');
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Falha ao atualizar paciente.');
+            toast.error(
+                err.response?.data?.message || 'Falha ao atualizar paciente.'
+            );
         }
     };
 
@@ -219,31 +280,45 @@ const PacienteForm = () => {
                 nif: form.nif,
                 empresaId: form.empresaId ? parseInt(form.empresaId) : 1,
             };
-            
+
             if (form.dataNascimento) {
-                const dataFormatada = new Date(form.dataNascimento).toISOString().slice(0, 19).replace('T', ' ');
+                const dataFormatada = new Date(form.dataNascimento)
+                    .toISOString()
+                    .slice(0, 19)
+                    .replace('T', ' ');
                 dadosActualizacao.dataNascimento = dataFormatada;
             }
-            
+
             if (form.genero) dadosActualizacao.genero = form.genero;
             if (form.endereco) dadosActualizacao.endereco = form.endereco;
-            if (form.paisEndereco) dadosActualizacao.paisEndereco = form.paisEndereco;
-            if (form.provinciaEndereco) dadosActualizacao.provinciaEndereco = form.provinciaEndereco;
-            if (form.municipioEndereco) dadosActualizacao.municipioEndereco = form.municipioEndereco;
+            if (form.paisEndereco)
+                dadosActualizacao.paisEndereco = form.paisEndereco;
+            if (form.provinciaEndereco)
+                dadosActualizacao.provinciaEndereco = form.provinciaEndereco;
+            if (form.municipioEndereco)
+                dadosActualizacao.municipioEndereco = form.municipioEndereco;
             if (form.profissao) dadosActualizacao.profissao = form.profissao;
-            if (form.habilitacao) dadosActualizacao.habilitacao = form.habilitacao;
-            if (form.estadoCivil) dadosActualizacao.estadoCivil = form.estadoCivil;
-            if (form.paisNascimento) dadosActualizacao.paisNascimento = form.paisNascimento;
-            if (form.provinciaNascimento) dadosActualizacao.provinciaNascimento = form.provinciaNascimento;
-            if (form.municipioNascimento) dadosActualizacao.municipioNascimento = form.municipioNascimento;
-            if (form.localNascimento) dadosActualizacao.localNascimento = form.localNascimento;
-            if (form.nacionalidade) dadosActualizacao.nacionalidade = form.nacionalidade;
+            if (form.habilitacao)
+                dadosActualizacao.habilitacao = form.habilitacao;
+            if (form.estadoCivil)
+                dadosActualizacao.estadoCivil = form.estadoCivil;
+            if (form.paisNascimento)
+                dadosActualizacao.paisNascimento = form.paisNascimento;
+            if (form.provinciaNascimento)
+                dadosActualizacao.provinciaNascimento =
+                    form.provinciaNascimento;
+            if (form.municipioNascimento)
+                dadosActualizacao.municipioNascimento =
+                    form.municipioNascimento;
+            if (form.localNascimento)
+                dadosActualizacao.localNascimento = form.localNascimento;
+            if (form.nacionalidade)
+                dadosActualizacao.nacionalidade = form.nacionalidade;
             if (form.raca) dadosActualizacao.raca = form.raca;
             if (form.pai) dadosActualizacao.pai = form.pai;
             if (form.mae) dadosActualizacao.mae = form.mae;
-            
+
             await api.put(`pessoa/edit/${pessoaId}`, dadosActualizacao);
-            
         } catch (err) {
             console.error('Erro ao atualizar pessoa:', err);
             throw err;
@@ -257,7 +332,7 @@ const PacienteForm = () => {
         formData.append('pessoaId', pessoaId);
         try {
             await api.post('api/images/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
             toast.success('Foto salva!');
         } catch (err) {
@@ -269,11 +344,11 @@ const PacienteForm = () => {
         if (!paciente.id) {
             return toast.warn('Cadastre o paciente primeiro!');
         }
-        
+
         if (!paciente.empresaId) {
             return toast.warn('Paciente não tem empresa cadastrada!');
         }
-        
+
         const inscricao = {
             dataCriacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
             dataActualizacao: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
@@ -286,24 +361,43 @@ const PacienteForm = () => {
             corTriagemManchester: null,
             minutoEsperaTriagemManchester: null,
         };
-        
+
         try {
             await api.post('inscricao/add', inscricao);
             toast.success('Inscrição criada!');
             // Limpar formulário após criar inscrição com sucesso
             limparFormulario();
         } catch (err) {
-            toast.error('Falha ao criar inscrição: ' + (err.response?.data?.message || err.message));
+            toast.error(
+                'Falha ao criar inscrição: ' +
+                    (err.response?.data?.message || err.message)
+            );
         }
     };
 
     const limparFormulario = () => {
         setForm({
-            nif: '', nome: '', apelido: '', paisEndereco: '', provinciaEndereco: '',
-            municipioEndereco: '', endereco: '', profissao: '', habilitacao: '',
-            estadoCivil: '', paisNascimento: '', provinciaNascimento: '',
-            municipioNascimento: '', dataNascimento: '', localNascimento: '',
-            nacionalidade: '', genero: '', raca: '', pai: '', mae: '', empresaId: ''
+            nif: '',
+            nome: '',
+            apelido: '',
+            paisEndereco: '',
+            provinciaEndereco: '',
+            municipioEndereco: '',
+            endereco: '',
+            profissao: '',
+            habilitacao: '',
+            estadoCivil: '',
+            paisNascimento: '',
+            provinciaNascimento: '',
+            municipioNascimento: '',
+            dataNascimento: '',
+            localNascimento: '',
+            nacionalidade: '',
+            genero: '',
+            raca: '',
+            pai: '',
+            mae: '',
+            empresaId: '',
         });
         setPhoto(null);
         setPhotoPreview(null);
@@ -338,16 +432,18 @@ const PacienteForm = () => {
 
     const buscarPorNIF = async () => {
         if (!nifPesquisa) return;
-        
+
         try {
             // Buscar pessoa pelo NIF
             const pessoaResponse = await api.get(`pessoa/nif/${nifPesquisa}`);
-            
+
             if (pessoaResponse.data && pessoaResponse.data.id) {
                 // Buscar todos pacientes e filtrar por pessoaId
                 const todosPacientesResponse = await api.get('paciente/all');
-                const pacienteEncontrado = todosPacientesResponse.data.find(p => p.pessoaId === pessoaResponse.data.id);
-                
+                const pacienteEncontrado = todosPacientesResponse.data.find(
+                    (p) => p.pessoaId === pessoaResponse.data.id
+                );
+
                 if (pacienteEncontrado) {
                     setPaciente(pacienteEncontrado);
                     setIdPaciente(pacienteEncontrado.id);
@@ -356,7 +452,9 @@ const PacienteForm = () => {
                     toast.success('Paciente encontrado!');
                 } else {
                     limparFormulario();
-                    toast.info('Pessoa encontrada mas não possui cadastro de paciente.');
+                    toast.info(
+                        'Pessoa encontrada mas não possui cadastro de paciente.'
+                    );
                 }
             } else {
                 limparFormulario();
@@ -383,7 +481,11 @@ const PacienteForm = () => {
                                 value={idPesquisa}
                                 onChange={(e) => setIdPesquisa(e.target.value)}
                                 onKeyDown={handleKeyDownID}
-                                addonAfter={<Button type="link" size="small">Buscar</Button>}
+                                addonAfter={
+                                    <Button type="link" size="small">
+                                        Buscar
+                                    </Button>
+                                }
                                 size="small"
                             />
                         </Col>
@@ -393,7 +495,15 @@ const PacienteForm = () => {
                                 value={nifPesquisa}
                                 onChange={(e) => setNifPesquisa(e.target.value)}
                                 onKeyDown={handleKeyDownNIF}
-                                addonAfter={<Button type="link" size="small" onClick={() => buscarPorNIF()}>Buscar</Button>}
+                                addonAfter={
+                                    <Button
+                                        type="link"
+                                        size="small"
+                                        onClick={() => buscarPorNIF()}
+                                    >
+                                        Buscar
+                                    </Button>
+                                }
                                 size="small"
                             />
                         </Col>
@@ -402,29 +512,31 @@ const PacienteForm = () => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="top-buttons">
-                        <Button 
-                            type="primary" 
+                        <Button
+                            type="primary"
                             htmlType="submit"
                             disabled={paciente.id}
                             size="small"
                         >
                             Criar Ficha
                         </Button>
-                        <Button 
+                        <Button
                             onClick={actualizarPaciente}
                             disabled={!paciente.id}
                             size="small"
                         >
                             Atualizar
                         </Button>
-                        <Button 
+                        <Button
                             onClick={novaInscricao}
                             disabled={!paciente.id}
                             size="small"
                         >
                             Nova Inscrição
                         </Button>
-                        <Button danger onClick={limparFormulario} size="small">Limpar</Button>
+                        <Button danger onClick={limparFormulario} size="small">
+                            Limpar
+                        </Button>
                     </div>
 
                     <h3>Ficha do Paciente</h3>
@@ -435,25 +547,54 @@ const PacienteForm = () => {
                         <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Nome:</label>
-                                        <Input name="nome" value={form.nome} onChange={handleInputChange} size="small" />
-                                        {errors.nome && <span className="error">{errors.nome}</span>}
+                                        <Input
+                                            name="nome"
+                                            value={form.nome}
+                                            onChange={handleInputChange}
+                                            size="small"
+                                        />
+                                        {errors.nome && (
+                                            <span className="error">
+                                                {errors.nome}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Sexo:</label>
-                                        <Select value={form.genero} onChange={v => handleChange('genero', v)} style={{ width: '100%' }} size="small">
+                                        <Select
+                                            value={form.genero}
+                                            onChange={(v) =>
+                                                handleChange('genero', v)
+                                            }
+                                            style={{ width: '100%' }}
+                                            size="small"
+                                        >
                                             <Option value="">---</Option>
-                                            <Option value="MASCULINO">Masculino</Option>
-                                            <Option value="FEMININO">Feminino</Option>
+                                            <Option value="MASCULINO">
+                                                Masculino
+                                            </Option>
+                                            <Option value="FEMININO">
+                                                Feminino
+                                            </Option>
                                         </Select>
                                     </div>
                                 </Col>
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* Apelido:</label>
-                                        <Input name="apelido" value={form.apelido} onChange={handleInputChange} size="small" />
-                                        {errors.apelido && <span className="error">{errors.apelido}</span>}
+                                        <Input
+                                            name="apelido"
+                                            value={form.apelido}
+                                            onChange={handleInputChange}
+                                            size="small"
+                                        />
+                                        {errors.apelido && (
+                                            <span className="error">
+                                                {errors.apelido}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                             </Row>
@@ -462,21 +603,43 @@ const PacienteForm = () => {
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>Raça</label>
-                                        <Select value={form.raca} onChange={v => handleChange('raca', v)} style={{ width: '100%' }} size="small">
+                                        <Select
+                                            value={form.raca}
+                                            onChange={(v) =>
+                                                handleChange('raca', v)
+                                            }
+                                            style={{ width: '100%' }}
+                                            size="small"
+                                        >
                                             <Option value="">---</Option>
                                             <Option value="Negra">Negra</Option>
-                                            <Option value="Branca">Branca</Option>
-                                            <Option value="Amarela">Amarela</Option>
+                                            <Option value="Branca">
+                                                Branca
+                                            </Option>
+                                            <Option value="Amarela">
+                                                Amarela
+                                            </Option>
                                             <Option value="Parda">Parda</Option>
-                                            <Option value="Indígena">Indígena</Option>
+                                            <Option value="Indígena">
+                                                Indígena
+                                            </Option>
                                         </Select>
                                     </div>
                                 </Col>
                                 <Col xs={24} sm={8}>
                                     <div className="form-group">
                                         <label>* NIF:</label>
-                                        <Input name="nif" value={form.nif} onChange={handleInputChange} size="small" />
-                                        {errors.nif && <span className="error">{errors.nif}</span>}
+                                        <Input
+                                            name="nif"
+                                            value={form.nif}
+                                            onChange={handleInputChange}
+                                            size="small"
+                                        />
+                                        {errors.nif && (
+                                            <span className="error">
+                                                {errors.nif}
+                                            </span>
+                                        )}
                                     </div>
                                 </Col>
                             </Row>
@@ -484,15 +647,35 @@ const PacienteForm = () => {
 
                         <Col xs={24} xl={5} className="form-right">
                             <Card title="Foto" style={{ textAlign: 'center' }}>
-                                <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
                                     {photoPreview ? (
                                         <Avatar size={60} src={photoPreview} />
                                     ) : (
                                         <Avatar size={60} icon={<UserOutlined />} />
+                                        <Avatar
+                                            size={80}
+                                            icon={<UserOutlined />}
+                                        />
+
                                     )}
                                 </Upload>
-                                <Upload beforeUpload={() => false} onChange={handlePhotoChange} showUploadList={false} accept="image/*">
-                                    <Button icon={<UploadOutlined />} block size="small" style={{ marginTop: 8 }}>
+                                <Upload
+                                    beforeUpload={() => false}
+                                    onChange={handlePhotoChange}
+                                    showUploadList={false}
+                                    accept="image/*"
+                                >
+                                    <Button
+                                        icon={<UploadOutlined />}
+                                        block
+                                        size="small"
+                                        style={{ marginTop: 8 }}
+                                    >
                                         Selecionar Foto
                                     </Button>
                                 </Upload>

@@ -542,4 +542,4 @@ const columns = [
     { title: 'Preço c/Iva', dataIndex: 'subTotal', key: 'subTotal' },
 ];
 
-export default Facturacao;
+export default Facturacao;
